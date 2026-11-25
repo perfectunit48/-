@@ -686,17 +686,6 @@
         <!-- 12 Universities Room Selector -->
         <div id="studioUnivRoomList" class="flex flex-wrap gap-1.5 pb-1 border-b border-slate-100"></div>
 
-        <div class="flex flex-wrap gap-1.5">
-          <button type="button" class="studio-preset-btn px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold transition" data-prompt="연세대 기출 스타일로 서로 대립·보완되는 제시문 (가), (나), (다)와 논술 문제 2문항, 출제의도·채점기준까지 만들어 줘. 주제는: ">제시문+문제 세트 만들기</button>
-          <button type="button" class="studio-preset-btn px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-semibold transition" data-prompt="고려대 논술 스타일로 핵심 개념 대립이 분명한 제시문 (가)~(다)와 요약·비교·평가 논제 및 예시답안 포인트를 만들어 줘. 주제는: ">고려대형 문항 만들기</button>
-          <button type="button" class="studio-preset-btn px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold transition" data-prompt="연세대 논술 대비용 유익한 읽기 자료(핵심 개념 대립표, 사상가·이론 정리, 기출 적용 포인트)를 만들어 줘. 주제는: ">논술 읽기 자료 만들기</button>
-          <button type="button" class="studio-preset-btn px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition" data-prompt="아래 참고 원문 출처를 연세대/고려대 논술 제시문 문체로 압축·재가공하고 이에 맞는 논술 문제 1문항을 출제해 줘.">출처 원문 → 제시문 변환</button>
-        </div>
-
-        <div>
-          <label for="studioSourceRefInput" class="block text-xs font-semibold text-slate-700 mb-1">(선택) 참고 출처 / 원문 텍스트 붙여넣기</label>
-          <textarea id="studioSourceRefInput" rows="2" placeholder="변형하고 싶은 책·칼럼·기사 원문이나 출제 방향 메모가 있다면 여기에 붙여넣으세요..." class="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-3 py-2 text-xs sm:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-purple-500 resize-y"></textarea>
-        </div>
 
         <!-- Chat Messages Area -->
         <div id="studioChatMessages" class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4 space-y-3 min-h-[280px] max-h-[520px] overflow-y-auto custom-scrollbar"></div>
@@ -3527,15 +3516,6 @@
         renderStudioChat();
       });
 
-      document.querySelectorAll('.studio-preset-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const inp = document.getElementById('studioChatInput');
-          const activeUniv = STUDIO_UNIVS.find(u => u.id === (state.activeStudioUnivId || 'yonsei')) || STUDIO_UNIVS[0];
-          inp.value = (btn.dataset.prompt || '').replace(/연세대/g, activeUniv.name);
-          inp.focus();
-        });
-      });
-
       document.getElementById('studioClearChatBtn').addEventListener('click', () => {
         ensureStudioRooms();
         const activeId = state.activeStudioUnivId || 'yonsei';
@@ -3657,7 +3637,7 @@
           if (sp) sp.textContent = `응답 중 (${studioSec}초)...`;
         }, 1000);
 
-        const sourceRef = document.getElementById('studioSourceRefInput').value.trim();
+        const sourceRef = '';
 
         let replyText = '';
         if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
