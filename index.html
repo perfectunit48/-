@@ -701,12 +701,25 @@
         <!-- Chat Messages Area -->
         <div id="studioChatMessages" class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4 space-y-3 min-h-[280px] max-h-[520px] overflow-y-auto custom-scrollbar"></div>
 
+        <!-- Chat Attachments Preview -->
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <label for="studioFileInput" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition">
+              <i data-lucide="image-plus" class="w-3.5 h-3.5 text-purple-600"></i>
+              <span>자료 이미지 · PDF 첨부 (학습용)</span>
+            </label>
+            <input id="studioFileInput" type="file" accept="image/*,application/pdf,.pdf" multiple class="hidden" />
+            <span class="text-[11px] text-slate-400">기출 PDF나 지문 사진을 올려 학습·분석하거나 자유롭게 대화해 보세요.</span>
+          </div>
+          <div id="studioAttachPreview" class="hidden flex flex-wrap gap-1.5"></div>
+        </div>
+
         <!-- Chat Input Form -->
         <form id="studioChatForm" class="flex flex-col sm:flex-row gap-2">
-          <textarea id="studioChatInput" rows="2" placeholder="예: 'AI 시대의 노동과 인간 존엄' 주제로 연세대 스타일 제시문 (가)(나)(다)와 문제, 채점기준을 만들어 줘" class="flex-1 rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 resize-y"></textarea>
+          <textarea id="studioChatInput" rows="2" placeholder="자유롭게 대화하거나, 첨부한 자료(PDF·이미지)를 학습시켜 제시문/문제 제작을 요청해 보세요" class="flex-1 rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 resize-y"></textarea>
           <button id="studioSendBtn" type="submit" class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold shadow-sm transition whitespace-nowrap">
             <i data-lucide="send" class="w-4 h-4"></i>
-            <span>생성 · 전송</span>
+            <span>전송</span>
           </button>
         </form>
       </div>
@@ -1706,27 +1719,35 @@
 
     function applyCustomSmsFormat(formatStr) {
       const stu = getActiveStudent();
-      if (!stu) return '';
-      const latestEssay = stu.essays[stu.essays.length - 1];
-      const nextProgress = stu.progress.find(p => !p.done);
-      const latestAtt = [...stu.attendance].sort((a, b) => b.date.localeCompare(a.date))[0];
+      const essays = stu && Array.isArray(stu.essays) ? stu.essays : [];
+      const progress = stu && Array.isArray(stu.progress) ? stu.progress : [];
+      const attendance = stu && Array.isArray(stu.attendance) ? stu.attendance : [];
 
-      const sList = currentAnalysisDraft
+      const latestEssay = essays.length ? essays[essays.length - 1] : null;
+      const nextProgress = progress.find(p => !p.done);
+      const latestAtt = [...attendance].sort((a, b) => b.date.localeCompare(a.date))[0];
+
+      const draftTitle = (document.getElementById('essayTitleInput')?.value || '').trim();
+      const sList = (currentAnalysisDraft && currentAnalysisDraft.strengths && currentAnalysisDraft.strengths.length)
         ? currentAnalysisDraft.strengths
-        : (latestEssay ? latestEssay.strengths : ['주제 파악과 기본 문장 구성']);
-      const wList = currentAnalysisDraft
+        : (latestEssay && latestEssay.strengths && latestEssay.strengths.length ? latestEssay.strengths : ['주제 파악과 기본 문장 구성']);
+      const wList = (currentAnalysisDraft && currentAnalysisDraft.weaknesses && currentAnalysisDraft.weaknesses.length)
         ? currentAnalysisDraft.weaknesses
-        : (latestEssay ? latestEssay.weaknesses : ['구체적 근거 보완']);
+        : (latestEssay && latestEssay.weaknesses && latestEssay.weaknesses.length ? latestEssay.weaknesses : ['구체적 근거 보완']);
 
       const sText = sList.map(x => `• ${x}`).join('\n');
       const wText = wList.map(x => `• ${x}`).join('\n');
+      const stuName = stu ? stu.name : '학생';
+      const recentTitle = (currentAnalysisDraft && (draftTitle || currentAnalysisDraft.title))
+        ? (draftTitle || currentAnalysisDraft.title)
+        : (latestEssay ? latestEssay.title : (stu ? (stu.subject || '인문논술') : '인문논술'));
       const nextTitle = nextProgress ? nextProgress.title : '다음 심화 단원';
       const attStr = latestAtt ? `${latestAtt.date} ${latestAtt.status}` : '출석';
-      const growthStr = buildNarrativeGrowthText(stu);
+      const growthStr = stu ? buildNarrativeGrowthText(stu) : '꾸준한 첨삭과 논증 훈련을 통해 글의 완성도를 높여가고 있습니다.';
 
       return (formatStr || DEFAULT_CUSTOM_SMS_FORMAT)
-        .replace(/\{학생이름\}/g, stu.name)
-        .replace(/\{최근글제목\}/g, latestEssay ? latestEssay.title : stu.subject)
+        .replace(/\{학생이름\}/g, stuName)
+        .replace(/\{최근글제목\}/g, recentTitle)
         .replace(/\{강점\}/g, sText)
         .replace(/\{약점\}/g, wText)
         .replace(/\{다음진도\}/g, nextTitle)
@@ -1745,7 +1766,7 @@
       document.getElementById('customSmsFormatInput').value = fmt;
       if (!stu) {
         document.getElementById('smsPhoneInput').value = '';
-        document.getElementById('smsBodyInput').value = '';
+        document.getElementById('smsBodyInput').value = applyCustomSmsFormat(fmt);
         updateSmsLinkAndCount();
         document.getElementById('smsHistoryList').innerHTML = '<div class="text-center py-8 text-xs text-slate-400">먼저 상단 학생 추가 아이콘을 눌러 학생을 등록해 주세요.</div>';
         return;
@@ -3549,6 +3570,56 @@
         }
       });
 
+      let studioAttachments = [];
+      function renderStudioAttachments() {
+        const box = document.getElementById('studioAttachPreview');
+        if (!box) return;
+        if (studioAttachments.length === 0) {
+          box.classList.add('hidden');
+          box.innerHTML = '';
+          return;
+        }
+        box.classList.remove('hidden');
+        box.innerHTML = studioAttachments.map((a, idx) => `
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-xs font-semibold text-purple-800">
+            <span>${escapeHtml(a.name)}</span>
+            <button type="button" class="studio-rm-att text-purple-500 hover:text-rose-600 font-bold" data-idx="${idx}">×</button>
+          </span>
+        `).join('');
+      }
+      document.getElementById('studioFileInput').addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        for (const f of files) {
+          if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
+            if (f.size > 15 * 1024 * 1024) {
+              showToast(`${f.name}: PDF는 15MB 이하만 첨부 가능합니다.`, 'warning');
+              continue;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              studioAttachments.push({ name: f.name, mimeType: 'application/pdf', dataUrl: ev.target.result });
+              renderStudioAttachments();
+            };
+            reader.readAsDataURL(f);
+          } else if (f.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+              const comp = await compressImageDataUrl(ev.target.result);
+              studioAttachments.push({ name: f.name, mimeType: comp.mimeType, dataUrl: comp.dataUrl });
+              renderStudioAttachments();
+            };
+            reader.readAsDataURL(f);
+          }
+        }
+      });
+      document.getElementById('studioAttachPreview').addEventListener('click', (e) => {
+        const rm = e.target.closest('.studio-rm-att');
+        if (!rm) return;
+        studioAttachments.splice(Number(rm.dataset.idx), 1);
+        renderStudioAttachments();
+      });
+
       document.getElementById('studioChatForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!isJace48()) {
@@ -3559,19 +3630,32 @@
         const activeId = state.activeStudioUnivId || 'yonsei';
         const activeUniv = STUDIO_UNIVS.find(u => u.id === activeId) || STUDIO_UNIVS[0];
         const inp = document.getElementById('studioChatInput');
-        const textVal = inp.value.trim();
-        if (!textVal) return;
+        let textVal = inp.value.trim();
+        if (!textVal && studioAttachments.length === 0) return;
+        if (!textVal && studioAttachments.length > 0) {
+          textVal = '첨부한 자료를 읽고 핵심 내용·문체·출제 포인트를 학습 및 정리해 줘.';
+        }
+        const pendingAtts = [...studioAttachments];
+        const attLabel = pendingAtts.length ? `\n[첨부 자료: ${pendingAtts.map(a => a.name).join(', ')}]` : '';
 
         state.studioRooms[activeId] = state.studioRooms[activeId] || [];
-        state.studioRooms[activeId].push({ role: 'user', text: textVal });
+        state.studioRooms[activeId].push({ role: 'user', text: textVal + attLabel });
         inp.value = '';
+        studioAttachments = [];
+        renderStudioAttachments();
         renderStudioUnivTabs();
         renderStudioChat();
 
         const sendBtn = document.getElementById('studioSendBtn');
         sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>제작 중...</span>';
+        let studioSec = 0;
+        sendBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>응답 중 (0초)...</span>';
         safeIcons();
+        const studioTimer = setInterval(() => {
+          studioSec++;
+          const sp = sendBtn.querySelector('span');
+          if (sp) sp.textContent = `응답 중 (${studioSec}초)...`;
+        }, 1000);
 
         const sourceRef = document.getElementById('studioSourceRefInput').value.trim();
 
@@ -3586,7 +3670,8 @@
                 targetUniv: activeUniv.name,
                 univMeta: activeUniv.meta,
                 messages: state.studioRooms[activeId],
-                sourceRef
+                sourceRef,
+                attachments: pendingAtts
               })
             });
             const d = await r.json().catch(() => ({}));

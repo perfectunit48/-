@@ -295,48 +295,57 @@ async function discoverAvailableGeminiModels(apiKey) {
   }
 }
 
-async function callGeminiWithFallback(apiKey, bodyObj) {
-  const preferred = [
-    'gemini-4-carbon',
-    'gemini-4-neon',
-    'gemini-4-hydrogen',
-    'gemini-3.8-flash',
-    'gemini-3.5-flash-lite',
-    'gemini-2.5-flash-lite'
-  ];
+const CACHED_MODELS = { vision: '', chat: '' };
+
+async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
+  const preferred = mode === 'chat'
+    ? ['gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-4-carbon', 'gemini-4-neon']
+    : ['gemini-4-carbon', 'gemini-4-neon', 'gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite'];
+
+  const order = CACHED_MODELS[mode]
+    ? [CACHED_MODELS[mode], ...preferred.filter(m => m !== CACHED_MODELS[mode])]
+    : preferred;
+
   const errors = [];
   const tryModel = async (model) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 35000);
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyObj)
+        body: JSON.stringify(bodyObj),
+        signal: controller.signal
       });
+      clearTimeout(timer);
       if (r.ok) {
         const data = await r.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (text) return { text, model, error: '' };
+        if (text) {
+          CACHED_MODELS[mode] = model;
+          return { text, model, error: '' };
+        }
         errors.push(`${model}: 빈 응답`);
       } else {
         const errBody = await r.text().catch(() => '');
-        console.error(`[Gemini ${model}] HTTP ${r.status}`, errBody.slice(0, 300));
+        console.error(`[Gemini ${model}] HTTP ${r.status}`, errBody.slice(0, 200));
         errors.push(`${model}: HTTP ${r.status}`);
       }
     } catch (err) {
+      clearTimeout(timer);
       console.error(`[Gemini ${model}] Error:`, err.message);
-      errors.push(`${model}: ${err.message}`);
+      errors.push(`${model}: ${err.name === 'AbortError' ? '시간 초과' : err.message}`);
     }
     return null;
   };
 
-  for (const model of preferred) {
+  for (const model of order) {
     const ok = await tryModel(model);
     if (ok) return ok;
   }
 
-  // Dynamic fallback via ListModels for the user's exact API key
   const discovered = await discoverAvailableGeminiModels(apiKey);
-  for (const model of discovered.filter(m => !preferred.includes(m)).slice(0, 4)) {
+  for (const model of discovered.filter(m => !order.includes(m)).slice(0, 3)) {
     const ok = await tryModel(model);
     if (ok) return ok;
   }
@@ -391,10 +400,10 @@ app.post('/api/analyze-essay', async (req, res) => {
 });
 
 
-// 5. jace48 전용 논술 제시문·문제·읽기자료 제작 AI 채팅
+// 5. jace48 전용 논술 대화 · 자료 학습(이미지/PDF) · 제시문/문제 제작 AI 채팅
 app.post('/api/essay-studio-chat', async (req, res) => {
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
-  const { userId = '', targetUniv = '연세대형', messages = [], sourceRef = '' } = req.body || {};
+  const { userId = '', targetUniv = '연세대', univMeta = '', messages = [], sourceRef = '', attachments = [] } = req.body || {};
   if (String(userId).trim().toLowerCase() !== 'jace48') {
     return res.status(403).json({ ok: false, reason: '접근 권한이 없는 계정입니다.' });
   }
@@ -402,32 +411,40 @@ app.post('/api/essay-studio-chat', async (req, res) => {
     return res.json({ ok: false, reason: 'Render Environment Variables에 GEMINI_API_KEY가 설정되지 않았습니다.' });
   }
   try {
-    const sysPrompt = `당신은 대한민국 최상위권 대입 인문논술(특히 연세대학교·고려대학교) 제시문·문항·읽기자료 제작 전문 에이전트입니다.
+    const sysPrompt = `당신은 대한민국 최상위권 대입 인문논술(특히 ${targetUniv}) 전문 파트너이자 제시문·문항·읽기자료 제작 AI 어시스턴트입니다.
 현재 선택된 대학 채팅방: ${targetUniv}
-대학별 출제 특성: ${req.body && req.body.univMeta ? req.body.univMeta : '해당 대학 인문논술 기출 스타일'}
+대학별 출제 특성: ${univMeta || '해당 대학 인문논술 기출 스타일'}
 
-[제작 핵심 원칙]
-1. 문체 변환 및 출제 원리:
-   - 시중 칼럼·책·기사·원문 출처를 단순 요약하거나 그대로 복붙하지 말고, 연세대·고려대 실제 기출 제시문 특유의 압축적이고 개념적인 학술·비평 문체로 재구성하세요.
-   - 제시문 (가), (나), (다)(필요 시 (라))가 서로 단순 나열되지 않고 대립·보완·확장·반례 관계를 이루도록 정교하게 설계하세요.
-2. 대학별 스타일 가이드:
-   - 연세대형: 다제시문(영어 제시문 포함 가능, 도표·수치 자료 활용 가능) 기반 심층 비교·평가·적용형 문항, 핵심 개념 간 긴장 관계 부각.
-   - 고려대형: 제시문 간 핵심 개념을 중심으로 한 정확한 요약, 비교·대조, 현실 사례/타 제시문 평가 및 적용형 문항(80~100분 호흡에 맞춘 밀도 있는 구성).
-   - 기타 대학형: 각 대학 기출 문항 구조(요약·분류·비판·대안 제시)에 맞춘 체계적 문항 구성.
-3. 출력 구성:
-   - 사용자가 제시문/문제 제작을 요청하면 [제시문 (가)/(나)/(다)...] → [논제(문제)] → [출제 의도 및 제시문 관계] → [채점 기준 및 예시 답안 핵심] 순서로 바로 수업·실전에 쓸 수 있게 완성도 높게 작성하세요.
-   - 사용자가 '읽기 자료'를 요청하면 해당 주제·사상가·쟁점을 논술 답안 작성에 바로 쓸 수 있는 개념 대립표, 핵심 논지, 기출 연결 포인트 중심으로 정리하세요.
-   - 사용자가 후속 수정(난이도 조절, 문체 다듬기, 제시문 추가 등)을 요청하면 앞선 대화 맥락을 유지해 해당 부분을 정밀하게 수정해 주세요.` + (sourceRef ? `
+[대화 및 작업 원칙]
+1. 유연한 대화와 학습:
+   - 사용자가 가벼운 질문, 수업 고민, 출제 방향 상의 등 일반 대화를 건네면 딱딱한 템플릿을 강요하지 말고 자연스럽고 명쾌한 한국어로 대화하세요.
+   - 사용자가 이미지나 PDF 자료를 첨부해 학습·분석을 요청하면, 첨부 파일의 문체, 논지, 출제 구조, 핵심 개념을 정밀하게 파악하고 요약해 이후 대화·제작에 계속 반영하세요.
+2. 제시문·문제·읽기자료 제작 요청 시:
+   - 시중 칼럼·책·기사 원문을 단순 복붙하지 말고, ${targetUniv} 실제 기출 특유의 압축적이고 개념적인 학술·비평 문체로 재가공하세요.
+   - 필요에 따라 [제시문 (가)/(나)/(다)...], [논제], [출제 의도 및 채점기준], [예시 답안] 또는 [논술 대비 읽기 자료]를 완성도 높게 작성하세요.
+   - 후속 수정 요청에는 앞선 대화 맥락과 학습한 자료를 바탕으로 해당 부분만 정밀하게 다듬어 주세요.` + (sourceRef ? `\n\n[사용자가 첨부한 참고 출처/원문]\n${sourceRef}` : '');
 
-[사용자가 첨부한 참고 출처/원문]
-${sourceRef}` : '');
-
+    const rawMsgs = Array.isArray(messages) ? messages.slice(-16) : [];
     const contents = [];
-    (Array.isArray(messages) ? messages : []).slice(-16).forEach((m) => {
+    rawMsgs.forEach((m, i) => {
       if (!m || !m.text) return;
+      const parts = [{ text: String(m.text) }];
+      // Attach uploaded image/PDF inline_data to the latest user message
+      if (i === rawMsgs.length - 1 && m.role !== 'model' && Array.isArray(attachments)) {
+        attachments.forEach(att => {
+          if (att && att.dataUrl && att.dataUrl.includes(',')) {
+            parts.push({
+              inline_data: {
+                mime_type: att.mimeType || 'image/jpeg',
+                data: att.dataUrl.split(',')[1]
+              }
+            });
+          }
+        });
+      }
       contents.push({
         role: m.role === 'model' ? 'model' : 'user',
-        parts: [{ text: String(m.text) }]
+        parts
       });
     });
 
@@ -435,10 +452,11 @@ ${sourceRef}` : '');
       return res.status(400).json({ ok: false, reason: '대화 내용이 비어 있습니다.' });
     }
 
+    const mode = (Array.isArray(attachments) && attachments.length > 0) ? 'vision' : 'chat';
     const result = await callGeminiWithFallback(apiKey, {
       systemInstruction: { parts: [{ text: sysPrompt }] },
       contents
-    });
+    }, mode);
 
     if (result.text) {
       return res.json({ ok: true, reply: result.text, model: result.model });
