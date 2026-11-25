@@ -30,6 +30,7 @@ if (!fs.existsSync(EXAMS_DIR)) {
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 function readDb() {
   if (!fs.existsSync(DB_FILE)) return { accounts: {}, examFiles: {} };
