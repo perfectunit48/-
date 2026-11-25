@@ -1,0 +1,16 @@
+{
+  "name": "student-manager-server",
+  "version": "2.0.0",
+  "description": "학생관리 과외 첨삭·진도·출결·기출 PDF 서버",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
