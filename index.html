@@ -10,7 +10,9 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <link id="manifestLink" rel="manifest" href="" />
   <link id="appleTouchIcon" rel="apple-touch-icon" href="" />
-  <title>학생관리 · 과외 학생 첨삭·진도·출결·학부모 문자 통합 워크스페이스</title>
+  <title>과외는 이걸로!</title>
+  <meta property="og:title" content="과외는 이걸로!" />
+  <meta property="og:description" content="인문논술 첨삭 · 선행학습영향평가 · 진도 · 출결 통합 관리" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -2690,7 +2692,8 @@
         }
         const accounts = getSavedAccounts();
         if (accounts[uid]) {
-          errEl.textContent = '이미 가입된 아이디입니다. 다른 아이디를 사용해 주세요.';
+          errEl.textContent = '이미 있는 아이디입니다. 다른 아이디를 사용하거나 로그인해 주세요.';
+          showToast('이미 있는 아이디입니다.', 'warning');
           errEl.classList.remove('hidden');
           return;
         }
@@ -2703,7 +2706,8 @@
             });
             const data = await res.json().catch(() => ({}));
             if (res.status === 409) {
-              errEl.textContent = data.error || '이미 가입된 아이디입니다. 로그인 탭을 이용해 주세요.';
+              errEl.textContent = data.error || '이미 있는 아이디입니다. 다른 아이디를 사용하거나 로그인해 주세요.';
+              showToast('이미 있는 아이디입니다.', 'warning');
               errEl.classList.remove('hidden');
               return;
             }
@@ -3084,44 +3088,28 @@
           const proxyUrl = box.dataset.proxyUrl;
           const statusEl = box.querySelector('.pdfjs-status');
           const pagesEl = box.querySelector('.pdfjs-pages');
-          const moreBtn = box.querySelector('.pdfjs-more-btn');
           try {
             const loadingTask = window.pdfjsLib.getDocument(proxyUrl);
             const pdf = await loadingTask.promise;
             const total = pdf.numPages;
-            let renderedCount = 0;
-
-            const renderBatch = async (count) => {
-              const target = Math.min(total, renderedCount + count);
-              const containerW = Math.max(280, (pagesEl.clientWidth || 640) - 24);
-              for (let pNum = renderedCount + 1; pNum <= target; pNum++) {
-                statusEl.textContent = `페이지 렌더링 중 (${pNum}/${total})...`;
-                const page = await pdf.getPage(pNum);
-                const baseVp = page.getViewport({ scale: 1 });
-                const scale = Math.min(2.0, containerW / baseVp.width);
-                const dpr = Math.min(window.devicePixelRatio || 1, 2);
-                const vp = page.getViewport({ scale: scale * dpr });
-                const canvas = document.createElement('canvas');
-                canvas.width = vp.width;
-                canvas.height = vp.height;
-                canvas.style.width = `${Math.round(vp.width / dpr)}px`;
-                canvas.style.height = `${Math.round(vp.height / dpr)}px`;
-                canvas.className = 'bg-white shadow-sm rounded border border-slate-200 max-w-full';
-                await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-                pagesEl.appendChild(canvas);
-              }
-              renderedCount = target;
-              statusEl.textContent = `총 ${total}페이지 중 ${renderedCount}페이지 표시 중`;
-              if (renderedCount < total) {
-                moreBtn.classList.remove('hidden');
-                moreBtn.textContent = `다음 ${Math.min(5, total - renderedCount)}페이지 더 보기`;
-              } else {
-                moreBtn.classList.add('hidden');
-              }
-            };
-
-            moreBtn.onclick = () => renderBatch(5);
-            await renderBatch(5);
+            const containerW = Math.max(280, (pagesEl.clientWidth || 640) - 24);
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            for (let pNum = 1; pNum <= total; pNum++) {
+              statusEl.textContent = `전체 페이지 불러오는 중 (${pNum}/${total})...`;
+              const page = await pdf.getPage(pNum);
+              const baseVp = page.getViewport({ scale: 1 });
+              const scale = Math.min(1.8, containerW / baseVp.width);
+              const vp = page.getViewport({ scale: scale * dpr });
+              const canvas = document.createElement('canvas');
+              canvas.width = vp.width;
+              canvas.height = vp.height;
+              canvas.style.width = `${Math.round(vp.width / dpr)}px`;
+              canvas.style.height = `${Math.round(vp.height / dpr)}px`;
+              canvas.className = 'bg-white shadow-sm rounded border border-slate-200 max-w-full';
+              await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+              pagesEl.appendChild(canvas);
+            }
+            statusEl.textContent = `총 ${total}페이지 전체 표시 완료`;
           } catch (err) {
             statusEl.textContent = '미리보기를 불러오지 못했습니다. 상단 [PDF 열기 · 받기] 버튼을 눌러 주세요.';
             recordDebugLog('ERROR', 'PDF 미리보기', err && err.message ? err.message : String(err));
@@ -3159,13 +3147,10 @@
           const viewerId = 'pdfv_' + Math.random().toString(36).slice(2, 9);
           const previewHtml = canPreviewPdf(url)
             ? `<div id="${viewerId}" class="pdfjs-inline-viewer rounded-xl border border-slate-200 bg-slate-100 overflow-hidden" data-proxy-url="/api/pdf-proxy?url=${encodeURIComponent(url)}">
-                <div class="px-3 py-2 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <span class="pdfjs-status font-semibold text-slate-600">PDF 불러오는 중...</span>
-                  <div class="flex items-center gap-1.5">
-                    <button type="button" class="pdfjs-more-btn hidden px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold">다음 5페이지 더 보기</button>
-                  </div>
+                <div class="px-3 py-2 bg-white border-b border-slate-200 flex items-center justify-between gap-2 text-xs">
+                  <span class="pdfjs-status font-semibold text-slate-600">PDF 전체 페이지 불러오는 중...</span>
                 </div>
-                <div class="pdfjs-pages p-3 space-y-3 max-h-[560px] overflow-y-auto custom-scrollbar flex flex-col items-center"></div>
+                <div class="pdfjs-pages p-3 space-y-3 max-h-[640px] overflow-y-auto custom-scrollbar flex flex-col items-center"></div>
               </div>`
             : `<div class="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-400">미리보기 없음</div>`;
           return `
