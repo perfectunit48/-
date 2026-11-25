@@ -210,6 +210,10 @@
           <i data-lucide="book-marked" class="w-4 h-4"></i>
           <span>논술 기출</span>
         </button>
+        <button id="studioDesktopTabBtn" class="hidden tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-purple-700 bg-purple-50/70 hover:bg-purple-100 transition" data-tab="studio">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>자료 제작</span>
+        </button>
       </nav>
     </div>
   </header>
@@ -661,6 +665,52 @@
         </div>
       </div>
     </section>
+
+    <!-- TAB 7: jace48 Exclusive Essay Studio Chat -->
+    <section id="tab-studio" class="tab-panel hidden space-y-4 animate-fade-in">
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800">jace48 전용</span>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">대학별 논술 자료 제작 채팅방</h2>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">주요 12개 대학 중 하나를 선택하면 해당 대학 전용 채팅방이 열리며, 제작한 제시문·문제·읽기자료가 대학별로 영구 저장됩니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="studioActiveUnivBadge" class="px-3 py-1 rounded-xl bg-purple-100 text-purple-800 text-xs font-bold">연세대 채팅방</span>
+            <button id="studioClearChatBtn" type="button" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-600">현재 방 비우기</button>
+          </div>
+        </div>
+
+        <!-- 12 Universities Room Selector -->
+        <div id="studioUnivRoomList" class="flex flex-wrap gap-1.5 pb-1 border-b border-slate-100"></div>
+
+        <div class="flex flex-wrap gap-1.5">
+          <button type="button" class="studio-preset-btn px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold transition" data-prompt="연세대 기출 스타일로 서로 대립·보완되는 제시문 (가), (나), (다)와 논술 문제 2문항, 출제의도·채점기준까지 만들어 줘. 주제는: ">제시문+문제 세트 만들기</button>
+          <button type="button" class="studio-preset-btn px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-semibold transition" data-prompt="고려대 논술 스타일로 핵심 개념 대립이 분명한 제시문 (가)~(다)와 요약·비교·평가 논제 및 예시답안 포인트를 만들어 줘. 주제는: ">고려대형 문항 만들기</button>
+          <button type="button" class="studio-preset-btn px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold transition" data-prompt="연세대 논술 대비용 유익한 읽기 자료(핵심 개념 대립표, 사상가·이론 정리, 기출 적용 포인트)를 만들어 줘. 주제는: ">논술 읽기 자료 만들기</button>
+          <button type="button" class="studio-preset-btn px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition" data-prompt="아래 참고 원문 출처를 연세대/고려대 논술 제시문 문체로 압축·재가공하고 이에 맞는 논술 문제 1문항을 출제해 줘.">출처 원문 → 제시문 변환</button>
+        </div>
+
+        <div>
+          <label for="studioSourceRefInput" class="block text-xs font-semibold text-slate-700 mb-1">(선택) 참고 출처 / 원문 텍스트 붙여넣기</label>
+          <textarea id="studioSourceRefInput" rows="2" placeholder="변형하고 싶은 책·칼럼·기사 원문이나 출제 방향 메모가 있다면 여기에 붙여넣으세요..." class="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-3 py-2 text-xs sm:text-sm outline-none focus:bg-white focus:ring-2 focus:ring-purple-500 resize-y"></textarea>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div id="studioChatMessages" class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4 space-y-3 min-h-[280px] max-h-[520px] overflow-y-auto custom-scrollbar"></div>
+
+        <!-- Chat Input Form -->
+        <form id="studioChatForm" class="flex flex-col sm:flex-row gap-2">
+          <textarea id="studioChatInput" rows="2" placeholder="예: 'AI 시대의 노동과 인간 존엄' 주제로 연세대 스타일 제시문 (가)(나)(다)와 문제, 채점기준을 만들어 줘" class="flex-1 rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-500 resize-y"></textarea>
+          <button id="studioSendBtn" type="submit" class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold shadow-sm transition whitespace-nowrap">
+            <i data-lucide="send" class="w-4 h-4"></i>
+            <span>생성 · 전송</span>
+          </button>
+        </form>
+      </div>
+    </section>
   </main>
 
   <!-- Modal: Essay Detail -->
@@ -772,7 +822,7 @@
 
   <!-- Mobile Bottom Navigation Bar -->
   <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 safe-bottom" aria-label="모바일 하단 메뉴">
-    <div class="grid grid-cols-6 h-16">
+    <div id="mobileBottomNavGrid" class="grid grid-cols-6 h-16">
       <button class="mobile-tab-btn active flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-500" data-tab="essay">
         <span class="mobile-tab-pill px-3 py-1 rounded-full transition"><i data-lucide="file-edit" class="w-4 h-4"></i></span>
         <span>첨삭</span>
@@ -796,6 +846,10 @@
       <button class="mobile-tab-btn flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-500" data-tab="exams">
         <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="book-marked" class="w-4 h-4"></i></span>
         <span>기출</span>
+      </button>
+      <button id="studioMobileTabBtn" class="hidden mobile-tab-btn flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-purple-600" data-tab="studio">
+        <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
+        <span>자료제작</span>
       </button>
     </div>
   </nav>
@@ -2603,6 +2657,7 @@
         const displayName = (acc && typeof acc === 'object' && acc.name) ? acc.name : uid;
         document.getElementById('loggedInUserBadge').textContent = displayName;
         document.getElementById('loginScreen').classList.add('hidden');
+        if (typeof updateStudioVisibility === 'function') updateStudioVisibility();
         renderAll();
       }
 
@@ -2693,8 +2748,8 @@
         const accounts = getSavedAccounts();
         if (accounts[uid]) {
           errEl.textContent = '이미 있는 아이디입니다. 다른 아이디를 사용하거나 로그인해 주세요.';
-          showToast('이미 있는 아이디입니다.', 'warning');
           errEl.classList.remove('hidden');
+          showToast('이미 있는 아이디입니다.', 'warning');
           return;
         }
         if (USE_LOCAL_NODE_SERVER) {
@@ -2707,8 +2762,8 @@
             const data = await res.json().catch(() => ({}));
             if (res.status === 409) {
               errEl.textContent = data.error || '이미 있는 아이디입니다. 다른 아이디를 사용하거나 로그인해 주세요.';
-              showToast('이미 있는 아이디입니다.', 'warning');
               errEl.classList.remove('hidden');
+              showToast('이미 있는 아이디입니다.', 'warning');
               return;
             }
           } catch (err) {}
@@ -2726,6 +2781,7 @@
         document.getElementById('loginPwInput').value = '';
         switchAuthTab('login');
         renderSavedAccountsChips();
+        if (typeof updateStudioVisibility === 'function') updateStudioVisibility();
         document.getElementById('loginScreen').classList.remove('hidden');
       });
 
@@ -3325,6 +3381,236 @@
           ta.remove();
           showToast('오류 로그를 복사했습니다.', 'success');
         }
+      });
+
+
+      // jace48 Exclusive 12-University Essay Studio Chat Rooms
+      const STUDIO_UNIVS = [
+        { id: 'yonsei', name: '연세대', meta: '2문항(소문항 포함), 다제시문 비교·평가·적용형, 영어 제시문 및 도표/수리 통계 포함 가능, 120분' },
+        { id: 'korea', name: '고려대', meta: '제시문 기반 요약·비교·논증·적용형, 핵심 개념 대립 구조, 80~100분' },
+        { id: 'sogang', name: '서강대', meta: '2문항(각 800~1,000자 내외), 다제시문 통합·비교·적용형, 100분' },
+        { id: 'skku', name: '성균관대', meta: '3문항, 요약/분류형 + 자료해석(도표·수치) + 견해 제시형, 100분' },
+        { id: 'hanyang', name: '한양대', meta: '인문논술 1문항(1,200자) / 상경(인문 600자+수리 1문항), 단문·심층 논증형, 90분' },
+        { id: 'cau', name: '중앙대', meta: '3문항, 인문사회(언어 3문항) / 경영경제(언어 2+수리 1), 개념 적용·비판형, 120분' },
+        { id: 'khu', name: '경희대', meta: '인문·체육(2문항) / 사회(언어 2+수리 1), 요약·비판·논증형, 120분' },
+        { id: 'hufs', name: '한국외대', meta: '3문항, 영어 제시문 1개 포함, 분류·비판·자료해석형, 90분' },
+        { id: 'konkuk', name: '건국대', meta: '인문사회Ⅰ(2문항) / 인문사회Ⅱ(언어 1+수리 1), 도표·제시문 연계형, 100분' },
+        { id: 'dongguk', name: '동국대', meta: '3문항(총 1,400자 내외), 제시문 기반 요약·비교·해결방안 제시형, 100분' },
+        { id: 'hongik', name: '홍익대', meta: '2문항(각 800자 내외), 단일/복합 제시문 심층 분석 및 논증형, 120분' },
+        { id: 'sookmyung', name: '숙명여대', meta: '2문항(소문항 포함), 제시문 요약·비교·적용형, 100분' }
+      ];
+
+      function ensureStudioRooms() {
+        if (!state.studioRooms || typeof state.studioRooms !== 'object') {
+          state.studioRooms = {};
+        }
+        // Migrate any earlier single-room chat into 연세대 room
+        if (Array.isArray(state.studioChats) && state.studioChats.length > 0) {
+          if (!Array.isArray(state.studioRooms.yonsei) || state.studioRooms.yonsei.length === 0) {
+            state.studioRooms.yonsei = state.studioChats;
+          }
+          delete state.studioChats;
+        }
+        // Seed Yonsei room with the user's Yonsei essay-creation agent guidelines if empty
+        if (!Array.isArray(state.studioRooms.yonsei) || state.studioRooms.yonsei.length === 0) {
+          state.studioRooms.yonsei = [
+            {
+              role: 'model',
+              text: `[연세대 논술 제시문 · 읽기자료 제작 기준 반영 완료]\n\n• 기출 문체 변환: 시중 출처나 원문을 단순 복붙하지 않고 연세대 인문계열 기출 특유의 압축적·개념적 문체로 재가공합니다.\n• 다제시문 관계 설계: (가)~(다)/(라) 제시문이 대립·보완·반례 구도를 이루며 필요 시 영어 제시문·도표 자료를 함께 구성합니다.\n• 출력 형식: [제시문] → [논제] → [출제 의도 및 채점기준] → [예시 답안] 또는 [연세대 논술 대비 읽기 자료] 형태로 바로 제작합니다.\n\n원하시는 주제나 참고 출처를 입력해 주세요!`
+            }
+          ];
+        }
+        if (!state.activeStudioUnivId || !STUDIO_UNIVS.some(u => u.id === state.activeStudioUnivId)) {
+          state.activeStudioUnivId = 'yonsei';
+        }
+      }
+
+      function isJace48() {
+        return String(currentUserId || '').trim().toLowerCase() === 'jace48';
+      }
+
+      function updateStudioVisibility() {
+        const allowed = isJace48();
+        const dBtn = document.getElementById('studioDesktopTabBtn');
+        const mBtn = document.getElementById('studioMobileTabBtn');
+        const mGrid = document.getElementById('mobileBottomNavGrid');
+        if (dBtn) dBtn.classList.toggle('hidden', !allowed);
+        if (mBtn) mBtn.classList.toggle('hidden', !allowed);
+        if (mGrid) {
+          mGrid.classList.toggle('grid-cols-7', allowed);
+          mGrid.classList.toggle('grid-cols-6', !allowed);
+        }
+        if (!allowed) {
+          const studioPanel = document.getElementById('tab-studio');
+          if (studioPanel && !studioPanel.classList.contains('hidden')) {
+            switchTab('essay');
+          }
+        } else {
+          ensureStudioRooms();
+          renderStudioUnivTabs();
+          renderStudioChat();
+        }
+      }
+
+      function renderStudioUnivTabs() {
+        const listEl = document.getElementById('studioUnivRoomList');
+        if (!listEl) return;
+        ensureStudioRooms();
+        const activeId = state.activeStudioUnivId || 'yonsei';
+        const activeUniv = STUDIO_UNIVS.find(u => u.id === activeId) || STUDIO_UNIVS[0];
+        const badge = document.getElementById('studioActiveUnivBadge');
+        if (badge) badge.textContent = `${activeUniv.name} 채팅방`;
+
+        listEl.innerHTML = STUDIO_UNIVS.map(u => {
+          const count = Array.isArray(state.studioRooms[u.id]) ? state.studioRooms[u.id].length : 0;
+          const isAct = u.id === activeId;
+          return `<button type="button" class="studio-univ-btn px-3 py-1.5 rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 ${isAct ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-purple-50 hover:text-purple-700'}" data-univ="${u.id}">
+            <span>${u.name}</span>
+            ${count > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] ${isAct ? 'bg-purple-500 text-white' : 'bg-white text-slate-600'}">${count}</span>` : ''}
+          </button>`;
+        }).join('');
+      }
+
+      function renderStudioChat() {
+        const box = document.getElementById('studioChatMessages');
+        if (!box) return;
+        ensureStudioRooms();
+        const activeId = state.activeStudioUnivId || 'yonsei';
+        const activeUniv = STUDIO_UNIVS.find(u => u.id === activeId) || STUDIO_UNIVS[0];
+        const chats = Array.isArray(state.studioRooms[activeId]) ? state.studioRooms[activeId] : [];
+        if (chats.length === 0) {
+          box.innerHTML = `<div class="text-center py-10 text-xs sm:text-sm text-slate-400 leading-relaxed"><strong>${activeUniv.name}</strong> 전용 논술 자료 제작 채팅방입니다.<br/>주제나 참고 출처를 입력하시면 ${activeUniv.name} 기출 스타일에 맞춰 제작됩니다.</div>`;
+          return;
+        }
+        box.innerHTML = chats.map((m, idx) => {
+          if (m.role === 'user') {
+            return `<div class="flex justify-end"><div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-purple-600 text-white px-4 py-2.5 text-xs sm:text-sm whitespace-pre-wrap leading-relaxed shadow-xs">${escapeHtml(m.text)}</div></div>`;
+          }
+          return `<div class="flex justify-start"><div class="max-w-[92%] rounded-2xl rounded-tl-sm bg-white border border-slate-200 px-4 py-3 text-xs sm:text-sm text-slate-800 space-y-2 shadow-xs">
+            <div class="whitespace-pre-wrap leading-relaxed">${escapeHtml(m.text)}</div>
+            <div class="pt-1.5 border-t border-slate-100 flex flex-wrap gap-1.5">
+              <button type="button" class="studio-copy-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-semibold text-slate-700" data-idx="${idx}">내용 복사</button>
+              <button type="button" class="studio-to-prompt-btn px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-[11px] font-semibold text-indigo-700" data-idx="${idx}">첨삭 탭 제시문에 반영</button>
+            </div>
+          </div></div>`;
+        }).join('');
+        box.scrollTop = box.scrollHeight;
+      }
+
+      document.getElementById('studioUnivRoomList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.studio-univ-btn');
+        if (!btn) return;
+        state.activeStudioUnivId = btn.dataset.univ;
+        saveState();
+        renderStudioUnivTabs();
+        renderStudioChat();
+      });
+
+      document.querySelectorAll('.studio-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const inp = document.getElementById('studioChatInput');
+          const activeUniv = STUDIO_UNIVS.find(u => u.id === (state.activeStudioUnivId || 'yonsei')) || STUDIO_UNIVS[0];
+          inp.value = (btn.dataset.prompt || '').replace(/연세대/g, activeUniv.name);
+          inp.focus();
+        });
+      });
+
+      document.getElementById('studioClearChatBtn').addEventListener('click', () => {
+        ensureStudioRooms();
+        const activeId = state.activeStudioUnivId || 'yonsei';
+        state.studioRooms[activeId] = [];
+        saveState();
+        renderStudioUnivTabs();
+        renderStudioChat();
+        showToast('현재 대학 채팅방 대화를 비웠습니다.');
+      });
+
+      document.getElementById('studioChatMessages').addEventListener('click', async (e) => {
+        const copyBtn = e.target.closest('.studio-copy-btn');
+        if (copyBtn) {
+          const activeId = state.activeStudioUnivId || 'yonsei';
+          const msg = (state.studioRooms && state.studioRooms[activeId] || [])[Number(copyBtn.dataset.idx)];
+          if (!msg) return;
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(msg.text);
+            showToast('제작된 논술 자료를 복사했습니다.', 'success');
+          } catch (err) {}
+          return;
+        }
+        const refBtn = e.target.closest('.studio-to-prompt-btn');
+        if (refBtn) {
+          const activeId = state.activeStudioUnivId || 'yonsei';
+          const msg = (state.studioRooms && state.studioRooms[activeId] || [])[Number(refBtn.dataset.idx)];
+          if (!msg) return;
+          document.getElementById('promptSummaryOutput').value = msg.text;
+          document.getElementById('promptSummaryBox').classList.remove('hidden');
+          switchTab('essay');
+          showToast('첨삭 탭 제시문·논제 요약란에 반영했습니다.', 'success');
+        }
+      });
+
+      document.getElementById('studioChatForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!isJace48()) {
+          showToast('jace48 계정에서만 사용할 수 있습니다.', 'warning');
+          return;
+        }
+        ensureStudioRooms();
+        const activeId = state.activeStudioUnivId || 'yonsei';
+        const activeUniv = STUDIO_UNIVS.find(u => u.id === activeId) || STUDIO_UNIVS[0];
+        const inp = document.getElementById('studioChatInput');
+        const textVal = inp.value.trim();
+        if (!textVal) return;
+
+        state.studioRooms[activeId] = state.studioRooms[activeId] || [];
+        state.studioRooms[activeId].push({ role: 'user', text: textVal });
+        inp.value = '';
+        renderStudioUnivTabs();
+        renderStudioChat();
+
+        const sendBtn = document.getElementById('studioSendBtn');
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>제작 중...</span>';
+        safeIcons();
+
+        const sourceRef = document.getElementById('studioSourceRefInput').value.trim();
+
+        let replyText = '';
+        if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
+          try {
+            const r = await fetch('/api/essay-studio-chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: currentUserId,
+                targetUniv: activeUniv.name,
+                univMeta: activeUniv.meta,
+                messages: state.studioRooms[activeId],
+                sourceRef
+              })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (r.ok && d.ok && d.reply) {
+              replyText = d.reply;
+            } else {
+              replyText = `[생성 오류] ${d.reason || 'HTTP ' + r.status}`;
+              recordDebugLog('ERROR', '논술 자료 제작', d.reason || ('HTTP ' + r.status));
+            }
+          } catch (err) {
+            replyText = `[연결 오류] ${err.message || err}`;
+            recordDebugLog('ERROR', '논술 자료 제작', err.message || err);
+          }
+        } else {
+          replyText = '이 기능은 Render 서버 주소로 접속해 jace48로 로그인했을 때 AI API와 연동되어 작동합니다.';
+        }
+
+        state.studioRooms[activeId].push({ role: 'model', text: replyText });
+        saveState();
+        renderStudioUnivTabs();
+        renderStudioChat();
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i><span>생성 · 전송</span>';
+        safeIcons();
       });
 
       populateExamSelectors();

@@ -252,7 +252,10 @@ app.get('/api/health', async (req, res) => {
         headers: getSupabaseHeaders(sb.key)
       });
       if (r.ok) supabaseOk = true;
-      else supabaseError = `HTTP ${r.status}`;
+      else {
+        const errBody = await r.text().catch(() => '');
+        supabaseError = `HTTP ${r.status} (${sb.key.slice(0, 6)}..len=${sb.key.length}): ${errBody.slice(0, 140)}`;
+      }
     } catch (e) {
       supabaseError = e.message;
     }
@@ -384,6 +387,65 @@ app.post('/api/analyze-essay', async (req, res) => {
     res.json({ ok: false, reason: 'JSON 파싱 실패' });
   } catch (e) {
     res.json({ ok: false, reason: e.message });
+  }
+});
+
+
+// 5. jace48 전용 논술 제시문·문제·읽기자료 제작 AI 채팅
+app.post('/api/essay-studio-chat', async (req, res) => {
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  const { userId = '', targetUniv = '연세대형', messages = [], sourceRef = '' } = req.body || {};
+  if (String(userId).trim().toLowerCase() !== 'jace48') {
+    return res.status(403).json({ ok: false, reason: '접근 권한이 없는 계정입니다.' });
+  }
+  if (!apiKey) {
+    return res.json({ ok: false, reason: 'Render Environment Variables에 GEMINI_API_KEY가 설정되지 않았습니다.' });
+  }
+  try {
+    const sysPrompt = `당신은 대한민국 최상위권 대입 인문논술(특히 연세대학교·고려대학교) 제시문·문항·읽기자료 제작 전문 에이전트입니다.
+현재 선택된 대학 채팅방: ${targetUniv}
+대학별 출제 특성: ${req.body && req.body.univMeta ? req.body.univMeta : '해당 대학 인문논술 기출 스타일'}
+
+[제작 핵심 원칙]
+1. 문체 변환 및 출제 원리:
+   - 시중 칼럼·책·기사·원문 출처를 단순 요약하거나 그대로 복붙하지 말고, 연세대·고려대 실제 기출 제시문 특유의 압축적이고 개념적인 학술·비평 문체로 재구성하세요.
+   - 제시문 (가), (나), (다)(필요 시 (라))가 서로 단순 나열되지 않고 대립·보완·확장·반례 관계를 이루도록 정교하게 설계하세요.
+2. 대학별 스타일 가이드:
+   - 연세대형: 다제시문(영어 제시문 포함 가능, 도표·수치 자료 활용 가능) 기반 심층 비교·평가·적용형 문항, 핵심 개념 간 긴장 관계 부각.
+   - 고려대형: 제시문 간 핵심 개념을 중심으로 한 정확한 요약, 비교·대조, 현실 사례/타 제시문 평가 및 적용형 문항(80~100분 호흡에 맞춘 밀도 있는 구성).
+   - 기타 대학형: 각 대학 기출 문항 구조(요약·분류·비판·대안 제시)에 맞춘 체계적 문항 구성.
+3. 출력 구성:
+   - 사용자가 제시문/문제 제작을 요청하면 [제시문 (가)/(나)/(다)...] → [논제(문제)] → [출제 의도 및 제시문 관계] → [채점 기준 및 예시 답안 핵심] 순서로 바로 수업·실전에 쓸 수 있게 완성도 높게 작성하세요.
+   - 사용자가 '읽기 자료'를 요청하면 해당 주제·사상가·쟁점을 논술 답안 작성에 바로 쓸 수 있는 개념 대립표, 핵심 논지, 기출 연결 포인트 중심으로 정리하세요.
+   - 사용자가 후속 수정(난이도 조절, 문체 다듬기, 제시문 추가 등)을 요청하면 앞선 대화 맥락을 유지해 해당 부분을 정밀하게 수정해 주세요.` + (sourceRef ? `
+
+[사용자가 첨부한 참고 출처/원문]
+${sourceRef}` : '');
+
+    const contents = [];
+    (Array.isArray(messages) ? messages : []).slice(-16).forEach((m) => {
+      if (!m || !m.text) return;
+      contents.push({
+        role: m.role === 'model' ? 'model' : 'user',
+        parts: [{ text: String(m.text) }]
+      });
+    });
+
+    if (contents.length === 0) {
+      return res.status(400).json({ ok: false, reason: '대화 내용이 비어 있습니다.' });
+    }
+
+    const result = await callGeminiWithFallback(apiKey, {
+      systemInstruction: { parts: [{ text: sysPrompt }] },
+      contents
+    });
+
+    if (result.text) {
+      return res.json({ ok: true, reply: result.text, model: result.model });
+    }
+    res.json({ ok: false, reason: result.error || 'AI 응답 생성 실패' });
+  } catch (e) {
+    res.json({ ok: false, reason: e.message || '서버 오류' });
   }
 });
 
