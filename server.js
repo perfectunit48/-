@@ -30,7 +30,11 @@ if (!fs.existsSync(EXAMS_DIR)) {
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/', (req, res) => {
+  const pubIdx = path.join(__dirname, 'public', 'index.html');
+  const rootIdx = path.join(__dirname, 'index.html');
+  res.sendFile(fs.existsSync(pubIdx) ? pubIdx : rootIdx);
+});
 
 function readDb() {
   if (!fs.existsSync(DB_FILE)) return { accounts: {}, examFiles: {} };
@@ -162,8 +166,14 @@ app.get('/api/pdf-proxy', async (req, res) => {
 
 
 // 4. 사진 반영하기 & 첨삭 분석 (Render 환경변수 GEMINI_API_KEY 사용 — 브라우저에 절대 노출되지 않음)
+app.get('/api/health', (req, res) => {
+  const hasApiKey = Boolean((process.env.GEMINI_API_KEY || '').trim());
+  res.json({ ok: true, hasApiKey });
+});
+
 async function callGeminiWithFallback(apiKey, bodyObj) {
-  const models = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+  const models = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const errors = [];
   for (const model of models) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
@@ -174,55 +184,64 @@ async function callGeminiWithFallback(apiKey, bodyObj) {
       if (r.ok) {
         const data = await r.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (text) return text;
+        if (text) return { text, model, error: '' };
+        errors.push(`${model}: 빈 응답`);
       } else {
-        console.error(`[Gemini ${model}] HTTP ${r.status}`);
+        const errBody = await r.text().catch(() => '');
+        console.error(`[Gemini ${model}] HTTP ${r.status}`, errBody.slice(0, 300));
+        errors.push(`${model}: HTTP ${r.status}`);
       }
     } catch (err) {
       console.error(`[Gemini ${model}] Error:`, err.message);
+      errors.push(`${model}: ${err.message}`);
     }
   }
-  return '';
+  return { text: '', model: '', error: errors.join(' / ') };
 }
 
 app.post('/api/reflect-photos', async (req, res) => {
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
   const { passageImages = [], guideImages = [], note = '' } = req.body || {};
-  if (!apiKey) return res.json({ ok: false });
+  if (!apiKey) {
+    return res.json({ ok: false, reason: 'Render Environment Variables에 GEMINI_API_KEY가 설정되지 않았습니다.' });
+  }
   try {
     const parts = [{
-      text: `당신은 대입 인문논술 전문 선생님 보조입니다. 첨부된 제시문·해설·논제 사진과 메모("${note}")를 빠짐없이 정확히 읽고 아래 형식으로 핵심만 정리하세요.\n\n[핵심 개념어]\n- 쉼표로 구분된 주요 개념어 5~8개\n\n[제시문별 핵심 요지]\n- (가), (나), (다) 등 각 제시문의 핵심 주장과 논지\n\n[질문(논제) 요구사항]\n- 학생이 반드시 답해야 하는 조건(요약, 비교·대조, 비판·평가, 분량 등)\n\n[해설 핵심 포인트]\n- 채점 기준 및 감점 주의사항`
+      text: `당신은 대입 인문논술 전문 선생님 보조입니다. 첨부된 제시문·해설·논제 사진과 메모("${note}")를 한 글자도 놓치지 말고 정확하게 읽은 뒤 아래 형식으로 핵심만 정리하세요.\n\n[핵심 개념어]\n- 쉼표로 구분된 주요 개념어 5~8개\n\n[제시문별 핵심 요지]\n- (가), (나), (다) 등 각 제시문의 핵심 주장과 논지\n\n[질문(논제) 요구사항]\n- 학생이 반드시 답해야 하는 조건(요약, 비교·대조, 비판·평가, 분량 등)\n\n[해설 핵심 포인트]\n- 채점 기준 및 감점 주의사항`
     }];
     [...passageImages, ...guideImages].forEach(img => {
       if (img && img.dataUrl && img.dataUrl.includes(',')) {
-        parts.push({ inline_data: { mime_type: img.mimeType || 'image/png', data: img.dataUrl.split(',')[1] } });
+        parts.push({ inline_data: { mime_type: img.mimeType || 'image/jpeg', data: img.dataUrl.split(',')[1] } });
       }
     });
-    const summary = await callGeminiWithFallback(apiKey, { contents: [{ parts }] });
-    res.json({ ok: Boolean(summary), summary });
+    const result = await callGeminiWithFallback(apiKey, { contents: [{ parts }] });
+    if (result.text) {
+      return res.json({ ok: true, summary: result.text, model: result.model });
+    }
+    res.json({ ok: false, reason: result.error || 'AI 모델 응답 실패' });
   } catch (e) {
-    res.json({ ok: false });
+    res.json({ ok: false, reason: e.message || '서버 처리 오류' });
   }
 });
 
 app.post('/api/analyze-essay', async (req, res) => {
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
   const { studentText = '', feedbackText = '', promptSummary = '' } = req.body || {};
-  if (!apiKey) return res.json({ ok: false });
+  if (!apiKey) return res.json({ ok: false, reason: 'NO_API_KEY' });
   try {
     const prompt = `당신은 대입 인문논술 과외 선생님 보조입니다. 아래 [반영된 제시문·논제 요약], [학생의 글], [선생님 첨삭]을 바탕으로 JSON만 반환하세요.\n반영된 제시문·논제의 핵심 개념과 요구사항을 학생 글이 얼마나 잘 충족했는지 강점과 약점에 구체적으로 연결해 작성하세요.\n키: strengths(문자열 배열 2~4개), weaknesses(문자열 배열 2~4개), tags(문자열 배열), actionPlan(다음 수업 처방 한두 문장).\n\n[반영된 제시문·논제 요약]\n${promptSummary || '(없음)'}\n\n[학생의 글]\n${studentText}\n\n[선생님 첨삭]\n${feedbackText}`;
-    const raw = await callGeminiWithFallback(apiKey, {
+    const result = await callGeminiWithFallback(apiKey, {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json' }
     });
-    if (!raw) return res.json({ ok: false });
-    const parsed = JSON.parse(raw);
+    if (!result.text) return res.json({ ok: false, reason: result.error });
+    const parsed = JSON.parse(result.text);
     if (Array.isArray(parsed.strengths) && Array.isArray(parsed.weaknesses)) {
       return res.json({ ok: true, result: parsed });
     }
-    res.json({ ok: false });
+    res.json({ ok: false, reason: 'JSON 파싱 실패' });
   } catch (e) {
-    res.json({ ok: false });
+    res.json({ ok: false, reason: e.message });
   }
 });
 
