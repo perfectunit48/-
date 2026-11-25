@@ -50,43 +50,108 @@ function writeDb(db) {
   fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
 }
 
-// 1. 중앙 DB 회원가입 / 로그인 / 상태 동기화
-app.post('/api/signup', (req, res) => {
+function getSupabaseCfg() {
+  const url = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+  const key = (process.env.SUPABASE_KEY || '').trim();
+  return (url.startsWith('https://') && key) ? { url, key } : null;
+}
+
+function getSupabaseHeaders(key, extra = {}) {
+  const h = { apikey: key, ...extra };
+  if (key.startsWith('eyJ')) {
+    h.Authorization = `Bearer ${key}`;
+  }
+  return h;
+}
+
+async function dbGetAccount(userId) {
+  const sb = getSupabaseCfg();
+  if (sb) {
+    try {
+      const r = await fetch(`${sb.url}/rest/v1/tutor_accounts?user_id=eq.${encodeURIComponent(userId)}&select=*`, {
+        headers: getSupabaseHeaders(sb.key)
+      });
+      if (r.ok) {
+        const rows = await r.json();
+        if (Array.isArray(rows) && rows[0]) {
+          return { name: rows[0].name, pw: rows[0].pw, state: rows[0].state || {} };
+        }
+        return null;
+      } else {
+        const errTxt = await r.text().catch(() => '');
+        console.error('[Supabase GET] HTTP', r.status, errTxt.slice(0, 200));
+      }
+    } catch (e) {
+      console.error('[Supabase GET]', e.message);
+    }
+  }
+  const db = readDb();
+  return db.accounts[userId] || null;
+}
+
+async function dbSaveAccount(userId, accountObj) {
+  const sb = getSupabaseCfg();
+  if (sb) {
+    try {
+      const r = await fetch(`${sb.url}/rest/v1/tutor_accounts`, {
+        method: 'POST',
+        headers: getSupabaseHeaders(sb.key, {
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates'
+        }),
+        body: JSON.stringify({
+          user_id: userId,
+          name: accountObj.name || userId,
+          pw: accountObj.pw || '',
+          state: accountObj.state || {},
+          updated_at: new Date().toISOString()
+        })
+      });
+      if (r.ok) return true;
+      const errTxt = await r.text().catch(() => '');
+      console.error('[Supabase UPSERT] HTTP', r.status, errTxt.slice(0, 200));
+    } catch (e) {
+      console.error('[Supabase UPSERT]', e.message);
+    }
+  }
+  const db = readDb();
+  db.accounts[userId] = {
+    name: accountObj.name || userId,
+    pw: accountObj.pw || '',
+    state: accountObj.state || {},
+    updatedAt: new Date().toISOString()
+  };
+  writeDb(db);
+  return true;
+}
+
+// 1. 영구 중앙 DB (Supabase 연동 시 재배포에도 유지) 회원가입 / 로그인 / 상태 동기화
+app.post('/api/signup', async (req, res) => {
   const { userId, name, pw, state } = req.body || {};
   if (!userId || !pw) return res.status(400).json({ error: '아이디와 비밀번호가 필요합니다.' });
-  const db = readDb();
-  if (db.accounts[userId]) return res.status(409).json({ error: '이미 가입된 아이디입니다.' });
-  db.accounts[userId] = { name: name || userId, pw, state: state || {}, updatedAt: new Date().toISOString() };
-  writeDb(db);
+  const existing = await dbGetAccount(userId);
+  if (existing) return res.status(409).json({ error: '이미 있는 아이디입니다. 다른 아이디를 사용하거나 로그인해 주세요.' });
+  await dbSaveAccount(userId, { name: name || userId, pw, state: state || {} });
   res.json({ ok: true });
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { userId, pw } = req.body || {};
-  const db = readDb();
-  const acc = db.accounts[userId];
+  const acc = await dbGetAccount(userId);
   if (!acc) return res.status(404).json({ error: '등록되지 않은 아이디입니다.' });
   if (acc.pw && acc.pw !== pw) return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
   res.json({ ok: true, name: acc.name, state: acc.state });
 });
 
-app.put('/api/state/:userId', (req, res) => {
+app.put('/api/state/:userId', async (req, res) => {
   const { userId } = req.params;
-  const db = readDb();
-  if (!db.accounts[userId]) {
-    db.accounts[userId] = {
-      name: (req.body && req.body.name) || userId,
-      pw: (req.body && req.body.pw) || '',
-      state: (req.body && req.body.state) || {},
-      updatedAt: new Date().toISOString()
-    };
-  } else {
-    db.accounts[userId].state = (req.body && req.body.state) || {};
-    if (req.body && req.body.name) db.accounts[userId].name = req.body.name;
-    if (req.body && req.body.pw) db.accounts[userId].pw = req.body.pw;
-    db.accounts[userId].updatedAt = new Date().toISOString();
-  }
-  writeDb(db);
+  const existing = await dbGetAccount(userId);
+  const nextAcc = {
+    name: (req.body && req.body.name) || (existing && existing.name) || userId,
+    pw: (req.body && req.body.pw) || (existing && existing.pw) || '',
+    state: (req.body && req.body.state) || (existing && existing.state) || {}
+  };
+  await dbSaveAccount(userId, nextAcc);
   res.json({ ok: true });
 });
 
@@ -176,9 +241,25 @@ app.get('/api/pdf-proxy', async (req, res) => {
 
 
 // 4. 사진 반영하기 & 첨삭 분석 (Render 환경변수 GEMINI_API_KEY 사용 — 브라우저에 절대 노출되지 않음)
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   const hasApiKey = Boolean((process.env.GEMINI_API_KEY || '').trim());
-  res.json({ ok: true, hasApiKey });
+  const sb = getSupabaseCfg();
+  let supabaseOk = false;
+  let supabaseError = '';
+  if (sb) {
+    try {
+      const r = await fetch(`${sb.url}/rest/v1/tutor_accounts?select=user_id&limit=1`, {
+        headers: getSupabaseHeaders(sb.key)
+      });
+      if (r.ok) supabaseOk = true;
+      else supabaseError = `HTTP ${r.status}`;
+    } catch (e) {
+      supabaseError = e.message;
+    }
+  } else {
+    supabaseError = 'SUPABASE_URL 또는 SUPABASE_KEY 미설정';
+  }
+  res.json({ ok: true, hasApiKey, hasSupabase: Boolean(sb), supabaseOk, supabaseError });
 });
 
 async function discoverAvailableGeminiModels(apiKey) {
