@@ -983,7 +983,7 @@
         await fetch(`/api/state/${encodeURIComponent(uid)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state: userState })
+          body: JSON.stringify({ name, pw, state: userState })
         });
         return true;
       } catch (e) { return false; }
@@ -2492,7 +2492,7 @@
           }
         }
         if (!summaryText && serverAiError) {
-          outArea.value = `[서버 AI 인식 확인 필요] ${serverAiError}\n\n• Render 대시보드 → Environment → Environment Variables에 GEMINI_API_KEY가 정확히 저장되어 있는지 확인한 뒤 'Manual Deploy → Deploy latest commit'을 눌러 재시작해 주세요.`;
+          outArea.value = `[서버 AI 인식 오류] ${serverAiError}\n\n• API 키는 연결되어 있으나 모델 호출 중 오류가 발생했습니다. 잠시 후 다시 시도하거나 상단 벌레 아이콘 로그를 확인해 주세요.`;
           showToast('서버 AI 연결 상태를 확인해 주세요 (상단 벌레 아이콘 참고).', 'warning');
           btn.disabled = false;
           btn.innerHTML = '<i data-lucide="sparkles" class="w-4 h-4"></i><span>사진 반영하기</span>';
@@ -2624,6 +2624,30 @@
         const accounts = getSavedAccounts();
         let record = accounts[uid];
 
+        if (USE_LOCAL_NODE_SERVER) {
+          try {
+            const res = await fetch('/api/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: uid, pw })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.ok) {
+              accounts[uid] = { name: data.name || uid, pw };
+              saveAccounts(accounts);
+              if (data.state && Array.isArray(data.state.students)) {
+                safeSetItem(getUserStorageKey(uid), JSON.stringify(data.state));
+              }
+              completeLogin(uid, remember);
+              showToast('로그인되었습니다. 서버에 저장된 데이터를 불러왔어요.', 'success');
+              return;
+            } else if (res.status === 401) {
+              errEl.textContent = data.error || '비밀번호가 일치하지 않습니다.';
+              errEl.classList.remove('hidden');
+              return;
+            }
+          } catch (err) {}
+        }
 
         if (!record) {
           errEl.textContent = '등록되지 않은 아이디입니다. 회원가입 탭에서 먼저 가입해 주세요.';
@@ -2670,9 +2694,24 @@
           errEl.classList.remove('hidden');
           return;
         }
+        if (USE_LOCAL_NODE_SERVER) {
+          try {
+            const res = await fetch('/api/signup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: uid, name, pw, state: getDefaultState() })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 409) {
+              errEl.textContent = data.error || '이미 가입된 아이디입니다. 로그인 탭을 이용해 주세요.';
+              errEl.classList.remove('hidden');
+              return;
+            }
+          } catch (err) {}
+        }
         accounts[uid] = { name, pw };
         saveAccounts(accounts);
-          completeLogin(uid, true);
+        completeLogin(uid, true);
         e.target.reset();
         showToast(`${name} 선생님, 회원가입이 완료되었습니다!`, 'success');
       });

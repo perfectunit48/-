@@ -73,9 +73,19 @@ app.post('/api/login', (req, res) => {
 app.put('/api/state/:userId', (req, res) => {
   const { userId } = req.params;
   const db = readDb();
-  if (!db.accounts[userId]) return res.status(404).json({ error: '계정을 찾을 수 없습니다.' });
-  db.accounts[userId].state = req.body.state || {};
-  db.accounts[userId].updatedAt = new Date().toISOString();
+  if (!db.accounts[userId]) {
+    db.accounts[userId] = {
+      name: (req.body && req.body.name) || userId,
+      pw: (req.body && req.body.pw) || '',
+      state: (req.body && req.body.state) || {},
+      updatedAt: new Date().toISOString()
+    };
+  } else {
+    db.accounts[userId].state = (req.body && req.body.state) || {};
+    if (req.body && req.body.name) db.accounts[userId].name = req.body.name;
+    if (req.body && req.body.pw) db.accounts[userId].pw = req.body.pw;
+    db.accounts[userId].updatedAt = new Date().toISOString();
+  }
   writeDb(db);
   res.json({ ok: true });
 });
@@ -171,10 +181,47 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, hasApiKey });
 });
 
+async function discoverAvailableGeminiModels(apiKey) {
+  try {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+    if (!r.ok) return [];
+    const data = await r.json();
+    const list = (data.models || [])
+      .filter(m =>
+        Array.isArray(m.supportedGenerationMethods) &&
+        m.supportedGenerationMethods.includes('generateContent') &&
+        !/tts|embedding|imagen|veo|lyria|audio|live|robotics/i.test(m.name || '')
+      )
+      .map(m => (m.name || '').replace(/^models\//, ''));
+    const score = (id) => {
+      let s = 0;
+      if (id.includes('gemini-4')) s += 400;
+      else if (id.includes('gemini-3.8')) s += 380;
+      else if (id.includes('gemini-3.5')) s += 350;
+      else if (id.includes('gemini-3')) s += 300;
+      else if (id.includes('gemini-2.5')) s += 250;
+      if (id.includes('pro') || id.includes('carbon') || id.includes('neon')) s += 40;
+      if (id.includes('flash') && !id.includes('lite')) s += 25;
+      if (id.includes('hydrogen')) s += 20;
+      return s;
+    };
+    return [...new Set(list)].sort((a, b) => score(b) - score(a));
+  } catch (e) {
+    return [];
+  }
+}
+
 async function callGeminiWithFallback(apiKey, bodyObj) {
-  const models = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const preferred = [
+    'gemini-4-carbon',
+    'gemini-4-neon',
+    'gemini-4-hydrogen',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-2.5-flash-lite'
+  ];
   const errors = [];
-  for (const model of models) {
+  const tryModel = async (model) => {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST',
@@ -195,7 +242,21 @@ async function callGeminiWithFallback(apiKey, bodyObj) {
       console.error(`[Gemini ${model}] Error:`, err.message);
       errors.push(`${model}: ${err.message}`);
     }
+    return null;
+  };
+
+  for (const model of preferred) {
+    const ok = await tryModel(model);
+    if (ok) return ok;
   }
+
+  // Dynamic fallback via ListModels for the user's exact API key
+  const discovered = await discoverAvailableGeminiModels(apiKey);
+  for (const model of discovered.filter(m => !preferred.includes(m)).slice(0, 4)) {
+    const ok = await tryModel(model);
+    if (ok) return ok;
+  }
+
   return { text: '', model: '', error: errors.join(' / ') };
 }
 
