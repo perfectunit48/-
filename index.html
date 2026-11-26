@@ -803,6 +803,13 @@
           <input id="newStudentGrade" type="text" placeholder="예: 고2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
         <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">과목 *</label>
+          <select id="newStudentSubject" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="인문논술">인문논술</option>
+            <option value="국어">국어</option>
+          </select>
+        </div>
+        <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">학습 목표</label>
           <input id="newStudentGoal" type="text" placeholder="예: 제시문 요약 정확도 및 논거 구체화" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
@@ -2192,7 +2199,7 @@
           ctx.lineTo(426, 130); ctx.lineTo(416, 106); ctx.lineTo(392, 96); ctx.lineTo(416, 86);
           ctx.closePath(); ctx.fill();
           const iconUrl = canvas.toDataURL('image/png');
-          document.getElementById('appleTouchIcon').href = iconUrl;
+          document.getElementById('appleTouchIcon').href = (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) ? '/icon-512.png?v=2' : iconUrl;
 
           const manifest = {
             name: '학생관리 - 과외 관리',
@@ -2201,11 +2208,11 @@
             start_url: '.',
             display: 'standalone',
             background_color: '#f8fafc',
-            theme_color: '#4f46e5',
+            theme_color: '#6366f1',
             icons: [{ src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
           };
           if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
-            document.getElementById('manifestLink').href = '/manifest.json';
+            document.getElementById('manifestLink').href = '/manifest.json?v=2';
           } else {
             const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
             document.getElementById('manifestLink').href = URL.createObjectURL(blob);
@@ -2563,7 +2570,7 @@
           id: 'stu-' + Date.now(),
           name,
           grade: document.getElementById('newStudentGrade').value.trim() || '학년 미정',
-          subject: '인문논술',
+          subject: document.getElementById('newStudentSubject').value || '인문논술',
           parentPhone: '',
           goal: document.getElementById('newStudentGoal').value.trim() || '맞춤형 글쓰기 실력 향상',
           essays: [],
@@ -3271,6 +3278,7 @@
         'cau_2021': { type: 'report', url: 'https://www.myingang.com/upload/board/21_%EC%A4%91%EC%95%99%EB%8C%80_%EA%B8%B0%EC%B6%9C.pdf' },
         'khu_2026': { type: 'report', url: 'https://kr.object.gov-ncloudstorage.com/khuiphakstorage/upload/20260429040751528_2026%ED%95%99%EB%85%84%EB%8F%84%20%EA%B2%BD%ED%9D%AC%EB%8C%80%ED%95%99%EA%B5%90%20%EB%85%BC%EC%88%A0%EA%B3%A0%EC%82%AC%20%EA%B8%B0%EC%B6%9C%EB%AC%B8%EC%A0%9C%EC%A7%91_%EC%9D%B8%EC%87%84%EC%9A%A9_fv.pdf' },
         'khu_2025': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2025/%EA%B2%BD%ED%9D%AC%EB%8C%80%ED%95%99%EA%B5%90/%EA%B2%BD%ED%9D%AC%EB%8C%80%ED%95%99%EA%B5%90_2025%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf' },
+        'khu_2022': { type: 'report', url: 'https://school.busanedu.net/upload/bbs/files/2022/hgschl/gaya-h/ntt/1019168/04/0015858dcbbf4df1cf2e28dbd6307c57.pdf' },
         'hufs_2026': { type: 'link_notice', title: '2026학년도 한국외대 선행학습 영향평가 결과 보고서', url: 'https://mdsisite.tistory.com/1939', officialUrl: 'https://www.hufs.ac.kr/hufs/11199/subview.do', note: '2026학년도 한국외대 보고서는 외부 직접 PDF 링크가 제한되어 아래 버튼으로 보고서 첨부 페이지 또는 입학처 자료실에서 바로 내려받으실 수 있습니다. (2025·2024학년도는 바로 미리보기 지원)' },
         'hufs_2025': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2025/%ED%95%9C%EA%B5%AD%EC%99%B8%EA%B5%AD%EC%96%B4%EB%8C%80%ED%95%99%EA%B5%90/%ED%95%9C%EA%B5%AD%EC%99%B8%EA%B5%AD%EC%96%B4%EB%8C%80%ED%95%99%EA%B5%90_2025%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf' },
         'hufs_2024': { type: 'report', url: 'https://www.myingang.com/upload/board/24_%ED%95%9C%EA%B5%AD%EC%99%B8%EB%8C%80_%EA%B8%B0%EC%B6%9C.pdf' },
