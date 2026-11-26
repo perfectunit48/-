@@ -299,8 +299,8 @@ const CACHED_MODELS = { vision: '', chat: '' };
 
 async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   const preferred = mode === 'chat'
-    ? ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-3.5-flash', 'gemini-2.5-pro', 'gemini-4-carbon', 'gemini-4-neon']
-    : ['gemini-2.5-flash', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-2.5-pro'];
+    ? ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-4-hydrogen', 'gemini-3.5-flash', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-4-argon']
+    : ['gemini-3.8-flash', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-4-hydrogen', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
 
   const order = CACHED_MODELS[mode]
     ? [CACHED_MODELS[mode], ...preferred.filter(m => m !== CACHED_MODELS[mode])]
@@ -309,7 +309,7 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   const errors = [];
   const tryModel = async (model) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 22000);
+    const timer = setTimeout(() => controller.abort(), 35000);
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST',
@@ -342,11 +342,11 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   for (const model of order) {
     const ok = await tryModel(model);
     if (ok) return ok;
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r, 750));
   }
 
   const discovered = await discoverAvailableGeminiModels(apiKey);
-  for (const model of discovered.filter(m => !order.includes(m)).slice(0, 3)) {
+  for (const model of discovered.filter(m => !order.includes(m)).slice(0, 5)) {
     const ok = await tryModel(model);
     if (ok) return ok;
   }
