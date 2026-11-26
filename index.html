@@ -1179,10 +1179,23 @@
         <div id="alreadyInstalledBanner" class="hidden rounded-xl bg-emerald-50 border border-emerald-200 p-2.5 text-center text-xs font-bold text-emerald-700">
           이미 기기에 앱이 설치되어 있습니다.
         </div>
+        <div id="appDownloadProgressBox" class="hidden rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-1.5">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-700">
+            <span id="appDownloadStatusText">앱 패키지 준비 중...</span>
+            <span id="appDownloadPercentText" class="text-indigo-700 font-bold">0%</span>
+          </div>
+          <div class="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
+            <div id="appDownloadProgressBar" class="h-full bg-indigo-600 transition-all duration-150" style="width: 0%"></div>
+          </div>
+          <div id="appDownloadBytesText" class="text-[11px] text-slate-500 text-right">0 KB / 계산 중...</div>
+        </div>
         <button id="saveAppToDeviceBtn" type="button" class="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-xs transition">
           <i data-lucide="download" class="w-4 h-4"></i>
           <span>앱 기기에 저장하기</span>
         </button>
+        <a id="openChromeInstallLink" href="#" class="hidden w-full inline-flex items-center justify-center gap-2 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition">
+          <span>Chrome으로 열어서 바로 앱 설치하기</span>
+        </a>
         <button id="downloadHtmlAppBtn" type="button" class="w-full inline-flex items-center justify-center gap-2 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
           <span>HTML 백업 파일로 따로 저장</span>
         </button>
@@ -2574,19 +2587,106 @@
         installModal.classList.remove('hidden');
         installModal.classList.add('flex');
       });
-      document.getElementById('saveAppToDeviceBtn').addEventListener('click', async () => {
-        if (document.getElementById('saveAppToDeviceBtn').disabled) return;
+      function formatBytesKr(bytes) {
+        if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+      }
+
+      async function downloadAppBundleWithProgress() {
+        const box = document.getElementById('appDownloadProgressBox');
+        const statusEl = document.getElementById('appDownloadStatusText');
+        const pctEl = document.getElementById('appDownloadPercentText');
+        const barEl = document.getElementById('appDownloadProgressBar');
+        const bytesEl = document.getElementById('appDownloadBytesText');
+        const saveBtn = document.getElementById('saveAppToDeviceBtn');
+        box.classList.remove('hidden');
+        saveBtn.disabled = true;
+
+        const isServer = (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER);
+        const assetUrls = isServer
+          ? ['/', '/manifest.json?v=5', '/icon-192.png?v=5', '/icon-512.png?v=5', '/sw.js']
+          : [];
+
+        let loadedBytes = 0;
+        let totalKnownBytes = 0;
+        const cache = ('caches' in window && isServer) ? await caches.open('student-mgr-v5').catch(() => null) : null;
+
+        if (assetUrls.length > 0) {
+          statusEl.textContent = '앱 파일 다운로드 중...';
+          for (let idx = 0; idx < assetUrls.length; idx++) {
+            const u = assetUrls[idx];
+            try {
+              const resp = await fetch(u, { cache: 'reload' });
+              const cl = Number(resp.headers.get('content-length') || 0);
+              if (cl > 0) totalKnownBytes += cl;
+              if (resp.body && resp.body.getReader) {
+                const reader = resp.body.getReader();
+                const chunks = [];
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  chunks.push(value);
+                  loadedBytes += value.byteLength;
+                  const estTotal = Math.max(totalKnownBytes, loadedBytes, 340 * 1024);
+                  const pct = Math.min(96, Math.round(((idx + 0.5) / assetUrls.length) * 100));
+                  pctEl.textContent = pct + '%';
+                  barEl.style.width = pct + '%';
+                  bytesEl.textContent = `${formatBytesKr(loadedBytes)} / 약 ${formatBytesKr(estTotal)}`;
+                }
+                if (cache) {
+                  const blob = new Blob(chunks, { type: resp.headers.get('content-type') || 'application/octet-stream' });
+                  await cache.put(u, new Response(blob, { status: 200, headers: resp.headers })).catch(() => {});
+                }
+              } else {
+                const buf = await resp.arrayBuffer();
+                loadedBytes += buf.byteLength;
+                if (cache) {
+                  await cache.put(u, new Response(buf, { status: 200, headers: resp.headers })).catch(() => {});
+                }
+              }
+            } catch (e) {}
+          }
+        } else {
+          const htmlBytes = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML]).size;
+          loadedBytes = htmlBytes;
+        }
+
+        pctEl.textContent = '100%';
+        barEl.style.width = '100%';
+        bytesEl.textContent = `${formatBytesKr(loadedBytes)} / ${formatBytesKr(loadedBytes)} 완료`;
+        statusEl.textContent = '다운로드 완료!';
+        saveBtn.disabled = false;
+
         if (deferredInstallPrompt) {
+          statusEl.textContent = '기기에 앱 설치 창 여는 중...';
           deferredInstallPrompt.prompt();
           const { outcome } = await deferredInstallPrompt.userChoice;
           deferredInstallPrompt = null;
           if (outcome === 'accepted') {
+            confirmedAppInstalled = true;
+            refreshInstallButtonState();
             closeInstallModal();
             showToast('기기에 앱이 설치되었습니다!', 'success');
+            return;
           }
+        }
+
+        const isAndroid = /Android/i.test(navigator.userAgent || '');
+        const isInApp = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line/i.test(navigator.userAgent || '');
+        const chromeLink = document.getElementById('openChromeInstallLink');
+        if (isAndroid && isInApp && chromeLink && isServer) {
+          chromeLink.href = `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
+          chromeLink.classList.remove('hidden');
+          statusEl.textContent = '인앱 브라우저에서는 위 초록 버튼으로 Chrome을 열어 앱을 설치해 주세요.';
         } else {
           document.getElementById('downloadHtmlAppBtn').click();
+          showToast(`앱 파일(${formatBytesKr(loadedBytes)}) 다운로드가 완료되었습니다.`, 'success');
         }
+      }
+
+      document.getElementById('saveAppToDeviceBtn').addEventListener('click', async () => {
+        if (document.getElementById('saveAppToDeviceBtn').disabled) return;
+        await downloadAppBundleWithProgress();
       });
       document.getElementById('closeInstallModalBtn').addEventListener('click', closeInstallModal);
       document.getElementById('triggerNativeInstallBtn').addEventListener('click', async () => {
