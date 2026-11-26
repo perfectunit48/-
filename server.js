@@ -185,12 +185,31 @@ const ANIME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512
   <path d="M426 62l10 24 24 10-24 10-10 24-10-24-24-10 24-10z" fill="#fde047"/>
 </svg>`;
 
+app.get('/robots.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.send(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: https://student-manager-0rsy.onrender.com/sitemap.xml\n`);
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  const today = new Date().toISOString().slice(0, 10);
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://student-manager-0rsy.onrender.com/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`);
+});
+
 app.get('/ads.txt', (req, res) => {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.send('google.com, pub-2857484634759539, DIRECT, f08c47fec0942fa0\n');
 });
 
-app.get('/favicon.ico', (req, res) => { res.redirect(302, '/icon-192.png?v=5'); });
+app.get('/favicon.ico', (req, res) => { res.redirect(302, '/icon-192.png?v=6'); });
 
 app.get('/icon.svg', (req, res) => {
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
@@ -207,7 +226,7 @@ app.get('/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
   res.json({
-    id: '/?v=5',
+    id: '/?v=6',
     name: '학생관리 - 과외 관리',
     short_name: '학생관리',
     description: '과외 학생 글 첨삭 요약, 진도, 출결, 학부모 안내 통합 앱',
@@ -216,11 +235,11 @@ app.get('/manifest.json', (req, res) => {
     display: 'standalone',
     background_color: '#f8fafc',
     theme_color: '#6366f1',
-    related_applications: [{ platform: 'webapp', url: 'https://student-manager-0rsy.onrender.com/manifest.json?v=5' }],
+    related_applications: [{ platform: 'webapp', url: 'https://student-manager-0rsy.onrender.com/manifest.json?v=6' }],
     icons: [
-      { src: '/icon-192.png?v=5', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icon-512.png?v=5', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icon.svg?v=5', sizes: 'any', type: 'image/svg+xml' }
+      { src: '/icon-192.png?v=6', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon-512.png?v=6', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon.svg?v=6', sizes: 'any', type: 'image/svg+xml' }
     ]
   });
 });
@@ -751,9 +770,18 @@ app.delete('/api/notices/:id', async (req, res) => {
 // 7. 시스템 상태(점검 모드), 하트비트, 다른 계정 오류 수집 & jace48 개발자 모드
 const ONLINE_HEARTBEATS = {};
 
-app.post('/api/heartbeat', (req, res) => {
+app.post('/api/heartbeat', async (req, res) => {
   const { userId = '' } = req.body || {};
-  if (userId) ONLINE_HEARTBEATS[userId] = Date.now();
+  if (userId) {
+    const now = Date.now();
+    ONLINE_HEARTBEATS[userId] = now;
+    try {
+      const rec = await dbGetAccount('__sys_heartbeats__');
+      const map = (rec && rec.state && typeof rec.state === 'object') ? { ...rec.state } : {};
+      map[userId] = now;
+      await dbSaveAccount('__sys_heartbeats__', { name: 'SYSTEM_HEARTBEATS', pw: '', state: map });
+    } catch (e) {}
+  }
   res.json({ ok: true });
 });
 
@@ -805,14 +833,19 @@ app.get('/api/admin/accounts', async (req, res) => {
   const userId = String(req.query.userId || '').trim().toLowerCase();
   if (userId !== 'jace48') return res.status(403).json({ ok: false });
   const rows = await dbListAllRows();
+  const hbRow = rows.find(r => r.user_id === '__sys_heartbeats__');
+  const persistedHb = (hbRow && hbRow.state && typeof hbRow.state === 'object') ? hbRow.state : {};
   const now = Date.now();
   const accounts = rows
     .filter(r => !String(r.user_id || '').startsWith('__sys_') && String(r.user_id || '').toLowerCase() !== 'jace48')
     .map(r => {
-      const lastSeen = ONLINE_HEARTBEATS[r.user_id] || 0;
-      const isOnline = (now - lastSeen) < 120000;
+      const memSeen = ONLINE_HEARTBEATS[r.user_id] || 0;
+      const dbSeen = Number(persistedHb[r.user_id] || 0);
+      const updSeen = r.updated_at ? (Date.parse(r.updated_at) || 0) : 0;
+      const lastSeenAt = Math.max(memSeen, dbSeen, updSeen);
+      const isOnline = lastSeenAt > 0 && (now - lastSeenAt) < 120000;
       const studentCount = (r.state && Array.isArray(r.state.students)) ? r.state.students.length : 0;
-      return { userId: r.user_id, name: r.name || r.user_id, isOnline, studentCount };
+      return { userId: r.user_id, name: r.name || r.user_id, isOnline, lastSeenAt, studentCount };
     });
   res.json({ ok: true, accounts });
 });
