@@ -29,7 +29,27 @@ if (!fs.existsSync(EXAMS_DIR)) {
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+const zlib = require('zlib');
+// 응답 gzip 압축 미들웨어 (페이지 로딩 속도 및 Core Web Vitals 최적화)
+app.use((req, res, next) => {
+  const accept = String(req.headers['accept-encoding'] || '');
+  if (!accept.includes('gzip') || req.path === '/api/pdf-proxy') return next();
+  const origSend = res.send.bind(res);
+  res.send = (body) => {
+    try {
+      const ct = String(res.getHeader('Content-Type') || '');
+      if (typeof body === 'string' && body.length > 1024 && /html|json|xml|javascript|text|svg/i.test(ct || 'text/html')) {
+        const gz = zlib.gzipSync(Buffer.from(body, 'utf8'));
+        res.setHeader('Content-Encoding', 'gzip');
+        res.setHeader('Vary', 'Accept-Encoding');
+        return res.end(gz);
+      }
+    } catch (e) {}
+    return origSend(body);
+  };
+  next();
+});
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
 app.get('/', (req, res) => {
   const pubIdx = path.join(__dirname, 'public', 'index.html');
   const rootIdx = path.join(__dirname, 'index.html');
@@ -192,16 +212,21 @@ app.get('/robots.txt', (req, res) => {
 
 app.get('/sitemap.xml', (req, res) => {
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
   const today = new Date().toISOString().slice(0, 10);
-  res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://student-manager-0rsy.onrender.com/</loc>
+  const univSlugs = ['yonsei','korea','sogang','skku','hanyang','cau','khu','hufs','konkuk','dongguk','hongik','sookmyung'];
+  const urls = [
+    { loc: `${baseUrl}/`, priority: '1.0', changefreq: 'daily' },
+    ...univSlugs.map(u => ({ loc: `${baseUrl}/?univ=${u}`, priority: '0.8', changefreq: 'weekly' }))
+  ];
+  const xmlItems = urls.map(u => `  <url>
+    <loc>${u.loc}</loc>
     <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>`);
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join('\n');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${xmlItems}\n</urlset>`);
 });
 
 app.get('/ads.txt', (req, res) => {
