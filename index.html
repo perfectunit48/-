@@ -143,7 +143,7 @@
           <a href="#pubFaq" class="hover:text-indigo-600 transition">자주 묻는 질문</a>
         </nav>
 
-        <button id="openTeacherLoginBtn" type="button" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-sm transition">
+        <button id="openTeacherLoginBtn" type="button" onclick="var ls=document.getElementById('loginScreen');if(ls){ls.classList.remove('hidden');ls.classList.add('flex');ls.style.display='flex';}" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer">
           선생님 로그인
         </button>
       </div>
@@ -316,7 +316,7 @@
   <!-- Login & Signup Screen Overlay (Opens on clicking 선생님 로그인) -->
   <div id="loginScreen" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start sm:items-center justify-center p-4 py-6 overflow-y-auto">
     <div class="relative bg-white rounded-3xl border border-slate-200 shadow-xl max-w-md w-full p-6 sm:p-8 space-y-5">
-      <button id="closeLoginToPublicBtn" type="button" class="absolute top-4 right-4 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition">× 닫기</button>
+      <button id="closeLoginToPublicBtn" type="button" onclick="var ls=document.getElementById('loginScreen');if(ls){ls.classList.add('hidden');ls.style.display='none';}" class="absolute top-4 right-4 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition cursor-pointer">× 닫기</button>
       <div class="text-center space-y-2">
 <svg viewBox="0 0 40 40" class="w-14 h-14 rounded-2xl shadow-md mx-auto" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -3544,7 +3544,7 @@
         const acc = accounts[uid];
         const displayName = (acc && typeof acc === 'object' && acc.name) ? acc.name : uid;
         document.getElementById('loggedInUserBadge').textContent = displayName;
-        document.getElementById('loginScreen').classList.add('hidden');
+        var _lsHide=document.getElementById('loginScreen');if(_lsHide){_lsHide.classList.add('hidden');_lsHide.style.display='none';}
         const pubV = document.getElementById('publicLandingView'); if (pubV) pubV.classList.add('hidden');
         const ah = document.getElementById('appHeader'); if (ah) ah.classList.remove('hidden');
         const am = document.getElementById('appMain'); if (am) am.classList.remove('hidden');
@@ -3717,13 +3717,13 @@
       const openLoginBtn = document.getElementById('openTeacherLoginBtn');
       if (openLoginBtn) {
         openLoginBtn.addEventListener('click', () => {
-          document.getElementById('loginScreen').classList.remove('hidden');
+          var _lsShow=document.getElementById('loginScreen');if(_lsShow){_lsShow.classList.remove('hidden');_lsShow.classList.add('flex');_lsShow.style.display='flex';}
         });
       }
       const closeLoginBackBtn = document.getElementById('closeLoginToPublicBtn');
       if (closeLoginBackBtn) {
         closeLoginBackBtn.addEventListener('click', () => {
-          document.getElementById('loginScreen').classList.add('hidden');
+          var _lsHide=document.getElementById('loginScreen');if(_lsHide){_lsHide.classList.add('hidden');_lsHide.style.display='none';}
         });
       }
 
@@ -3776,7 +3776,7 @@
 
       renderSavedAccountsChips();
         if (typeof updateStudioVisibility === 'function') updateStudioVisibility();
-        document.getElementById('loginScreen').classList.add('hidden');
+        var _lsHide=document.getElementById('loginScreen');if(_lsHide){_lsHide.classList.add('hidden');_lsHide.style.display='none';}
         const pubV = document.getElementById('publicLandingView'); if (pubV) pubV.classList.remove('hidden');
         const ah = document.getElementById('appHeader'); if (ah) ah.classList.add('hidden');
         const am = document.getElementById('appMain'); if (am) am.classList.add('hidden');
