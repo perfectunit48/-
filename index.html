@@ -1536,6 +1536,20 @@
     const ACCOUNTS_KEY = 'tutor_workspace_accounts_v1';
     const REMEMBER_KEY = 'tutor_workspace_remember_v1';
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
+    // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
+    (function redirectInAppToChrome() {
+      try {
+        if (location.protocol !== 'https:' && location.protocol !== 'http:') return;
+        const ua = navigator.userAgent || '';
+        const isAndroid = /Android/i.test(ua);
+        const isInApp = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line|DaumApps/i.test(ua);
+        if (isAndroid && isInApp && !sessionStorage.getItem('tutor_chrome_redirect_tried')) {
+          sessionStorage.setItem('tutor_chrome_redirect_tried', '1');
+          location.href = `intent://${location.host}${location.pathname}${location.search}#Intent;scheme=https;package=com.android.chrome;end`;
+        }
+      } catch (e) {}
+    })();
+
     const USE_LOCAL_NODE_SERVER = true;
     const SVG_ICONS = {
       'alert-circle': '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
@@ -2679,8 +2693,8 @@
           chromeLink.classList.remove('hidden');
           statusEl.textContent = '인앱 브라우저에서는 위 초록 버튼으로 Chrome을 열어 앱을 설치해 주세요.';
         } else {
-          document.getElementById('downloadHtmlAppBtn').click();
-          showToast(`앱 파일(${formatBytesKr(loadedBytes)}) 다운로드가 완료되었습니다.`, 'success');
+          statusEl.textContent = '리소스 저장 완료! 브라우저 메뉴(⋮ 또는 공유)에서 [앱 설치 / 홈 화면에 추가]를 눌러 주세요.';
+          showToast('다운로드 준비 완료! 브라우저 메뉴에서 앱 설치를 눌러 주세요.', 'info');
         }
       }
 
