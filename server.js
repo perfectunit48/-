@@ -200,7 +200,7 @@ app.get('/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
   res.json({
-    id: '/?v=3',
+    id: '/?v=4',
     name: '학생관리 - 과외 관리',
     short_name: '학생관리',
     description: '과외 학생 글 첨삭 요약, 진도, 출결, 학부모 안내 통합 앱',
@@ -210,9 +210,9 @@ app.get('/manifest.json', (req, res) => {
     background_color: '#f8fafc',
     theme_color: '#6366f1',
     icons: [
-      { src: '/icon-192.png?v=3', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icon-512.png?v=3', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icon.svg?v=3', sizes: 'any', type: 'image/svg+xml' }
+      { src: '/icon-192.png?v=4', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon-512.png?v=4', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon.svg?v=4', sizes: 'any', type: 'image/svg+xml' }
     ]
   });
 });
@@ -222,21 +222,62 @@ app.get('/api/horaeng-pdfs', async (req, res) => {
   const { univ = '', year = '', track = '', session = '' } = req.query;
   const queries = [`${univ} ${year} 선행학습`, `${univ} ${year} 논술`];
   let searchUrl = `https://horaeng.com/?s=${encodeURIComponent(queries[0])}`;
+  const fetchWithShortTimeout = async (urlStr) => {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 4500);
+    try {
+      const r = await fetch(urlStr, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        signal: ac.signal
+      });
+      clearTimeout(t);
+      if (!r.ok) return '';
+      return await r.text();
+    } catch (e) {
+      clearTimeout(t);
+      return '';
+    }
+  };
+  const TISTORY_ARCHIVE_MAP = {
+    '서강대_2020': 'https://karis.tistory.com/132',
+    '서강대_2021': 'https://karis.tistory.com/133',
+    '중앙대_2020': 'https://karis.tistory.com/107',
+    '중앙대_2021': 'https://karis.tistory.com/107',
+    '연세대_2021': 'https://sayruru.tistory.com/93',
+    '성균관대_2021': 'https://sayruru.tistory.com/93',
+    '한양대_2021': 'https://sayruru.tistory.com/93',
+    '서강대_2021_alt': 'https://sayruru.tistory.com/93'
+  };
   try {
     let pdfMatches = [];
     let postUrl = '';
-    for (const q of queries) {
+    const archiveUrl = TISTORY_ARCHIVE_MAP[`${univ}_${year}`] || TISTORY_ARCHIVE_MAP[`${univ}_${year}_alt`];
+    if (archiveUrl) {
+      const tHtml = await fetchWithShortTimeout(archiveUrl);
+      if (tHtml) {
+        const tLinks = [...tHtml.matchAll(/<a[^>]+href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)]
+          .map(m => ({ url: m[1], label: m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() }))
+          .filter(x => /\.pdf/i.test(x.url) || /\.pdf/i.test(x.label));
+        const filtered = tLinks.filter(x =>
+          (x.label.includes(year) || x.url.includes(year) || archiveUrl !== 'https://sayruru.tistory.com/93') &&
+          (!archiveUrl.includes('sayruru') || x.label.includes(univ.replace('학교', '')))
+        );
+        if (filtered.length > 0) {
+          postUrl = archiveUrl;
+          pdfMatches = filtered;
+        }
+      }
+    }
+    if (pdfMatches.length === 0) for (const q of queries) {
       searchUrl = `https://horaeng.com/?s=${encodeURIComponent(q)}`;
-      const searchRes = await fetch(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
-      if (!searchRes.ok) continue;
-      const searchHtml = await searchRes.text();
+      const searchHtml = await fetchWithShortTimeout(searchUrl);
+      if (!searchHtml) continue;
       const postMatches = [...searchHtml.matchAll(/href=["'](https:\/\/horaeng\.com\/[^"']+)["']/gi)]
         .map(m => m[1])
         .filter(u => !u.includes('/category/') && !u.includes('/tag/') && !u.includes('?s=') && !u.includes('/wp-') && u !== 'https://horaeng.com/');
-      for (const candidateUrl of [...new Set(postMatches)].slice(0, 3)) {
-        const postRes = await fetch(candidateUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
-        if (!postRes.ok) continue;
-        const postHtml = await postRes.text();
+      for (const candidateUrl of [...new Set(postMatches)].slice(0, 2)) {
+        const postHtml = await fetchWithShortTimeout(candidateUrl);
+        if (!postHtml) continue;
         const found = [...postHtml.matchAll(/href=["']([^"']+\.pdf(?:\?[^"']*)?)["'][^>]*>([\s\S]*?)<\/a>/gi)]
           .map(m => ({
             url: m[1].startsWith('http') ? m[1] : new URL(m[1], candidateUrl).href,
