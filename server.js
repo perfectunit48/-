@@ -155,6 +155,58 @@ app.put('/api/state/:userId', async (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/state/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const acc = await dbGetAccount(userId);
+  if (!acc) return res.status(404).json({ ok: false });
+  res.json({ ok: true, name: acc.name, state: acc.state || {} });
+});
+
+const ANIME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="55%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="76" y="102" width="360" height="248" rx="34" fill="#eef2ff" stroke="#1e1b4b" stroke-width="18"/>
+  <rect x="104" y="130" width="304" height="178" rx="18" fill="#ffffff"/>
+  <rect x="126" y="152" width="122" height="132" rx="14" fill="#e0e7ff" stroke="#4f46e5" stroke-width="8"/>
+  <line x1="148" y1="184" x2="226" y2="184" stroke="#4f46e5" stroke-width="10" stroke-linecap="round"/>
+  <line x1="148" y1="214" x2="212" y2="214" stroke="#6366f1" stroke-width="10" stroke-linecap="round"/>
+  <line x1="148" y1="244" x2="198" y2="244" stroke="#818cf8" stroke-width="10" stroke-linecap="round"/>
+  <rect x="274" y="220" width="28" height="64" rx="8" fill="#34d399"/>
+  <rect x="316" y="190" width="28" height="94" rx="8" fill="#f472b6"/>
+  <rect x="358" y="162" width="28" height="122" rx="8" fill="#6366f1"/>
+  <path d="M220 350h72l16 46H204z" fill="#c7d2fe" stroke="#1e1b4b" stroke-width="14" stroke-linejoin="round"/>
+  <line x1="166" y1="404" x2="346" y2="404" stroke="#1e1b4b" stroke-width="18" stroke-linecap="round"/>
+  <path d="M426 62l10 24 24 10-24 10-10 24-10-24-24-10 24-10z" fill="#fde047"/>
+</svg>`;
+
+app.get('/icon.svg', (req, res) => {
+  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(ANIME_ICON_SVG);
+});
+
+app.get('/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.json({
+    name: '학생관리 - 과외 관리',
+    short_name: '학생관리',
+    description: '과외 학생 글 첨삭 요약, 진도, 출결, 학부모 안내 통합 앱',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#f8fafc',
+    theme_color: '#6366f1',
+    icons: [
+      { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
+    ]
+  });
+});
+
 // 2. 호랭이닷컴에서 해당 대학·연도 논술 PDF 직링크 자동 추출
 app.get('/api/horaeng-pdfs', async (req, res) => {
   const { univ = '', year = '', track = '', session = '' } = req.query;
@@ -215,6 +267,40 @@ app.get('/api/horaeng-pdfs', async (req, res) => {
 });
 
 // 3. PDF 프록시 & 즉시 다운로드 (?download=1 이면 사이트 이동 없이 바로 .pdf 파일 다운로드)
+const httpMod = require('http');
+const httpsMod = require('https');
+
+function fetchBinaryWithTlsBypass(urlStr, redirectsLeft = 5) {
+  return new Promise((resolve, reject) => {
+    let parsed;
+    try { parsed = new URL(urlStr); } catch (e) { return reject(e); }
+    const mod = parsed.protocol === 'https:' ? httpsMod : httpMod;
+    const reqOpts = {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Accept': 'application/pdf,application/octet-stream,*/*;q=0.8',
+        'Referer': `${parsed.origin}/`
+      },
+      rejectUnauthorized: false,
+      timeout: 25000
+    };
+    const r = mod.request(parsed, reqOpts, (resp) => {
+      if ([301, 302, 303, 307, 308].includes(resp.statusCode) && resp.headers.location && redirectsLeft > 0) {
+        resp.resume();
+        const nextUrl = new URL(resp.headers.location, parsed).href;
+        return resolve(fetchBinaryWithTlsBypass(nextUrl, redirectsLeft - 1));
+      }
+      const chunks = [];
+      resp.on('data', c => chunks.push(c));
+      resp.on('end', () => resolve({ status: resp.statusCode || 200, headers: resp.headers, buffer: Buffer.concat(chunks) }));
+    });
+    r.on('timeout', () => { r.destroy(new Error('PDF 요청 시간 초과')); });
+    r.on('error', reject);
+    r.end();
+  });
+}
+
 app.get('/api/pdf-proxy', async (req, res) => {
   const targetUrl = req.query.url;
   const isDownload = req.query.download === '1';
@@ -224,17 +310,15 @@ app.get('/api/pdf-proxy', async (req, res) => {
     return res.status(400).send('유효한 PDF URL이 필요합니다.');
   }
   try {
-    const upstream = await fetch(targetUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://horaeng.com/' }
-    });
-    if (!upstream.ok) {
+    const upstream = await fetchBinaryWithTlsBypass(targetUrl);
+    if (upstream.status < 200 || upstream.status >= 400) {
       return res.status(upstream.status).send('PDF를 불러오지 못했습니다.');
     }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', isDownload ? `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}` : 'inline');
-    const arrayBuffer = await upstream.arrayBuffer();
-    res.send(Buffer.from(arrayBuffer));
+    res.send(upstream.buffer);
   } catch (err) {
+    console.error('[PDF Proxy]', targetUrl, err.message);
     res.status(502).send('PDF 서버 연결에 실패했습니다.');
   }
 });
