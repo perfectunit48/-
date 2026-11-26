@@ -641,7 +641,7 @@
             <i data-lucide="book-marked" class="w-5 h-5 text-indigo-600"></i>
             주요 12개 대학 인문논술 기출 열람 (2020~2026학년도)
           </h2>
-          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">연·고·서·성·한·중·경·외·건·동·홍·숙 대학과 학년도를 선택하면 해당 대학의 선행학습 영향평가 결과보고서 PDF가 바로 뜹니다.</p>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">연·고·서·성·한·중·경·외·건·동·홍·숙 대학과 학년도를 선택하면 해당 대학의 선행학습 영향평가 보고서 PDF가 바로 뜹니다.</p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
@@ -2199,7 +2199,7 @@
           ctx.lineTo(426, 130); ctx.lineTo(416, 106); ctx.lineTo(392, 96); ctx.lineTo(416, 86);
           ctx.closePath(); ctx.fill();
           const iconUrl = canvas.toDataURL('image/png');
-          document.getElementById('appleTouchIcon').href = (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) ? '/icon-512.png?v=2' : iconUrl;
+          document.getElementById('appleTouchIcon').href = (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) ? '/icon-512.png?v=3' : iconUrl;
 
           const manifest = {
             name: '학생관리 - 과외 관리',
@@ -2212,7 +2212,10 @@
             icons: [{ src: iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
           };
           if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
-            document.getElementById('manifestLink').href = '/manifest.json?v=2';
+            document.getElementById('manifestLink').href = '/manifest.json?v=3';
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.register('/sw.js').then(reg => reg.update()).catch(() => {});
+            }
           } else {
             const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
             document.getElementById('manifestLink').href = URL.createObjectURL(blob);
@@ -3068,6 +3071,7 @@
         document.getElementById('loggedInUserBadge').textContent = displayName;
         document.getElementById('loginScreen').classList.add('hidden');
         if (typeof updateStudioVisibility === 'function') updateStudioVisibility();
+        if (typeof fetchNotices === 'function') fetchNotices();
         renderAll();
         if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
           fetch(`/api/state/${encodeURIComponent(uid)}`).then(r => r.ok ? r.json() : null).then(d => {
@@ -3279,7 +3283,7 @@
         'khu_2026': { type: 'report', url: 'https://kr.object.gov-ncloudstorage.com/khuiphakstorage/upload/20260429040751528_2026%ED%95%99%EB%85%84%EB%8F%84%20%EA%B2%BD%ED%9D%AC%EB%8C%80%ED%95%99%EA%B5%90%20%EB%85%BC%EC%88%A0%EA%B3%A0%EC%82%AC%20%EA%B8%B0%EC%B6%9C%EB%AC%B8%EC%A0%9C%EC%A7%91_%EC%9D%B8%EC%87%84%EC%9A%A9_fv.pdf' },
         'khu_2025': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2025/%EA%B2%BD%ED%9D%AC%EB%8C%80%ED%95%99%EA%B5%90/%EA%B2%BD%ED%9D%AC%EB%8C%80%ED%95%99%EA%B5%90_2025%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf' },
         'khu_2022': { type: 'report', url: 'https://school.busanedu.net/upload/bbs/files/2022/hgschl/gaya-h/ntt/1019168/04/0015858dcbbf4df1cf2e28dbd6307c57.pdf' },
-        'hufs_2026': { type: 'link_notice', title: '2026학년도 한국외대 선행학습 영향평가 결과 보고서', url: 'https://mdsisite.tistory.com/1939', officialUrl: 'https://www.hufs.ac.kr/hufs/11199/subview.do', note: '2026학년도 한국외대 보고서는 외부 직접 PDF 링크가 제한되어 아래 버튼으로 보고서 첨부 페이지 또는 입학처 자료실에서 바로 내려받으실 수 있습니다. (2025·2024학년도는 바로 미리보기 지원)' },
+        'hufs_2026': { type: 'link_notice', title: '2026학년도 한국외대 선행학습 영향평가 보고서', url: 'https://mdsisite.tistory.com/1939', officialUrl: 'https://www.hufs.ac.kr/hufs/11199/subview.do', note: '2026학년도 한국외대 보고서는 외부 직접 PDF 링크가 제한되어 아래 버튼으로 보고서 첨부 페이지 또는 입학처 자료실에서 바로 내려받으실 수 있습니다. (2025·2024학년도는 바로 미리보기 지원)' },
         'hufs_2025': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2025/%ED%95%9C%EA%B5%AD%EC%99%B8%EA%B5%AD%EC%96%B4%EB%8C%80%ED%95%99%EA%B5%90/%ED%95%9C%EA%B5%AD%EC%99%B8%EA%B5%AD%EC%96%B4%EB%8C%80%ED%95%99%EA%B5%90_2025%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf' },
         'hufs_2024': { type: 'report', url: 'https://www.myingang.com/upload/board/24_%ED%95%9C%EA%B5%AD%EC%99%B8%EB%8C%80_%EA%B8%B0%EC%B6%9C.pdf' },
         'hufs_2023': { type: 'report', url: 'https://www.myingang.com/upload/board/23_%ED%95%9C%EA%B5%AD%EC%99%B8%EB%8C%80_%EB%AA%A8%EC%9D%98.pdf', note: '2023학년도 한국외국어대학교 모의논술 문제지 PDF입니다.' },
@@ -3623,7 +3627,7 @@
 
         document.getElementById('examResultBadge').textContent = `${year}학년도 · ${univ.name}`;
         document.getElementById('examDurationText').textContent = `논술 시간: ${duration}`;
-        document.getElementById('examResultTitle').textContent = `${year}학년도 ${univ.name} 선행학습 영향평가 결과보고서`;
+        document.getElementById('examResultTitle').textContent = `${year}학년도 ${univ.name} 선행학습 영향평가 보고서`;
         document.getElementById('examResultMeta').textContent = univ.meta;
 
         const noticeBox = document.getElementById('examNoticeBox');
@@ -3701,7 +3705,27 @@
             'indigo'
           );
         } else {
-          area.innerHTML = `<div class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center space-y-3"><p class="text-sm font-semibold text-slate-500">미리보기 없음 · 해당 회차의 직접 PDF 주소가 아직 등록되지 않았습니다.</p><div class="flex flex-wrap justify-center gap-2"><button type="button" class="open-pdf-action-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition" data-url="${escapeHtml(univ.officialUrl)}" data-doc="${escapeHtml(univ.name + ' 입학처 자료실')}">${escapeHtml(univ.name)} 입학처 자료실 열기</button><button type="button" class="open-pdf-action-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition" data-url="https://www.ebsi.co.kr/ebs/ent/entNgn/retrieveUnivEsyQstInfoList.ebs" data-doc="EBSi 대학별 논술 기출 검색">EBSi 논술 기출 검색</button></div></div>`;
+          const fallbackHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center space-y-3"><p class="text-sm font-semibold text-slate-500">미리보기 없음 · 해당 회차의 직접 PDF 주소를 찾지 못했습니다.</p><div class="flex flex-wrap justify-center gap-2"><button type="button" class="open-pdf-action-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition" data-url="${escapeHtml(univ.officialUrl)}" data-doc="${escapeHtml(univ.name + ' 입학처 자료실')}">${escapeHtml(univ.name)} 입학처 자료실 열기</button><button type="button" class="open-pdf-action-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition" data-url="https://www.ebsi.co.kr/ebs/ent/entNgn/retrieveUnivEsyQstInfoList.ebs" data-doc="EBSi 대학별 논술 기출 검색">EBSi 논술 기출 검색</button></div></div>`;
+          if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
+            area.innerHTML = `<div class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-6 text-center text-xs sm:text-sm font-semibold text-indigo-700">${year}학년도 ${escapeHtml(univ.name)} PDF 자료를 자동으로 찾는 중...</div>`;
+            fetch(`/api/horaeng-pdfs?univ=${encodeURIComponent(univ.name)}&year=${encodeURIComponent(year)}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(d => {
+                if (d && d.ok && (d.passageUrl || (Array.isArray(d.allPdfs) && d.allPdfs.length > 0))) {
+                  const list = (Array.isArray(d.allPdfs) && d.allPdfs.length > 0)
+                    ? d.allPdfs.slice(0, 3)
+                    : [{ url: d.passageUrl, label: `${year}학년도 ${univ.name} 논술 기출` }, ...(d.guideUrl && d.guideUrl !== d.passageUrl ? [{ url: d.guideUrl, label: `${year}학년도 ${univ.name} 공식 해설` }] : [])];
+                  area.innerHTML = list.map((pdf, i) => buildPdfCardHtml(pdf.label || `${year}학년도 ${univ.name} 자료 ${i+1}`, '외부 기출 아카이브에서 자동 연결된 PDF입니다.', pdf.url, i % 2 === 0 ? 'indigo' : 'emerald')).join('');
+                  safeIcons();
+                  mountPdfJsViewers();
+                } else {
+                  area.innerHTML = fallbackHtml;
+                }
+              })
+              .catch(() => { area.innerHTML = fallbackHtml; });
+          } else {
+            area.innerHTML = fallbackHtml;
+          }
         }
 
         const info27 = INFO_2027_MAP[univId];

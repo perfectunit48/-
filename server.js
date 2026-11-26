@@ -191,20 +191,28 @@ app.get('/icon.svg', (req, res) => {
   res.send(ANIME_ICON_SVG);
 });
 
+app.get(['/icon-192.png', '/icon-512.png'], (req, res, next) => {
+  res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+  next();
+});
+
 app.get('/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
   res.json({
+    id: '/?v=3',
     name: '학생관리 - 과외 관리',
     short_name: '학생관리',
     description: '과외 학생 글 첨삭 요약, 진도, 출결, 학부모 안내 통합 앱',
     start_url: '/',
+    scope: '/',
     display: 'standalone',
     background_color: '#f8fafc',
     theme_color: '#6366f1',
     icons: [
-      { src: '/icon-192.png?v=2', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icon-512.png?v=2', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icon.svg?v=2', sizes: 'any', type: 'image/svg+xml' }
+      { src: '/icon-192.png?v=3', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon-512.png?v=3', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon.svg?v=3', sizes: 'any', type: 'image/svg+xml' }
     ]
   });
 });
@@ -212,31 +220,36 @@ app.get('/manifest.json', (req, res) => {
 // 2. 호랭이닷컴에서 해당 대학·연도 논술 PDF 직링크 자동 추출
 app.get('/api/horaeng-pdfs', async (req, res) => {
   const { univ = '', year = '', track = '', session = '' } = req.query;
-  const searchQuery = `${univ} ${year} 논술`;
-  const searchUrl = `https://horaeng.com/?s=${encodeURIComponent(searchQuery)}`;
+  const queries = [`${univ} ${year} 선행학습`, `${univ} ${year} 논술`];
+  let searchUrl = `https://horaeng.com/?s=${encodeURIComponent(queries[0])}`;
   try {
-    const searchRes = await fetch(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!searchRes.ok) return res.json({ ok: false, searchUrl });
-    const searchHtml = await searchRes.text();
-
-    // 게시물 링크 추출 (horaeng.com/<숫자> 또는 <제목> 형태)
-    const postMatches = [...searchHtml.matchAll(/href=["'](https:\/\/horaeng\.com\/[^"']+)["']/gi)]
-      .map(m => m[1])
-      .filter(u => !u.includes('/category/') && !u.includes('/tag/') && !u.includes('?s=') && !u.includes('/wp-'));
-
-    const postUrl = postMatches[0];
-    if (!postUrl) return res.json({ ok: false, searchUrl });
-
-    const postRes = await fetch(postUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!postRes.ok) return res.json({ ok: false, searchUrl, postUrl });
-    const postHtml = await postRes.text();
-
-    // PDF 링크 및 텍스트 추출
-    const pdfMatches = [...postHtml.matchAll(/<a[^>]+href=["']([^"']+\.pdf(?:\?[^"']*)?)["'][^>]*>([\s\S]*?)<\/a>/gi)]
-      .map(m => ({
-        url: m[1].startsWith('http') ? m[1] : new URL(m[1], postUrl).href,
-        label: m[2].replace(/<[^>]+>/g, '').trim()
-      }));
+    let pdfMatches = [];
+    let postUrl = '';
+    for (const q of queries) {
+      searchUrl = `https://horaeng.com/?s=${encodeURIComponent(q)}`;
+      const searchRes = await fetch(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
+      if (!searchRes.ok) continue;
+      const searchHtml = await searchRes.text();
+      const postMatches = [...searchHtml.matchAll(/href=["'](https:\/\/horaeng\.com\/[^"']+)["']/gi)]
+        .map(m => m[1])
+        .filter(u => !u.includes('/category/') && !u.includes('/tag/') && !u.includes('?s=') && !u.includes('/wp-') && u !== 'https://horaeng.com/');
+      for (const candidateUrl of [...new Set(postMatches)].slice(0, 3)) {
+        const postRes = await fetch(candidateUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
+        if (!postRes.ok) continue;
+        const postHtml = await postRes.text();
+        const found = [...postHtml.matchAll(/href=["']([^"']+\.pdf(?:\?[^"']*)?)["'][^>]*>([\s\S]*?)<\/a>/gi)]
+          .map(m => ({
+            url: m[1].startsWith('http') ? m[1] : new URL(m[1], candidateUrl).href,
+            label: m[2].replace(/<[^>]+>/g, '').trim() || '논술 기출/해설 PDF'
+          }));
+        if (found.length > 0) {
+          postUrl = candidateUrl;
+          pdfMatches = found;
+          break;
+        }
+      }
+      if (pdfMatches.length > 0) break;
+    }
 
     if (pdfMatches.length === 0) {
       return res.json({ ok: false, searchUrl, postUrl });
