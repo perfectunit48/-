@@ -27,9 +27,10 @@
       color: #0f172a;
     }
     .tab-btn.active {
-      background-color: #4f46e5;
-      color: #ffffff;
-      box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3);
+      background-color: #6d28d9 !important;
+      color: #ffffff !important;
+      opacity: 1 !important;
+      box-shadow: 0 2px 6px rgba(109, 40, 217, 0.3);
     }
     .custom-scrollbar::-webkit-scrollbar {
       width: 6px;
@@ -47,10 +48,11 @@
       animation: fadeIn 0.2s ease-out forwards;
     }
     .mobile-tab-btn.active {
-      color: #4f46e5;
+      color: #6d28d9 !important;
+      opacity: 1 !important;
     }
     .mobile-tab-btn.active .mobile-tab-pill {
-      background-color: #eef2ff;
+      background-color: #ede9fe !important;
     }
     .safe-bottom {
       padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -151,7 +153,6 @@
         </div>
         <div>
           <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">학생관리</h1>
-          <p class="text-xs text-slate-500 hidden sm:block">과외 학생 첨삭 요약 · 진도 · 출결 · 학부모 문자 통합 관리</p>
         </div>
       </div>
 
@@ -166,11 +167,19 @@
         <button id="deleteStudentBtn" class="inline-flex items-center justify-center p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition" title="현재 학생 삭제" aria-label="현재 학생 삭제">
           <i data-lucide="user-minus" class="w-4 h-4"></i>
         </button>
+        <button id="openNoticesBtn" type="button" class="relative inline-flex items-center justify-center p-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition" title="공지사항" aria-label="공지사항">
+          <i data-lucide="bell" class="w-4 h-4"></i>
+          <span id="noticeUnreadDot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500"></span>
+        </button>
         <button id="openInstallModalBtn" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs sm:text-sm font-semibold transition" title="스마트폰 홈 화면에 앱 설치">
           <i data-lucide="smartphone" class="w-4 h-4"></i>
           <span class="hidden sm:inline">앱 설치</span>
         </button>
 
+        <button id="openDevSettingsBtn" type="button" class="hidden inline-flex items-center gap-1 px-2.5 py-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold transition" title="개발자 설정">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">설정</span>
+        </button>
         <button id="openDebugLogBtn" type="button" class="relative inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition" title="모바일 오류 확인" aria-label="모바일 오류 확인">
           <i data-lucide="bug" class="w-4 h-4"></i>
           <span id="debugErrorBadge" class="hidden absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">0</span>
@@ -182,13 +191,13 @@
       </div>
     </div>
 
-    <!-- Student Quick Summary Bar & Navigation Tabs -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+    <!-- Student Quick Summary Bar & Centered Navigation Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 space-y-2.5">
       <div id="studentMetaBar" class="flex flex-wrap items-center gap-2 text-xs text-slate-600"></div>
-      <nav class="hidden md:flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 custom-scrollbar" aria-label="주요 메뉴">
-        <button class="tab-btn active whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="essay">
+      <nav class="hidden md:flex w-full flex-wrap items-center justify-center gap-1.5 pb-1 custom-scrollbar" aria-label="주요 메뉴">
+        <button class="tab-btn active whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-purple-50 transition" data-tab="essay">
           <i data-lucide="file-edit" class="w-4 h-4"></i>
-          <span>첨삭 &amp; 강약점 분석</span>
+          <span>첨삭 &amp; 분석</span>
         </button>
         <button class="tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="history">
           <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
@@ -210,7 +219,7 @@
           <i data-lucide="book-marked" class="w-4 h-4"></i>
           <span>논술 기출</span>
         </button>
-        <button id="studioDesktopTabBtn" class="hidden tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-purple-700 bg-purple-50/70 hover:bg-purple-100 transition" data-tab="studio">
+        <button id="studioDesktopTabBtn" class="hidden tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 transition" data-tab="studio">
           <i data-lucide="sparkles" class="w-4 h-4"></i>
           <span>자료 제작</span>
         </button>
@@ -903,12 +912,141 @@
       </div>
 
       <div class="pt-2 border-t border-slate-100 flex flex-col gap-2">
-        <button id="downloadHtmlAppBtn" type="button" class="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-semibold transition">
-          <i data-lucide="download" class="w-4 h-4 text-indigo-600"></i>
-          <span>HTML 앱 파일로 내 기기에 저장하기</span>
+        <div id="alreadyInstalledBanner" class="hidden rounded-xl bg-emerald-50 border border-emerald-200 p-2.5 text-center text-xs font-bold text-emerald-700">
+          이미 기기에 앱이 설치되어 있습니다.
+        </div>
+        <button id="saveAppToDeviceBtn" type="button" class="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-xs transition">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>앱 기기에 저장하기</span>
         </button>
-        <p class="text-[11px] text-slate-400 text-center">저장한 파일을 모바일 브라우저나 무료 웹 호스팅에 열면 언제든 앱처럼 쓸 수 있어요.</p>
+        <button id="downloadHtmlAppBtn" type="button" class="w-full inline-flex items-center justify-center gap-2 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition">
+          <span>HTML 백업 파일로 따로 저장</span>
+        </button>
       </div>
+    </div>
+  </div>
+
+
+  <!-- Modal: Notices -->
+  <div id="noticesModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[65] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col p-5 shadow-xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <i data-lucide="bell" class="w-5 h-5 text-amber-600"></i>
+          <h3 class="text-base font-bold text-slate-900">공지사항</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="toggleWriteNoticeBtn" class="hidden px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">공지 작성</button>
+          <button type="button" id="closeNoticesBtn" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <form id="writeNoticeForm" class="hidden mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+        <input id="editNoticeId" type="hidden" value="" />
+        <input id="noticeTitleInput" type="text" required placeholder="공지 제목을 입력하세요" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+        <textarea id="noticeBodyInput" rows="3" required placeholder="공지 내용을 입력하세요" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-y"></textarea>
+        <div class="flex justify-end gap-2">
+          <button type="button" id="cancelWriteNoticeBtn" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-600">취소</button>
+          <button type="submit" id="submitNoticeBtn" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">등록하기</button>
+        </div>
+      </form>
+
+      <div id="noticesList" class="mt-3 flex-1 overflow-y-auto space-y-2.5 custom-scrollbar min-h-[160px]"></div>
+    </div>
+  </div>
+
+  <!-- Modal: jace48 Settings (Developer Mode & Maintenance) -->
+  <div id="devSettingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[65] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <i data-lucide="settings" class="w-5 h-5 text-purple-600"></i>
+          <h3 class="text-base font-bold text-slate-900">관리자 설정 (jace48)</h3>
+        </div>
+        <button type="button" id="closeDevSettingsBtn" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <button type="button" id="openDevModeBtn" class="w-full flex items-center justify-between p-3.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100 transition">
+          <div class="text-left">
+            <div class="text-sm font-bold text-purple-900">개발자 모드</div>
+            <div class="text-xs text-purple-700">접속 계정 현황, 학생 수, 계정 삭제 및 타 계정 오류 확인</div>
+          </div>
+          <i data-lucide="user" class="w-4 h-4 text-purple-700"></i>
+        </button>
+
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-bold text-slate-900">시스템 점검 시행하기</div>
+            <div class="text-xs text-slate-500">ON 시 jace48 외 모든 계정의 앱 이용을 차단합니다.</div>
+          </div>
+          <button type="button" id="toggleMaintenanceBtn" class="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 text-xs font-bold transition whitespace-nowrap">OFF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Developer Mode (Accounts & Other Errors) -->
+  <div id="devModeModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[68] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col p-5 shadow-xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900">개발자 모드 · 계정 관리</h3>
+        <button type="button" id="closeDevModeBtn" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="devAccountsList" class="mt-3 flex-1 overflow-y-auto space-y-2 custom-scrollbar min-h-[160px]"></div>
+      <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+        <button type="button" id="openOtherErrorsBtn" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition">
+          <i data-lucide="bug" class="w-4 h-4"></i>
+          <span>다른 계정 오류 확인</span>
+        </button>
+        <button type="button" id="refreshDevAccountsBtn" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">새로고침</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirm Delete Account ("주의 / 진짜 삭제하실건가요?") -->
+  <div id="confirmDeleteAccountModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[75] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center gap-2 text-rose-600">
+        <i data-lucide="alert-circle" class="w-5 h-5"></i>
+        <h3 class="text-base font-bold">주의</h3>
+      </div>
+      <p class="text-sm text-slate-700">
+        <strong id="confirmDeleteAccountId" class="text-slate-900"></strong> 계정을 <strong>진짜 삭제하실건가요?</strong>
+      </p>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="cancelDeleteAccountBtn" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">취소</button>
+        <button type="button" id="execDeleteAccountBtn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Other Accounts Errors -->
+  <div id="otherErrorsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[72] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[82vh] flex flex-col p-5 shadow-xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900">다른 계정 오류 로그</h3>
+        <button type="button" id="closeOtherErrorsBtn" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="otherErrorsList" class="mt-3 flex-1 overflow-y-auto space-y-2 custom-scrollbar min-h-[140px]"></div>
+    </div>
+  </div>
+
+  <!-- Blocking Maintenance Overlay (for non-jace48 users) -->
+  <div id="maintenanceOverlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[90] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl space-y-3">
+      <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+        <i data-lucide="alert-circle" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900">시스템 점검 중입니다</h3>
+      <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">현재 서비스 점검이 진행 중이라 일시적으로 앱 이용이 제한됩니다. 점검이 끝난 뒤 다시 접속해 주세요.</p>
     </div>
   </div>
 
@@ -945,6 +1083,18 @@
       const time = new Date().toLocaleTimeString('ko-KR', { hour12: false });
       APP_DEBUG_LOGS.unshift({ time, level, source, detail: String(detail || '') });
       if (APP_DEBUG_LOGS.length > 80) APP_DEBUG_LOGS.pop();
+      if (level === 'ERROR' && typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
+        try {
+          const uid = typeof currentUserId !== 'undefined' && currentUserId ? currentUserId : 'guest';
+          if (String(uid).toLowerCase() !== 'jace48') {
+            fetch('/api/report-error', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: uid, source, detail, time })
+            }).catch(() => {});
+          }
+        } catch (e) {}
+      }
       const badge = document.getElementById('debugErrorBadge');
       if (badge) {
         const errCount = APP_DEBUG_LOGS.filter(l => l.level === 'ERROR').length;
@@ -968,12 +1118,39 @@
         origErr(...args);
       };
     })();
+    async function safeCopyText(str) {
+      const val = String(str || '');
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(val);
+          return true;
+        }
+      } catch (e) {}
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = val;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        return ok;
+      } catch (e) {
+        return false;
+      }
+    }
+
     const ACCOUNTS_KEY = 'tutor_workspace_accounts_v1';
     const REMEMBER_KEY = 'tutor_workspace_remember_v1';
+    const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const USE_LOCAL_NODE_SERVER = true;
     const SVG_ICONS = {
       'alert-circle': '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
       'bar-chart-3': '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+      'bell': '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+      'settings': '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
       'book-marked': '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><polyline points="10 2 10 10 13 7 16 10 16 2"/>',
       'bug': '<path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/>',
       'book-open': '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
@@ -1773,7 +1950,7 @@
       histEl.innerHTML = logs.map(l => `
         <div class="rounded-xl border border-slate-200 p-3 bg-slate-50/70 text-xs space-y-1">
           <div class="flex items-center justify-between text-slate-500 font-medium">
-            <span>수신: ${escapeHtml(l.phone || '미지정')}</span>
+            <span>${l.phone ? escapeHtml(l.phone) : '학부모 안내'}</span>
             <span>${escapeHtml(l.date)}</span>
           </div>
           <p class="text-slate-800 whitespace-pre-wrap leading-relaxed">${escapeHtml(l.body)}</p>
@@ -1855,9 +2032,37 @@
 
       const installModal = document.getElementById('installAppModal');
       const closeInstallModal = () => { installModal.classList.add('hidden'); installModal.classList.remove('flex'); };
+      function refreshInstallButtonState() {
+        const isInstalled = Boolean(
+          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+          window.navigator.standalone === true
+        );
+        const banner = document.getElementById('alreadyInstalledBanner');
+        const saveBtn = document.getElementById('saveAppToDeviceBtn');
+        if (banner) banner.classList.toggle('hidden', !isInstalled);
+        if (saveBtn) {
+          saveBtn.disabled = isInstalled;
+          saveBtn.classList.toggle('opacity-50', isInstalled);
+          saveBtn.classList.toggle('cursor-not-allowed', isInstalled);
+        }
+      }
       document.getElementById('openInstallModalBtn').addEventListener('click', () => {
+        refreshInstallButtonState();
         installModal.classList.remove('hidden');
         installModal.classList.add('flex');
+      });
+      document.getElementById('saveAppToDeviceBtn').addEventListener('click', async () => {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          const { outcome } = await deferredInstallPrompt.userChoice;
+          deferredInstallPrompt = null;
+          if (outcome === 'accepted') {
+            closeInstallModal();
+            showToast('기기에 앱이 설치되었습니다!', 'success');
+          }
+        } else {
+          document.getElementById('downloadHtmlAppBtn').click();
+        }
       });
       document.getElementById('closeInstallModalBtn').addEventListener('click', closeInstallModal);
       document.getElementById('triggerNativeInstallBtn').addEventListener('click', async () => {
@@ -2656,11 +2861,8 @@
         state = loadStateForUser(uid);
         saveState();
         try {
-          if (remember) {
-            safeSetItem(REMEMBER_KEY, uid);
-          } else {
-            safeRemoveItem(REMEMBER_KEY);
-          }
+          sessionStorage.setItem(SESSION_USER_KEY, uid);
+          safeSetItem(REMEMBER_KEY, uid);
         } catch (e) {}
         const accounts = getSavedAccounts();
         const acc = accounts[uid];
@@ -2786,7 +2988,7 @@
       });
 
       document.getElementById('logoutBtn').addEventListener('click', () => {
-        try { safeRemoveItem(REMEMBER_KEY); } catch (e) {}
+        try { safeRemoveItem(REMEMBER_KEY); sessionStorage.removeItem(SESSION_USER_KEY); } catch (e) {}
         currentUserId = null;
         document.getElementById('loginPwInput').value = '';
         switchAuthTab('login');
@@ -2840,6 +3042,7 @@
         'sogang_2025': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2025/%EC%84%9C%EA%B0%95%EB%8C%80%ED%95%99%EA%B5%90/%EC%84%9C%EA%B0%95%EB%8C%80%ED%95%99%EA%B5%90_2025%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf' },
         'sogang_2024': { type: 'report', url: 'https://admission.sogang.ac.kr/upload/BBS0004/20240326195201V32YDM.PDF' },
         'sogang_2023': { type: 'report', url: 'https://bonbonmath.com/wp-content/uploads/2023-%EC%84%9C%EA%B0%95%EB%8C%80-%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5-%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80-%EC%9E%90%EC%B2%B4%ED%8F%89%EA%B0%80%EB%B3%B4%EA%B3%A0%EC%84%9C.pdf' },
+        'sogang_2022': { type: 'report', url: 'https://admission.sogang.ac.kr/common/downLoad.asp?strFileName=2022_%B4%EB%C0%D4%C0%FC%C7%FC%BC%B1%C7%E0%C7%D0%BD%C0%BF%B5%C7%E2%C6%F2%B0%A1%B0%E1%B0%FA%BA%B8%B0%ED%BC%AD.pdf&strRealFileName=/upload/BBS0004/20220330163513READN6.PDF' },
         'skku_2026': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2026/%EC%84%B1%EA%B7%A0%EA%B4%80%EB%8C%80%ED%95%99%EA%B5%90/%EC%84%B1%EA%B7%A0%EA%B4%80%EB%8C%80%ED%95%99%EA%B5%90_2026%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf' },
         'skku_2025': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2025/%EC%84%B1%EA%B7%A0%EA%B4%80%EB%8C%80%ED%95%99%EA%B5%90/%EC%84%B1%EA%B7%A0%EA%B4%80%EB%8C%80%ED%95%99%EA%B5%90_2025%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf' },
         'skku_2023': { type: 'report', url: 'https://bonbonmath.com/wp-content/uploads/2023-%EC%84%B1%EA%B7%A0%EA%B4%80%EB%8C%80-%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5-%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80-%EB%B3%B4%EA%B3%A0%EC%84%9C.pdf' },
@@ -2858,6 +3061,7 @@
         'hufs_2023': { type: 'report', url: 'https://www.myingang.com/upload/board/23_%ED%95%9C%EA%B5%AD%EC%99%B8%EB%8C%80_%EB%AA%A8%EC%9D%98.pdf', note: '2023학년도 한국외국어대학교 모의논술 문제지 PDF입니다.' },
         'konkuk_2026': { type: 'report', url: 'https://admission.konkuk.ac.kr/bbs/admission/6282/1216633/download.do' },
         'konkuk_2025': { type: 'report', url: 'https://www.konkuk.ac.kr/bbs/admission/6282/1216575/download.do' },
+        'konkuk_2023': { type: 'report', url: 'https://admission.konkuk.ac.kr/bbs/admission/6287/1216429/download.do', note: '2023학년도 건국대학교 인문사회계Ⅰ 기출문제 PDF입니다.' },
         'dongguk_2026': { type: 'report', url: 'https://ipsi.dongguk.edu/upload/file/20260325134150YJEL7X.PDF' },
         'hongik_2026': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2026/%ED%99%8D%EC%9D%B5%EB%8C%80%ED%95%99%EA%B5%90%28%EC%84%B8%EC%A2%85%29/%ED%99%8D%EC%9D%B5%EB%8C%80%ED%95%99%EA%B5%90%28%EC%84%B8%EC%A2%85%29_2026%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf', note: '2026학년도 홍익대(세종) 선행학습 영향평가 보고서(인문·자연 논술 포함)입니다.' },
         'dongguk_2025': { type: 'report', url: 'https://ipsi.dongguk.edu/upload/file/20250328091635XM8SXU.PDF' },
@@ -3091,7 +3295,7 @@
         const opened = window.open(targetUrl, '_blank', 'noopener,noreferrer');
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(targetUrl);
+            safeCopyText(targetUrl);
           }
         } catch (err) {}
         if (opened) {
@@ -3269,7 +3473,7 @@
             'indigo'
           );
         } else {
-          area.innerHTML = `<div class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center space-y-3"><p class="text-sm font-semibold text-slate-500">미리보기 없음 · 해당 회차의 직접 PDF 주소가 아직 등록되지 않았습니다.</p><button type="button" class="open-pdf-action-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition" data-url="${escapeHtml(univ.officialUrl)}" data-doc="${escapeHtml(univ.name + ' 입학처 자료실')}">${escapeHtml(univ.name)} 입학처 자료실 열기</button></div>`;
+          area.innerHTML = `<div class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center space-y-3"><p class="text-sm font-semibold text-slate-500">미리보기 없음 · 해당 회차의 직접 PDF 주소가 아직 등록되지 않았습니다.</p><div class="flex flex-wrap justify-center gap-2"><button type="button" class="open-pdf-action-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition" data-url="${escapeHtml(univ.officialUrl)}" data-doc="${escapeHtml(univ.name + ' 입학처 자료실')}">${escapeHtml(univ.name)} 입학처 자료실 열기</button><button type="button" class="open-pdf-action-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition" data-url="https://www.ebsi.co.kr/ebs/ent/entNgn/retrieveUnivEsyQstInfoList.ebs" data-doc="EBSi 대학별 논술 기출 검색">EBSi 논술 기출 검색</button></div></div>`;
         }
 
         const info27 = INFO_2027_MAP[univId];
@@ -3300,22 +3504,8 @@
         const copyBtn = e.target.closest('.copy-pdf-url-btn');
         if (copyBtn) {
           const u = copyBtn.dataset.url;
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              await navigator.clipboard.writeText(u);
-            } else {
-              throw new Error('fallback');
-            }
-            showToast('PDF 주소를 복사했습니다. 새 탭 주소창에 붙여넣기 하세요!', 'success');
-          } catch (err) {
-            const ta = document.createElement('textarea');
-            ta.value = u;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            showToast('PDF 주소를 복사했습니다. 새 탭 주소창에 붙여넣기 하세요!', 'success');
-          }
+          await safeCopyText(u);
+          showToast('PDF 주소를 복사했습니다. 새 탭 주소창에 붙여넣기 하세요!', 'success');
         }
       });
 
@@ -3375,22 +3565,8 @@
           document.getElementById('debugEnvSummary').innerText,
           ...APP_DEBUG_LOGS.map(l => `[${l.time}] [${l.level}] ${l.source}: ${l.detail}`)
         ].join('\n');
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(dump);
-          } else {
-            throw new Error('fallback');
-          }
-          showToast('오류 로그를 복사했습니다.', 'success');
-        } catch (err) {
-          const ta = document.createElement('textarea');
-          ta.value = dump;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          ta.remove();
-          showToast('오류 로그를 복사했습니다.', 'success');
-        }
+        await safeCopyText(dump);
+        showToast('오류 로그를 복사했습니다.', 'success');
       });
 
 
@@ -3445,6 +3621,9 @@
         const mBtn = document.getElementById('studioMobileTabBtn');
         const mGrid = document.getElementById('mobileBottomNavGrid');
         if (dBtn) dBtn.classList.toggle('hidden', !allowed);
+        const devSetBtn = document.getElementById('openDevSettingsBtn');
+        if (devSetBtn) devSetBtn.classList.toggle('hidden', !allowed);
+        if (typeof syncSystemStatus === 'function') syncSystemStatus();
         if (mBtn) mBtn.classList.toggle('hidden', !allowed);
         if (mGrid) {
           mGrid.classList.toggle('grid-cols-7', allowed);
@@ -3476,7 +3655,7 @@
           const isAct = u.id === activeId;
           return `<button type="button" class="studio-univ-btn px-3 py-1.5 rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 ${isAct ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-purple-50 hover:text-purple-700'}" data-univ="${u.id}">
             <span>${u.name}</span>
-            ${count > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] ${isAct ? 'bg-purple-500 text-white' : 'bg-white text-slate-600'}">${count}</span>` : ''}
+            
           </button>`;
         }).join('');
       }
@@ -3532,10 +3711,8 @@
           const activeId = state.activeStudioUnivId || 'yonsei';
           const msg = (state.studioRooms && state.studioRooms[activeId] || [])[Number(copyBtn.dataset.idx)];
           if (!msg) return;
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(msg.text);
-            showToast('제작된 논술 자료를 복사했습니다.', 'success');
-          } catch (err) {}
+          await safeCopyText(msg.text);
+          showToast('제작된 논술 자료를 복사했습니다.', 'success');
           return;
         }
         const refBtn = e.target.closest('.studio-to-prompt-btn');
@@ -3678,12 +3855,291 @@
         safeIcons();
       });
 
+
+      // Notices + jace48 Dev Settings + Maintenance + Heartbeat
+      let cachedNotices = [];
+      let pendingDeleteAccountId = '';
+
+      async function fetchNotices() {
+        if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
+          try {
+            const r = await fetch('/api/notices');
+            if (r.ok) {
+              const d = await r.json();
+              if (d && d.ok && Array.isArray(d.notices)) cachedNotices = d.notices;
+            }
+          } catch (e) {}
+        } else {
+          try { cachedNotices = JSON.parse(safeGetItem('tutor_local_notices_v1') || '[]'); } catch (e) { cachedNotices = []; }
+        }
+        const dot = document.getElementById('noticeUnreadDot');
+        if (dot) dot.classList.toggle('hidden', cachedNotices.length === 0);
+      }
+
+      function renderNoticesList() {
+        const listEl = document.getElementById('noticesList');
+        const writeBtn = document.getElementById('toggleWriteNoticeBtn');
+        if (writeBtn) writeBtn.classList.toggle('hidden', !isJace48());
+        if (!cachedNotices.length) {
+          listEl.innerHTML = '<div class="py-10 text-center text-xs text-slate-400">등록된 공지사항이 없습니다.</div>';
+          return;
+        }
+        listEl.innerHTML = cachedNotices.map(n => `
+          <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <button type="button" class="notice-toggle-btn text-left flex-1" data-id="${escapeHtml(n.id)}">
+                <div class="text-sm font-bold text-slate-900 hover:text-indigo-700">${escapeHtml(n.title)}</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(n.createdAt)}${n.updatedAt ? ` (수정: ${escapeHtml(n.updatedAt)})` : ''}</div>
+              </button>
+              ${isJace48() ? `
+                <div class="flex items-center gap-1 shrink-0">
+                  <button type="button" class="edit-notice-btn px-2 py-1 rounded-lg bg-white border border-slate-200 hover:bg-indigo-50 text-[11px] font-semibold text-indigo-700" data-id="${escapeHtml(n.id)}">수정</button>
+                  <button type="button" class="del-notice-btn px-2 py-1 rounded-lg bg-white border border-slate-200 hover:bg-rose-50 text-[11px] font-semibold text-rose-600" data-id="${escapeHtml(n.id)}">삭제</button>
+                </div>` : ''}
+            </div>
+            <div id="notice-body-${escapeHtml(n.id)}" class="hidden pt-2 border-t border-slate-200 text-xs sm:text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">${escapeHtml(n.body)}</div>
+          </div>
+        `).join('');
+      }
+
+      const noticesModal = document.getElementById('noticesModal');
+      const closeNoticesModal = () => { noticesModal.classList.add('hidden'); noticesModal.classList.remove('flex'); };
+      document.getElementById('openNoticesBtn').addEventListener('click', async () => {
+        await fetchNotices();
+        renderNoticesList();
+        noticesModal.classList.remove('hidden');
+        noticesModal.classList.add('flex');
+      });
+      document.getElementById('closeNoticesBtn').addEventListener('click', closeNoticesModal);
+      document.getElementById('toggleWriteNoticeBtn').addEventListener('click', () => {
+        document.getElementById('editNoticeId').value = '';
+        document.getElementById('noticeTitleInput').value = '';
+        document.getElementById('noticeBodyInput').value = '';
+        document.getElementById('submitNoticeBtn').textContent = '등록하기';
+        document.getElementById('writeNoticeForm').classList.toggle('hidden');
+      });
+      document.getElementById('cancelWriteNoticeBtn').addEventListener('click', () => {
+        document.getElementById('writeNoticeForm').classList.add('hidden');
+      });
+      document.getElementById('writeNoticeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!isJace48()) return;
+        const editId = document.getElementById('editNoticeId').value;
+        const title = document.getElementById('noticeTitleInput').value.trim();
+        const body = document.getElementById('noticeBodyInput').value.trim();
+        if (!title || !body) return;
+        if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
+          const url = editId ? `/api/notices/${encodeURIComponent(editId)}` : '/api/notices';
+          const method = editId ? 'PUT' : 'POST';
+          const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId, title, body }) });
+          if (r.ok) { const d = await r.json(); if (d.notices) cachedNotices = d.notices; }
+        } else {
+          const now = new Date();
+          const pad = (x) => String(x).padStart(2, '0');
+          const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+          if (editId) {
+            const t = cachedNotices.find(x => x.id === editId);
+            if (t) { t.title = title; t.body = body; t.updatedAt = ts; }
+          } else {
+            cachedNotices.unshift({ id: 'n-' + Date.now(), title, body, createdAt: ts, updatedAt: '' });
+          }
+          safeSetItem('tutor_local_notices_v1', JSON.stringify(cachedNotices));
+        }
+        document.getElementById('writeNoticeForm').classList.add('hidden');
+        renderNoticesList();
+        showToast(editId ? '공지사항을 수정했습니다.' : '공지사항을 등록했습니다.', 'success');
+      });
+      document.getElementById('noticesList').addEventListener('click', async (e) => {
+        const tog = e.target.closest('.notice-toggle-btn');
+        if (tog) {
+          const b = document.getElementById(`notice-body-${tog.dataset.id}`);
+          if (b) b.classList.toggle('hidden');
+          return;
+        }
+        const editBtn = e.target.closest('.edit-notice-btn');
+        if (editBtn && isJace48()) {
+          const target = cachedNotices.find(n => n.id === editBtn.dataset.id);
+          if (!target) return;
+          document.getElementById('editNoticeId').value = target.id;
+          document.getElementById('noticeTitleInput').value = target.title;
+          document.getElementById('noticeBodyInput').value = target.body;
+          document.getElementById('submitNoticeBtn').textContent = '수정 저장';
+          document.getElementById('writeNoticeForm').classList.remove('hidden');
+          return;
+        }
+        const delBtn = e.target.closest('.del-notice-btn');
+        if (delBtn && isJace48()) {
+          if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
+            const r = await fetch(`/api/notices/${encodeURIComponent(delBtn.dataset.id)}?userId=${encodeURIComponent(currentUserId)}`, { method: 'DELETE' });
+            if (r.ok) { const d = await r.json(); if (d.notices) cachedNotices = d.notices; }
+          } else {
+            cachedNotices = cachedNotices.filter(n => n.id !== delBtn.dataset.id);
+            safeSetItem('tutor_local_notices_v1', JSON.stringify(cachedNotices));
+          }
+          renderNoticesList();
+          showToast('공지사항을 삭제했습니다.');
+        }
+      });
+
+      // jace48 Dev Settings + Dev Mode + Maintenance
+      const devSettingsModal = document.getElementById('devSettingsModal');
+      const devModeModal = document.getElementById('devModeModal');
+      const confirmDelAccModal = document.getElementById('confirmDeleteAccountModal');
+      const otherErrorsModal = document.getElementById('otherErrorsModal');
+      let maintenanceOn = false;
+
+      async function syncSystemStatus() {
+        if (typeof USE_LOCAL_NODE_SERVER === 'undefined' || !USE_LOCAL_NODE_SERVER) return;
+        try {
+          if (currentUserId) {
+            fetch('/api/heartbeat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUserId }) }).catch(() => {});
+          }
+          const r = await fetch(`/api/system-status?userId=${encodeURIComponent(currentUserId || '')}`);
+          if (r.ok) {
+            const d = await r.json();
+            maintenanceOn = Boolean(d.maintenance);
+            const mBtn = document.getElementById('toggleMaintenanceBtn');
+            if (mBtn) {
+              mBtn.textContent = maintenanceOn ? 'ON (점검 중)' : 'OFF';
+              mBtn.className = maintenanceOn
+                ? 'px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold transition whitespace-nowrap'
+                : 'px-4 py-2 rounded-xl bg-slate-200 text-slate-700 text-xs font-bold transition whitespace-nowrap';
+            }
+            const ov = document.getElementById('maintenanceOverlay');
+            if (ov) {
+              const showBlock = Boolean(d.blocked);
+              ov.classList.toggle('hidden', !showBlock);
+              ov.classList.toggle('flex', showBlock);
+            }
+          }
+        } catch (e) {}
+      }
+
+      async function loadDevAccounts() {
+        const listEl = document.getElementById('devAccountsList');
+        if (!isJace48()) return;
+        if (typeof USE_LOCAL_NODE_SERVER === 'undefined' || !USE_LOCAL_NODE_SERVER) {
+          listEl.innerHTML = '<div class="py-8 text-center text-xs text-slate-400">서버 연동 모드(Render)에서 전체 계정 목록을 조회할 수 있습니다.</div>';
+          return;
+        }
+        listEl.innerHTML = '<div class="py-8 text-center text-xs text-slate-400">계정 목록 불러오는 중...</div>';
+        try {
+          const r = await fetch(`/api/admin/accounts?userId=${encodeURIComponent(currentUserId)}`);
+          const d = await r.json();
+          const accs = (d && Array.isArray(d.accounts)) ? d.accounts : [];
+          if (!accs.length) {
+            listEl.innerHTML = '<div class="py-8 text-center text-xs text-slate-400">가입된 다른 계정이 없습니다.</div>';
+            return;
+          }
+          listEl.innerHTML = accs.map(a => `
+            <div class="flex items-center justify-between gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-900">${escapeHtml(a.userId)}</span>
+                  <span class="text-slate-500">(${escapeHtml(a.name)})</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${a.isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}">${a.isOnline ? '로그인 중' : '오프라인'}</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5">관리 중인 학생 수: <strong>${a.studentCount}명</strong></div>
+              </div>
+              <button type="button" class="dev-del-acc-btn px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold" data-id="${escapeHtml(a.userId)}">계정 삭제</button>
+            </div>
+          `).join('');
+        } catch (e) {
+          listEl.innerHTML = '<div class="py-8 text-center text-xs text-rose-500">목록을 불러오지 못했습니다.</div>';
+        }
+      }
+
+      document.getElementById('openDevSettingsBtn').addEventListener('click', () => {
+        if (!isJace48()) return;
+        syncSystemStatus();
+        devSettingsModal.classList.remove('hidden');
+        devSettingsModal.classList.add('flex');
+      });
+      document.getElementById('closeDevSettingsBtn').addEventListener('click', () => { devSettingsModal.classList.add('hidden'); devSettingsModal.classList.remove('flex'); });
+      document.getElementById('openDevModeBtn').addEventListener('click', () => {
+        devSettingsModal.classList.add('hidden');
+        devSettingsModal.classList.remove('flex');
+        loadDevAccounts();
+        devModeModal.classList.remove('hidden');
+        devModeModal.classList.add('flex');
+      });
+      document.getElementById('closeDevModeBtn').addEventListener('click', () => { devModeModal.classList.add('hidden'); devModeModal.classList.remove('flex'); });
+      document.getElementById('refreshDevAccountsBtn').addEventListener('click', loadDevAccounts);
+      document.getElementById('toggleMaintenanceBtn').addEventListener('click', async () => {
+        if (!isJace48() || typeof USE_LOCAL_NODE_SERVER === 'undefined' || !USE_LOCAL_NODE_SERVER) return;
+        const r = await fetch('/api/admin/maintenance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUserId, enabled: !maintenanceOn })
+        });
+        if (r.ok) {
+          await syncSystemStatus();
+          showToast(maintenanceOn ? '시스템 점검 모드를 켰습니다.' : '시스템 점검 모드를 해제했습니다.', 'info');
+        }
+      });
+      document.getElementById('devAccountsList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.dev-del-acc-btn');
+        if (!btn) return;
+        pendingDeleteAccountId = btn.dataset.id;
+        document.getElementById('confirmDeleteAccountId').textContent = pendingDeleteAccountId;
+        confirmDelAccModal.classList.remove('hidden');
+        confirmDelAccModal.classList.add('flex');
+      });
+      document.getElementById('cancelDeleteAccountBtn').addEventListener('click', () => { confirmDelAccModal.classList.add('hidden'); confirmDelAccModal.classList.remove('flex'); });
+      document.getElementById('execDeleteAccountBtn').addEventListener('click', async () => {
+        if (!pendingDeleteAccountId || !isJace48()) return;
+        if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
+          await fetch(`/api/admin/accounts/${encodeURIComponent(pendingDeleteAccountId)}?userId=${encodeURIComponent(currentUserId)}`, { method: 'DELETE' });
+        }
+        confirmDelAccModal.classList.add('hidden');
+        confirmDelAccModal.classList.remove('flex');
+        showToast(`${pendingDeleteAccountId} 계정을 삭제했습니다.`, 'info');
+        pendingDeleteAccountId = '';
+        loadDevAccounts();
+      });
+      document.getElementById('openOtherErrorsBtn').addEventListener('click', async () => {
+        if (!isJace48()) return;
+        const el = document.getElementById('otherErrorsList');
+        el.innerHTML = '<div class="py-8 text-center text-xs text-slate-400">오류 로그 불러오는 중...</div>';
+        otherErrorsModal.classList.remove('hidden');
+        otherErrorsModal.classList.add('flex');
+        if (typeof USE_LOCAL_NODE_SERVER === 'undefined' || !USE_LOCAL_NODE_SERVER) {
+          el.innerHTML = '<div class="py-8 text-center text-xs text-slate-400">서버 연동 모드에서 다른 계정의 오류를 조회할 수 있습니다.</div>';
+          return;
+        }
+        try {
+          const r = await fetch(`/api/admin/errors?userId=${encodeURIComponent(currentUserId)}`);
+          const d = await r.json();
+          const errs = (d && Array.isArray(d.errors)) ? d.errors : [];
+          if (!errs.length) {
+            el.innerHTML = '<div class="py-8 text-center text-xs font-semibold text-emerald-700">다른 계정에서 보고된 오류가 없습니다.</div>';
+            return;
+          }
+          el.innerHTML = errs.map(x => `
+            <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-2.5 text-xs space-y-0.5">
+              <div class="flex items-center justify-between text-[11px] font-bold text-rose-700">
+                <span>계정: ${escapeHtml(x.userId)} · ${escapeHtml(x.source)}</span>
+                <span>${escapeHtml(x.time)}</span>
+              </div>
+              <p class="font-mono text-[11px] text-slate-800 break-all">${escapeHtml(x.detail)}</p>
+            </div>
+          `).join('');
+        } catch (e) {
+          el.innerHTML = '<div class="py-8 text-center text-xs text-rose-500">오류 로그를 불러오지 못했습니다.</div>';
+        }
+      });
+      document.getElementById('closeOtherErrorsBtn').addEventListener('click', () => { otherErrorsModal.classList.add('hidden'); otherErrorsModal.classList.remove('flex'); });
+
+      fetchNotices();
+      syncSystemStatus();
+      setInterval(syncSystemStatus, 25000);
+
       populateExamSelectors();
       safeIcons();
 
       renderSavedAccountsChips();
       try {
-        const remembered = safeGetItem(REMEMBER_KEY);
+        const remembered = (function(){ try { return sessionStorage.getItem(SESSION_USER_KEY) || safeGetItem(REMEMBER_KEY); } catch(e){ return safeGetItem(REMEMBER_KEY); } })();
         if (remembered) {
           completeLogin(remembered, true);
         } else {

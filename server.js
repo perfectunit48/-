@@ -467,6 +467,165 @@ app.post('/api/essay-studio-chat', async (req, res) => {
   }
 });
 
+
+async function dbListAllRows() {
+  const sb = getSupabaseCfg();
+  if (sb) {
+    try {
+      const r = await fetch(`${sb.url}/rest/v1/tutor_accounts?select=*`, {
+        headers: getSupabaseHeaders(sb.key)
+      });
+      if (r.ok) {
+        const rows = await r.json();
+        if (Array.isArray(rows)) return rows;
+      }
+    } catch (e) {
+      console.error('[Supabase LIST]', e.message);
+    }
+  }
+  const db = readDb();
+  return Object.entries(db.accounts || {}).map(([user_id, v]) => ({
+    user_id,
+    name: v.name || user_id,
+    pw: v.pw || '',
+    state: v.state || {},
+    updated_at: v.updatedAt || new Date().toISOString()
+  }));
+}
+
+async function dbDeleteAccount(userId) {
+  const sb = getSupabaseCfg();
+  if (sb) {
+    try {
+      await fetch(`${sb.url}/rest/v1/tutor_accounts?user_id=eq.${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+        headers: getSupabaseHeaders(sb.key)
+      });
+    } catch (e) {
+      console.error('[Supabase DELETE]', e.message);
+    }
+  }
+  const db = readDb();
+  if (db.accounts && db.accounts[userId]) {
+    delete db.accounts[userId];
+    writeDb(db);
+  }
+  return true;
+}
+
+// 6. 공지사항 CRUD (jace48 작성/수정/삭제, 전체 열람)
+app.get('/api/notices', async (req, res) => {
+  const rec = await dbGetAccount('__sys_notices__');
+  const notices = (rec && rec.state && Array.isArray(rec.state.notices)) ? rec.state.notices : [];
+  res.json({ ok: true, notices });
+});
+
+app.post('/api/notices', async (req, res) => {
+  const { userId = '', title = '', body = '' } = req.body || {};
+  if (String(userId).trim().toLowerCase() !== 'jace48') return res.status(403).json({ ok: false });
+  if (!title.trim() || !body.trim()) return res.status(400).json({ ok: false });
+  const rec = await dbGetAccount('__sys_notices__');
+  const notices = (rec && rec.state && Array.isArray(rec.state.notices)) ? rec.state.notices : [];
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const kr = new Date(now.getTime() + 9 * 3600 * 1000);
+  const createdAt = `${kr.getUTCFullYear()}-${pad(kr.getUTCMonth() + 1)}-${pad(kr.getUTCDate())} ${pad(kr.getUTCHours())}:${pad(kr.getUTCMinutes())}`;
+  notices.unshift({ id: 'n-' + Date.now(), title: title.trim(), body: body.trim(), createdAt, updatedAt: '' });
+  await dbSaveAccount('__sys_notices__', { name: 'SYSTEM_NOTICES', pw: '', state: { notices } });
+  res.json({ ok: true, notices });
+});
+
+app.put('/api/notices/:id', async (req, res) => {
+  const { userId = '', title = '', body = '' } = req.body || {};
+  if (String(userId).trim().toLowerCase() !== 'jace48') return res.status(403).json({ ok: false });
+  const rec = await dbGetAccount('__sys_notices__');
+  const notices = (rec && rec.state && Array.isArray(rec.state.notices)) ? rec.state.notices : [];
+  const target = notices.find(n => n.id === req.params.id);
+  if (!target) return res.status(404).json({ ok: false });
+  if (title.trim()) target.title = title.trim();
+  if (body.trim()) target.body = body.trim();
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const kr = new Date(now.getTime() + 9 * 3600 * 1000);
+  target.updatedAt = `${kr.getUTCFullYear()}-${pad(kr.getUTCMonth() + 1)}-${pad(kr.getUTCDate())} ${pad(kr.getUTCHours())}:${pad(kr.getUTCMinutes())}`;
+  await dbSaveAccount('__sys_notices__', { name: 'SYSTEM_NOTICES', pw: '', state: { notices } });
+  res.json({ ok: true, notices });
+});
+
+app.delete('/api/notices/:id', async (req, res) => {
+  const userId = req.query.userId || (req.body && req.body.userId) || '';
+  if (String(userId).trim().toLowerCase() !== 'jace48') return res.status(403).json({ ok: false });
+  const rec = await dbGetAccount('__sys_notices__');
+  const notices = ((rec && rec.state && Array.isArray(rec.state.notices)) ? rec.state.notices : []).filter(n => n.id !== req.params.id);
+  await dbSaveAccount('__sys_notices__', { name: 'SYSTEM_NOTICES', pw: '', state: { notices } });
+  res.json({ ok: true, notices });
+});
+
+// 7. 시스템 상태(점검 모드), 하트비트, 다른 계정 오류 수집 & jace48 개발자 모드
+const ONLINE_HEARTBEATS = {};
+
+app.post('/api/heartbeat', (req, res) => {
+  const { userId = '' } = req.body || {};
+  if (userId) ONLINE_HEARTBEATS[userId] = Date.now();
+  res.json({ ok: true });
+});
+
+app.get('/api/system-status', async (req, res) => {
+  const userId = String(req.query.userId || '').trim().toLowerCase();
+  const rec = await dbGetAccount('__sys_maintenance__');
+  const maintenance = Boolean(rec && rec.state && rec.state.enabled);
+  res.json({ ok: true, maintenance, blocked: maintenance && userId !== 'jace48' });
+});
+
+app.post('/api/admin/maintenance', async (req, res) => {
+  const { userId = '', enabled = false } = req.body || {};
+  if (String(userId).trim().toLowerCase() !== 'jace48') return res.status(403).json({ ok: false });
+  await dbSaveAccount('__sys_maintenance__', { name: 'SYSTEM_MAINTENANCE', pw: '', state: { enabled: Boolean(enabled) } });
+  res.json({ ok: true, enabled: Boolean(enabled) });
+});
+
+app.post('/api/report-error', async (req, res) => {
+  const { userId = 'guest', source = '', detail = '', time = '' } = req.body || {};
+  if (String(userId).trim().toLowerCase() === 'jace48') return res.json({ ok: true });
+  const rec = await dbGetAccount('__sys_errors__');
+  const errors = (rec && rec.state && Array.isArray(rec.state.errors)) ? rec.state.errors : [];
+  errors.unshift({ userId, source, detail: String(detail || '').slice(0, 400), time: time || new Date().toISOString() });
+  if (errors.length > 60) errors.length = 60;
+  await dbSaveAccount('__sys_errors__', { name: 'SYSTEM_ERRORS', pw: '', state: { errors } });
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/accounts', async (req, res) => {
+  const userId = String(req.query.userId || '').trim().toLowerCase();
+  if (userId !== 'jace48') return res.status(403).json({ ok: false });
+  const rows = await dbListAllRows();
+  const now = Date.now();
+  const accounts = rows
+    .filter(r => !String(r.user_id || '').startsWith('__sys_') && String(r.user_id || '').toLowerCase() !== 'jace48')
+    .map(r => {
+      const lastSeen = ONLINE_HEARTBEATS[r.user_id] || 0;
+      const isOnline = (now - lastSeen) < 120000;
+      const studentCount = (r.state && Array.isArray(r.state.students)) ? r.state.students.length : 0;
+      return { userId: r.user_id, name: r.name || r.user_id, isOnline, studentCount };
+    });
+  res.json({ ok: true, accounts });
+});
+
+app.delete('/api/admin/accounts/:targetId', async (req, res) => {
+  const userId = String(req.query.userId || (req.body && req.body.userId) || '').trim().toLowerCase();
+  if (userId !== 'jace48') return res.status(403).json({ ok: false });
+  await dbDeleteAccount(req.params.targetId);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/errors', async (req, res) => {
+  const userId = String(req.query.userId || '').trim().toLowerCase();
+  if (userId !== 'jace48') return res.status(403).json({ ok: false });
+  const rec = await dbGetAccount('__sys_errors__');
+  const errors = (rec && rec.state && Array.isArray(rec.state.errors)) ? rec.state.errors : [];
+  res.json({ ok: true, errors });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`학생관리 서버 실행 중: http://0.0.0.0:${PORT}`);
 });
