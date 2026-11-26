@@ -147,13 +147,12 @@
   <!-- Top Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+      <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shrink-0">
           <i data-lucide="graduation-cap" class="w-5 h-5"></i>
         </div>
-        <div>
-          <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">학생관리</h1>
-        </div>
+        <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight shrink-0">학생관리</h1>
+        <div id="studentMetaBar" class="flex flex-wrap items-center gap-1.5 text-xs text-slate-600"></div>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
@@ -168,8 +167,8 @@
           <i data-lucide="user-minus" class="w-4 h-4"></i>
         </button>
         <button id="openNoticesBtn" type="button" class="relative inline-flex items-center justify-center p-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition" title="공지사항" aria-label="공지사항">
-          <i data-lucide="bell" class="w-4 h-4"></i>
-          <span id="noticeUnreadDot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500"></span>
+          <i data-lucide="megaphone" class="w-4 h-4"></i>
+          <span id="noticeUnreadDot" class="hidden absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
         </button>
         <button id="openInstallModalBtn" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs sm:text-sm font-semibold transition" title="스마트폰 홈 화면에 앱 설치">
           <i data-lucide="smartphone" class="w-4 h-4"></i>
@@ -191,9 +190,8 @@
       </div>
     </div>
 
-    <!-- Student Quick Summary Bar & Centered Navigation Tabs -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 space-y-2.5">
-      <div id="studentMetaBar" class="flex flex-wrap items-center gap-2 text-xs text-slate-600"></div>
+    <!-- Centered Navigation Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3">
       <nav class="hidden md:flex w-full flex-wrap items-center justify-center gap-1.5 pb-1 custom-scrollbar" aria-label="주요 메뉴">
         <button class="tab-btn active whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-purple-50 transition" data-tab="essay">
           <i data-lucide="file-edit" class="w-4 h-4"></i>
@@ -324,7 +322,6 @@
               <span id="studentEssayStats" class="text-xs text-slate-500">0자 · 0문장</span>
             </div>
             <textarea id="studentEssayInput" rows="10" placeholder="학생이 작성한 글을 여기에 붙여넣으세요..." class="w-full rounded-xl border border-slate-300 bg-slate-50/50 p-3.5 text-sm leading-relaxed focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y"></textarea>
-            <div id="studentEssayPreviewBox" class="mt-2 hidden rounded-xl bg-blue-50/60 border border-blue-100 p-3 text-xs text-slate-700 leading-relaxed max-h-40 overflow-y-auto custom-scrollbar"></div>
           </div>
 
           <!-- Teacher Feedback Input -->
@@ -929,31 +926,50 @@
 
   <!-- Modal: Notices -->
   <div id="noticesModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[65] hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col p-5 shadow-xl">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div class="flex items-center gap-2">
-          <i data-lucide="bell" class="w-5 h-5 text-amber-600"></i>
-          <h3 class="text-base font-bold text-slate-900">공지사항</h3>
+    <div class="bg-white rounded-2xl max-w-2xl w-full h-[82vh] max-h-[90vh] flex flex-col p-5 sm:p-6 shadow-xl">
+      <div id="noticesListView" class="flex-1 flex flex-col min-h-0">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <i data-lucide="megaphone" class="w-5 h-5 text-amber-600"></i>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">공지사항</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" id="toggleWriteNoticeBtn" class="hidden px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">공지 작성</button>
+            <button type="button" id="closeNoticesBtn" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" aria-label="닫기">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button type="button" id="toggleWriteNoticeBtn" class="hidden px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">공지 작성</button>
-          <button type="button" id="closeNoticesBtn" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+
+        <form id="writeNoticeForm" class="hidden mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+          <input id="editNoticeId" type="hidden" value="" />
+          <input id="noticeTitleInput" type="text" required placeholder="공지 제목을 입력하세요" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <textarea id="noticeBodyInput" rows="4" required placeholder="공지 내용을 입력하세요" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-y"></textarea>
+          <div class="flex justify-end gap-2">
+            <button type="button" id="cancelWriteNoticeBtn" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-600">취소</button>
+            <button type="submit" id="submitNoticeBtn" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">등록하기</button>
+          </div>
+        </form>
+
+        <div id="noticesList" class="mt-3 flex-1 overflow-y-auto space-y-2.5 custom-scrollbar min-h-[200px]"></div>
+      </div>
+
+      <div id="noticeDetailView" class="hidden flex-1 flex flex-col min-h-0">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <button type="button" id="noticeDetailBackBtn" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-xs sm:text-sm font-semibold text-slate-700 transition">
+            <span>←</span>
+            <span>뒤로가기</span>
+          </button>
+          <button type="button" id="closeNoticesDetailBtn" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" aria-label="닫기">
             <i data-lucide="x" class="w-5 h-5"></i>
           </button>
         </div>
-      </div>
-
-      <form id="writeNoticeForm" class="hidden mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-        <input id="editNoticeId" type="hidden" value="" />
-        <input id="noticeTitleInput" type="text" required placeholder="공지 제목을 입력하세요" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-        <textarea id="noticeBodyInput" rows="3" required placeholder="공지 내용을 입력하세요" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-y"></textarea>
-        <div class="flex justify-end gap-2">
-          <button type="button" id="cancelWriteNoticeBtn" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-600">취소</button>
-          <button type="submit" id="submitNoticeBtn" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">등록하기</button>
+        <div class="pt-4 pb-3 border-b border-slate-100">
+          <h3 id="noticeDetailTitle" class="text-lg sm:text-xl font-bold text-slate-900 leading-snug"></h3>
+          <div id="noticeDetailTime" class="text-xs text-slate-400 mt-1"></div>
         </div>
-      </form>
-
-      <div id="noticesList" class="mt-3 flex-1 overflow-y-auto space-y-2.5 custom-scrollbar min-h-[160px]"></div>
+        <div id="noticeDetailBody" class="mt-4 flex-1 overflow-y-auto text-sm sm:text-base text-slate-700 whitespace-pre-wrap leading-relaxed custom-scrollbar pr-1"></div>
+      </div>
     </div>
   </div>
 
@@ -1150,6 +1166,7 @@
       'alert-circle': '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
       'bar-chart-3': '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
       'bell': '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+      'megaphone': '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
       'settings': '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
       'book-marked': '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><polyline points="10 2 10 10 13 7 16 10 16 2"/>',
       'bug': '<path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/>',
@@ -1348,15 +1365,20 @@
         }
       });
 
-      // Pattern-based tag detection across feedbackText
+      // Pattern-based specific essay-skill tag detection (never content nouns, never vague catch-alls)
       const tagRules = [
-        { tag: '근거·논증 부족', regex: /(근거|논거|사례|논증|구체적|인과|이유|추상|reasoning|example|evidence)/i },
-        { tag: '문장 호응·비문', regex: /(주어|서술어|호응|비문|어색|문장 길이|복문|단문|grammar|sentence)/i },
-        { tag: '어휘·표현', regex: /(어휘|표현|단어|중복|반복|단조|어색한 말|vocabulary|wording|diction)/i },
-        { tag: '문체·어미', regex: /(어미|구어체|문체|생각한다|단정|어조|tone|style)/i },
-        { tag: '구조·전개', regex: /(구조|문단|서론|본론|결론|전환|접속|흐름|개요|structure|transition)/i },
-        { tag: '맞춤법·시제', regex: /(맞춤법|띄어쓰기|오탈자|시제|수일치|철자|tense|spelling|punctuation)/i },
-        { tag: '제시문 이해·요약', regex: /(제시문|요약|독해|논지|키워드|출제 의도|prompt|reading)/i }
+        { tag: '사례 누락', regex: /(사례|예시|구체적 경험|근거 자료|example)/i },
+        { tag: '근거 불충분', regex: /(근거|논거|뒷받침|증명|reasoning|evidence)/i },
+        { tag: '인과 비약', regex: /(인과|비약|연결고리|단정|추상|jump)/i },
+        { tag: '문장 호응 오류', regex: /(주어|서술어|호응|비문|문장 길이|복문|grammar)/i },
+        { tag: '어휘력 미흡', regex: /(어휘|단어 선택|부정확한 말|vocabulary|wording)/i },
+        { tag: '어휘 반복', regex: /(중복|반복|단조|같은 말)/i },
+        { tag: '구어체·문체 오류', regex: /(어미|구어체|문체|생각한다|어조|tone)/i },
+        { tag: '맞춤법·시제 오류', regex: /(맞춤법|띄어쓰기|오탈자|시제|수일치|spelling)/i },
+        { tag: '논제 조건 누락', regex: /(논제|조건|분량|요구사항|문항|출제 의도|prompt)/i },
+        { tag: '제시문 요약 편향', regex: /(제시문|요약|독해|논지|편향|reading)/i },
+        { tag: '비교 기준 불명확', regex: /(비교|대조|차이점|공통점|기준)/i },
+        { tag: '반론 고려 미흡', regex: /(반론|반박|한계|역지사지|대안)/i }
       ];
 
       tagRules.forEach(rule => {
@@ -1391,16 +1413,19 @@
       }
 
       if (tags.size === 0) {
-        tags.add('기타 표현 보완');
+        if (charCount > 0 && charCount < 350) tags.add('분량·근거 미흡');
+        else tags.add('구체화 부족');
       }
 
       const tagArr = Array.from(tags);
       const actionRecommendations = [];
-      if (tagArr.includes('근거·논증 부족')) actionRecommendations.push('주장 뒤에 "구체적 사례 + 해석 문장" 2단 구성 연습');
-      if (tagArr.includes('문장 호응·비문')) actionRecommendations.push('한 문장 40자 이내로 끊어 쓰며 주어-서술어 짝 맞추기');
-      if (tagArr.includes('어휘·표현')) actionRecommendations.push('추상적 형용사 대신 구체적 개념어·대체 어휘 3개 이상 적용');
-      if (tagArr.includes('문체·어미')) actionRecommendations.push('구어체("~생각한다") 배제 및 객관적 서술 어미 통일');
-      if (tagArr.includes('맞춤법·시제')) actionRecommendations.push('작성 후 3분 자가 교정(시제·맞춤법) 체크리스트 적용');
+      if (tagArr.includes('사례 누락') || tagArr.includes('근거 불충분')) actionRecommendations.push('주장 뒤에 "구체적 사례 + 해석 문장" 2단 구성 연습');
+      if (tagArr.includes('인과 비약')) actionRecommendations.push('원인과 결과 사이에 매개 개념을 넣어 연결 문장 보완');
+      if (tagArr.includes('문장 호응 오류')) actionRecommendations.push('한 문장 40자 이내로 끊어 쓰며 주어-서술어 짝 맞추기');
+      if (tagArr.includes('어휘력 미흡') || tagArr.includes('어휘 반복')) actionRecommendations.push('추상적 형용사 대신 정확한 개념어·대체 어휘 3개 이상 적용');
+      if (tagArr.includes('구어체·문체 오류')) actionRecommendations.push('구어체("~생각한다") 배제 및 객관적 서술 어미 통일');
+      if (tagArr.includes('맞춤법·시제 오류')) actionRecommendations.push('작성 후 3분 자가 교정(시제·맞춤법) 체크리스트 적용');
+      if (tagArr.includes('논제 조건 누락') || tagArr.includes('비교 기준 불명확')) actionRecommendations.push('논제 요구 행위(요약·비교·비판)별 문단 배분 점검');
       if (actionRecommendations.length === 0) {
         actionRecommendations.push('첨삭 지적 사항을 반영해 동일 논제 1회 재작성(리라이팅) 진행');
       }
@@ -1420,6 +1445,7 @@
         }
         if (missedKws.length >= 2) {
           weaknesses.unshift(`제시문·논제 요약의 주요 개념(${missedKws.slice(0, 3).join(', ')}) 반영이 다소 부족함`);
+          if (!tagArr.includes('논제 조건 누락') && tagArr.length < 4) tagArr.unshift('제시문 핵심어 누락');
           actionRecommendations.unshift(`반영된 제시문 핵심어(${missedKws.slice(0, 2).join(', ')})를 답안 문장에 명시적으로 연결하기`);
         } else if (reqVerbs.length > 0 && !feedbackText) {
           actionRecommendations.unshift(`논제 요구(${reqVerbs.join('·')})에 맞춘 문단별 역할 점검`);
@@ -1511,14 +1537,34 @@
       const fbLines = fb.split(/\n+/).map(s => s.trim()).filter(Boolean).length;
       document.getElementById('teacherFeedbackStats').textContent = `${fb.length}자 · ${fbLines}줄`;
 
-      const previewBox = document.getElementById('studentEssayPreviewBox');
-      if (st.trim()) {
-        previewBox.classList.remove('hidden');
-        previewBox.innerHTML = `<div class="font-semibold text-blue-800 mb-1">학생 원문 미리보기</div><p class="whitespace-pre-wrap">${escapeHtml(st)}</p>`;
-      } else {
-        previewBox.classList.add('hidden');
-      }
+
     }
+
+    function renderDraftWeaknessTags() {
+      const tagsEl = document.getElementById('resultWeaknessTags');
+      if (!tagsEl) return;
+      const tags = (currentAnalysisDraft && Array.isArray(currentAnalysisDraft.tags)) ? currentAnalysisDraft.tags : [];
+      if (tags.length === 0) {
+        tagsEl.innerHTML = '<span class="text-xs text-slate-400">남은 약점 태그가 없습니다.</span>';
+        return;
+      }
+      tagsEl.innerHTML = tags.map((t, idx) => `
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+          <span># ${escapeHtml(t)}</span>
+          <button type="button" class="remove-draft-tag-btn ml-0.5 rounded-full hover:bg-rose-200 text-rose-700 w-4 h-4 inline-flex items-center justify-center leading-none" data-idx="${idx}" title="태그 삭제" aria-label="태그 삭제">×</button>
+        </span>
+      `).join('');
+    }
+
+    document.getElementById('resultWeaknessTags').addEventListener('click', (e) => {
+      const btn = e.target.closest('.remove-draft-tag-btn');
+      if (!btn || !currentAnalysisDraft || !Array.isArray(currentAnalysisDraft.tags)) return;
+      const idx = Number(btn.dataset.idx);
+      if (Number.isInteger(idx) && idx >= 0 && idx < currentAnalysisDraft.tags.length) {
+        currentAnalysisDraft.tags.splice(idx, 1);
+        renderDraftWeaknessTags();
+      }
+    });
 
     async function handleAnalyzeEssay() {
       const title = document.getElementById('essayTitleInput').value.trim() || '제목 없는 글쓰기 과제';
@@ -1565,8 +1611,7 @@
       document.getElementById('resultWeaknessesText').value = result.weaknesses.map(w => `• ${w}`).join('\n');
       document.getElementById('resultActionPlanText').value = result.actionPlan;
 
-      const tagsEl = document.getElementById('resultWeaknessTags');
-      tagsEl.innerHTML = result.tags.map(t => `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800"># ${escapeHtml(t)}</span>`).join('');
+      renderDraftWeaknessTags();
 
       document.getElementById('analysisResultCard').classList.remove('hidden');
       document.getElementById('analysisResultCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2426,7 +2471,7 @@
       let passageImages = [];
       let guideImages = [];
 
-      function compressImageDataUrl(dataUrl, maxDim = 1800) {
+      function compressImageDataUrl(dataUrl, maxDim = 2400) {
         return new Promise((resolve) => {
           const img = new Image();
           img.onload = () => {
@@ -2438,10 +2483,12 @@
               c.width = w;
               c.height = h;
               const ctx = c.getContext('2d');
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0, 0, w, h);
               ctx.drawImage(img, 0, 0, w, h);
-              resolve({ dataUrl: c.toDataURL('image/jpeg', 0.88), mimeType: 'image/jpeg' });
+              resolve({ dataUrl: c.toDataURL('image/jpeg', 0.94), mimeType: 'image/jpeg' });
             } catch (e) {
               resolve({ dataUrl, mimeType: 'image/jpeg' });
             }
@@ -2663,17 +2710,17 @@
 
         const questionSents = allSents
           .filter(s => /[?？]/.test(s) || /(요약|비교|대조|비판|평가|설명|서술|논하시오|답하시오|자\s*내외|관점|적용)/.test(s))
-          .slice(0, 5);
+          .slice(0, 8);
 
         const passageCore = pSents
           .filter(s => !questionSents.includes(s))
           .sort((a, b) => scoreSent(b) - scoreSent(a))
-          .slice(0, 5);
+          .slice(0, 10);
 
         const guideCore = gSents
           .filter(s => !questionSents.includes(s))
           .sort((a, b) => scoreSent(b) - scoreSent(a))
-          .slice(0, 5);
+          .slice(0, 8);
 
         const sections = [];
         if (noteText) {
@@ -3062,6 +3109,7 @@
         'konkuk_2026': { type: 'report', url: 'https://admission.konkuk.ac.kr/bbs/admission/6282/1216633/download.do' },
         'konkuk_2025': { type: 'report', url: 'https://www.konkuk.ac.kr/bbs/admission/6282/1216575/download.do' },
         'konkuk_2023': { type: 'report', url: 'https://admission.konkuk.ac.kr/bbs/admission/6287/1216429/download.do', note: '2023학년도 건국대학교 인문사회계Ⅰ 기출문제 PDF입니다.' },
+        'konkuk_2021': { type: 'report', url: 'https://www.myingang.com/upload/board/21_%EA%B1%B4%EA%B5%AD%EB%8C%80_%EA%B8%B0%EC%B6%9C.pdf' },
         'dongguk_2026': { type: 'report', url: 'https://ipsi.dongguk.edu/upload/file/20260325134150YJEL7X.PDF' },
         'hongik_2026': { type: 'report', url: 'https://cdn013.negagea.net/dgsmidc/omr/seoul/web/univ_info2026/%ED%99%8D%EC%9D%B5%EB%8C%80%ED%95%99%EA%B5%90%28%EC%84%B8%EC%A2%85%29/%ED%99%8D%EC%9D%B5%EB%8C%80%ED%95%99%EA%B5%90%28%EC%84%B8%EC%A2%85%29_2026%ED%95%99%EB%85%84%EB%8F%84_%EC%84%A0%ED%96%89%ED%95%99%EC%8A%B5%EC%98%81%ED%96%A5%ED%8F%89%EA%B0%80.pdf', note: '2026학년도 홍익대(세종) 선행학습 영향평가 보고서(인문·자연 논술 포함)입니다.' },
         'dongguk_2025': { type: 'report', url: 'https://ipsi.dongguk.edu/upload/file/20250328091635XM8SXU.PDF' },
@@ -3860,6 +3908,44 @@
       let cachedNotices = [];
       let pendingDeleteAccountId = '';
 
+      function getSeenNoticeIds() {
+        try {
+          const raw = safeGetItem('tutor_seen_notices_' + (currentUserId || 'anon'));
+          const arr = JSON.parse(raw || '[]');
+          return Array.isArray(arr) ? arr : [];
+        } catch (e) { return []; }
+      }
+
+      function markNoticesSeen(ids) {
+        const cur = new Set(getSeenNoticeIds());
+        (ids || []).forEach(id => { if (id) cur.add(id); });
+        safeSetItem('tutor_seen_notices_' + (currentUserId || 'anon'), JSON.stringify(Array.from(cur)));
+        updateNoticeUnreadDot();
+      }
+
+      function updateNoticeUnreadDot() {
+        const dot = document.getElementById('noticeUnreadDot');
+        if (!dot) return;
+        const seen = getSeenNoticeIds();
+        const hasUnread = cachedNotices.some(n => n && n.id && !seen.includes(n.id));
+        dot.classList.toggle('hidden', !hasUnread);
+      }
+
+      function showNoticesListView() {
+        document.getElementById('noticeDetailView').classList.add('hidden');
+        document.getElementById('noticesListView').classList.remove('hidden');
+      }
+
+      function showNoticeDetailView(notice) {
+        if (!notice) return;
+        document.getElementById('noticeDetailTitle').textContent = notice.title || '';
+        document.getElementById('noticeDetailTime').textContent = (notice.createdAt || '') + (notice.updatedAt ? ` (수정: ${notice.updatedAt})` : '');
+        document.getElementById('noticeDetailBody').textContent = notice.body || '';
+        document.getElementById('noticesListView').classList.add('hidden');
+        document.getElementById('noticeDetailView').classList.remove('hidden');
+        markNoticesSeen([notice.id]);
+      }
+
       async function fetchNotices() {
         if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
           try {
@@ -3872,8 +3958,7 @@
         } else {
           try { cachedNotices = JSON.parse(safeGetItem('tutor_local_notices_v1') || '[]'); } catch (e) { cachedNotices = []; }
         }
-        const dot = document.getElementById('noticeUnreadDot');
-        if (dot) dot.classList.toggle('hidden', cachedNotices.length === 0);
+        updateNoticeUnreadDot();
       }
 
       function renderNoticesList() {
@@ -3881,36 +3966,46 @@
         const writeBtn = document.getElementById('toggleWriteNoticeBtn');
         if (writeBtn) writeBtn.classList.toggle('hidden', !isJace48());
         if (!cachedNotices.length) {
-          listEl.innerHTML = '<div class="py-10 text-center text-xs text-slate-400">등록된 공지사항이 없습니다.</div>';
+          listEl.innerHTML = '<div class="py-12 text-center text-sm text-slate-400">등록된 공지사항이 없습니다.</div>';
           return;
         }
         listEl.innerHTML = cachedNotices.map(n => `
-          <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+          <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 hover:border-indigo-300 transition">
             <div class="flex items-start justify-between gap-2">
               <button type="button" class="notice-toggle-btn text-left flex-1" data-id="${escapeHtml(n.id)}">
-                <div class="text-sm font-bold text-slate-900 hover:text-indigo-700">${escapeHtml(n.title)}</div>
-                <div class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(n.createdAt)}${n.updatedAt ? ` (수정: ${escapeHtml(n.updatedAt)})` : ''}</div>
+                <div class="text-sm sm:text-base font-bold text-slate-900 hover:text-indigo-700">${escapeHtml(n.title)}</div>
+                <div class="text-[11px] text-slate-500 mt-1">${escapeHtml(n.createdAt)}${n.updatedAt ? ` (수정: ${escapeHtml(n.updatedAt)})` : ''}</div>
               </button>
               ${isJace48() ? `
                 <div class="flex items-center gap-1 shrink-0">
-                  <button type="button" class="edit-notice-btn px-2 py-1 rounded-lg bg-white border border-slate-200 hover:bg-indigo-50 text-[11px] font-semibold text-indigo-700" data-id="${escapeHtml(n.id)}">수정</button>
-                  <button type="button" class="del-notice-btn px-2 py-1 rounded-lg bg-white border border-slate-200 hover:bg-rose-50 text-[11px] font-semibold text-rose-600" data-id="${escapeHtml(n.id)}">삭제</button>
+                  <button type="button" class="edit-notice-btn px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-indigo-50 text-xs font-semibold text-indigo-700" data-id="${escapeHtml(n.id)}">수정</button>
+                  <button type="button" class="del-notice-btn px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-rose-50 text-xs font-semibold text-rose-600" data-id="${escapeHtml(n.id)}">삭제</button>
                 </div>` : ''}
             </div>
-            <div id="notice-body-${escapeHtml(n.id)}" class="hidden pt-2 border-t border-slate-200 text-xs sm:text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">${escapeHtml(n.body)}</div>
           </div>
         `).join('');
       }
 
       const noticesModal = document.getElementById('noticesModal');
-      const closeNoticesModal = () => { noticesModal.classList.add('hidden'); noticesModal.classList.remove('flex'); };
+      const closeNoticesModal = () => {
+        noticesModal.classList.add('hidden');
+        noticesModal.classList.remove('flex');
+        showNoticesListView();
+      };
       document.getElementById('openNoticesBtn').addEventListener('click', async () => {
         await fetchNotices();
+        markNoticesSeen(cachedNotices.map(n => n.id));
+        showNoticesListView();
         renderNoticesList();
         noticesModal.classList.remove('hidden');
         noticesModal.classList.add('flex');
       });
       document.getElementById('closeNoticesBtn').addEventListener('click', closeNoticesModal);
+      document.getElementById('closeNoticesDetailBtn').addEventListener('click', closeNoticesModal);
+      document.getElementById('noticeDetailBackBtn').addEventListener('click', () => {
+        showNoticesListView();
+        renderNoticesList();
+      });
       document.getElementById('toggleWriteNoticeBtn').addEventListener('click', () => {
         document.getElementById('editNoticeId').value = '';
         document.getElementById('noticeTitleInput').value = '';
@@ -3952,8 +4047,8 @@
       document.getElementById('noticesList').addEventListener('click', async (e) => {
         const tog = e.target.closest('.notice-toggle-btn');
         if (tog) {
-          const b = document.getElementById(`notice-body-${tog.dataset.id}`);
-          if (b) b.classList.toggle('hidden');
+          const targetNotice = cachedNotices.find(n => n.id === tog.dataset.id);
+          if (targetNotice) showNoticeDetailView(targetNotice);
           return;
         }
         const editBtn = e.target.closest('.edit-notice-btn');

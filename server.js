@@ -274,7 +274,7 @@ async function discoverAvailableGeminiModels(apiKey) {
       .filter(m =>
         Array.isArray(m.supportedGenerationMethods) &&
         m.supportedGenerationMethods.includes('generateContent') &&
-        !/tts|embedding|imagen|veo|lyria|audio|live|robotics/i.test(m.name || '')
+        !/tts|embedding|imagen|veo|lyria|audio|live|robotics|transcribe|aqa/i.test(m.name || '')
       )
       .map(m => (m.name || '').replace(/^models\//, ''));
     const score = (id) => {
@@ -299,8 +299,8 @@ const CACHED_MODELS = { vision: '', chat: '' };
 
 async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   const preferred = mode === 'chat'
-    ? ['gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-4-carbon', 'gemini-4-neon']
-    : ['gemini-4-carbon', 'gemini-4-neon', 'gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite'];
+    ? ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-3.5-flash', 'gemini-2.5-pro', 'gemini-4-carbon', 'gemini-4-neon']
+    : ['gemini-2.5-flash', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-2.5-pro'];
 
   const order = CACHED_MODELS[mode]
     ? [CACHED_MODELS[mode], ...preferred.filter(m => m !== CACHED_MODELS[mode])]
@@ -309,7 +309,7 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   const errors = [];
   const tryModel = async (model) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 35000);
+    const timer = setTimeout(() => controller.abort(), 22000);
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST',
@@ -342,6 +342,7 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   for (const model of order) {
     const ok = await tryModel(model);
     if (ok) return ok;
+    await new Promise(r => setTimeout(r, 250));
   }
 
   const discovered = await discoverAvailableGeminiModels(apiKey);
@@ -361,14 +362,33 @@ app.post('/api/reflect-photos', async (req, res) => {
   }
   try {
     const parts = [{
-      text: `당신은 대입 인문논술 전문 선생님 보조입니다. 첨부된 제시문·해설·논제 사진과 메모("${note}")를 한 글자도 놓치지 말고 정확하게 읽은 뒤 아래 형식으로 핵심만 정리하세요.\n\n[핵심 개념어]\n- 쉼표로 구분된 주요 개념어 5~8개\n\n[제시문별 핵심 요지]\n- (가), (나), (다) 등 각 제시문의 핵심 주장과 논지\n\n[질문(논제) 요구사항]\n- 학생이 반드시 답해야 하는 조건(요약, 비교·대조, 비판·평가, 분량 등)\n\n[해설 핵심 포인트]\n- 채점 기준 및 감점 주의사항`
+      text: `당신은 대한민국 최상위권 대입 인문논술 전문 선생님 보조입니다.
+첨부된 제시문·해설·논제 이미지와 선생님 메모("${note}")를 작은 글자·각주·도표·수치까지 한 글자도 빠뜨리지 말고 정밀하게 판독한 뒤, 수업과 첨삭에 바로 활용할 수 있도록 아래 형식에 맞춰 **구체적이고 상세하게** 정리하세요.
+
+[핵심 개념어]
+- 제시문과 논제를 관통하는 주요 개념어 6~10개 (쉼표로 구분)
+
+[제시문별 상세 요약]
+- (가), (나), (다) 등 각 제시문마다 중심 주장, 논거(사례/실험/이론), 핵심 전제와 결론을 3~5문장으로 상세히 서술
+
+[제시문 간 관계 및 대립·연결 구도]
+- 제시문들 사이의 공통점·차이점, 대립 축, 또는 한 제시문이 다른 제시문을 어떻게 설명·비판·보완하는지 구조적으로 정리
+
+[질문(논제) 요구사항 및 작성 조건]
+- 문항별([문제 1], [문제 2] 등) 요구 행위(요약, 비교·대조, 비판·평가, 적용 등), 글자 수 분량, 배점 및 세부 조건을 빠짐없이 정리
+
+[해설 및 채점기준 핵심 포인트]
+- 모범 답안의 논리 전개 방향, 반드시 포함해야 할 핵심 논점, 학생이 흔히 놓치는 감점 주의사항`
     }];
     [...passageImages, ...guideImages].forEach(img => {
       if (img && img.dataUrl && img.dataUrl.includes(',')) {
         parts.push({ inline_data: { mime_type: img.mimeType || 'image/jpeg', data: img.dataUrl.split(',')[1] } });
       }
     });
-    const result = await callGeminiWithFallback(apiKey, { contents: [{ parts }] });
+    const result = await callGeminiWithFallback(apiKey, {
+      contents: [{ parts }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+    }, 'vision');
     if (result.text) {
       return res.json({ ok: true, summary: result.text, model: result.model });
     }
@@ -383,11 +403,30 @@ app.post('/api/analyze-essay', async (req, res) => {
   const { studentText = '', feedbackText = '', promptSummary = '' } = req.body || {};
   if (!apiKey) return res.json({ ok: false, reason: 'NO_API_KEY' });
   try {
-    const prompt = `당신은 대입 인문논술 과외 선생님 보조입니다. 아래 [반영된 제시문·논제 요약], [학생의 글], [선생님 첨삭]을 바탕으로 JSON만 반환하세요.\n반영된 제시문·논제의 핵심 개념과 요구사항을 학생 글이 얼마나 잘 충족했는지 강점과 약점에 구체적으로 연결해 작성하세요.\n키: strengths(문자열 배열 2~4개), weaknesses(문자열 배열 2~4개), tags(문자열 배열), actionPlan(다음 수업 처방 한두 문장).\n\n[반영된 제시문·논제 요약]\n${promptSummary || '(없음)'}\n\n[학생의 글]\n${studentText}\n\n[선생님 첨삭]\n${feedbackText}`;
+    const prompt = `당신은 대입 인문논술 과외 선생님 보조입니다. 아래 [반영된 제시문·논제 요약], [학생의 글], [선생님 첨삭]을 바탕으로 JSON만 반환하세요.
+
+[분석 지침]
+1. [반영된 제시문·논제 요약]이 있을 경우, 그 안에 정리된 제시문 핵심 논지, 논제 요구사항(요약·비교·비판 등), 채점기준을 기준으로 학생 글이 어떤 포인트를 잘 짚었는지(strengths)와 어떤 조건/논점을 놓쳤거나 어긋났는지(weaknesses)를 반드시 직접 연결해 구체적으로 작성하세요.
+2. tags(약점 유형 태그, 2~4개) 작성 규칙:
+   - 제시문이나 학생 글의 소재·주제어(예: '플랫폼 노동자', '노동자성 인정', '인공지능', '자유주의' 등 본문 내용 명사)는 **절대** 넣지 마세요.
+   - '논리 전개', '글쓰기 부족', '전반적 미흡' 같은 **포괄적·추상적 표현도 금지**합니다.
+   - 반드시 다음처럼 **구체적인 글쓰기·논술 약점 유형**만 4~10자 내외로 뽑으세요:
+     예시: '어휘력 미흡', '사례 누락', '근거 불충분', '인과 비약', '문장 호응 오류', '구어체·비문', '논제 조건 누락', '비교 기준 불명확', '제시문 요약 편향', '주장·근거 불일치', '개념어 오용', '반론 고려 미흡', '맞춤법·시제 오류', '결론 단정적 서술', '분량 조절 실패'
+
+키: strengths(문자열 배열 2~4개), weaknesses(문자열 배열 2~4개), tags(문자열 배열 2~4개), actionPlan(다음 수업 처방 한두 문장).
+
+[반영된 제시문·논제 요약]
+${promptSummary || '(없음)'}
+
+[학생의 글]
+${studentText}
+
+[선생님 첨삭]
+${feedbackText}`;
     const result = await callGeminiWithFallback(apiKey, {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json' }
-    });
+      generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
+    }, 'chat');
     if (!result.text) return res.json({ ok: false, reason: result.error });
     const parsed = JSON.parse(result.text);
     if (Array.isArray(parsed.strengths) && Array.isArray(parsed.weaknesses)) {
