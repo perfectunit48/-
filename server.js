@@ -185,6 +185,11 @@ const ANIME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512
   <path d="M426 62l10 24 24 10-24 10-10 24-10-24-24-10 24-10z" fill="#fde047"/>
 </svg>`;
 
+app.get('/ads.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.send('google.com, pub-2857484634759539, DIRECT, f08c47fec0942fa0\n');
+});
+
 app.get('/favicon.ico', (req, res) => { res.redirect(302, '/icon-192.png?v=5'); });
 
 app.get('/icon.svg', (req, res) => {
