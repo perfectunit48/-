@@ -754,15 +754,34 @@ app.post('/api/heartbeat', (req, res) => {
 app.get('/api/system-status', async (req, res) => {
   const userId = String(req.query.userId || '').trim().toLowerCase();
   const rec = await dbGetAccount('__sys_maintenance__');
-  const maintenance = Boolean(rec && rec.state && rec.state.enabled);
-  res.json({ ok: true, maintenance, blocked: maintenance && userId !== 'jace48' });
+  const st = (rec && rec.state) ? rec.state : {};
+  let status = st.status || (st.enabled ? 'active' : 'idle');
+  let startAt = Number(st.startAt || 0);
+  let endedAt = Number(st.endedAt || 0);
+  if (status === 'scheduled' && startAt > 0 && Date.now() >= startAt) {
+    status = 'active';
+    await dbSaveAccount('__sys_maintenance__', { name: 'SYSTEM_MAINTENANCE', pw: '', state: { status: 'active', startAt, endedAt: 0 } });
+  }
+  const isActive = status === 'active';
+  res.json({
+    ok: true,
+    status,
+    startAt,
+    endedAt,
+    maintenance: isActive,
+    blocked: isActive && userId !== 'jace48'
+  });
 });
 
 app.post('/api/admin/maintenance', async (req, res) => {
   const { userId = '', enabled = false } = req.body || {};
   if (String(userId).trim().toLowerCase() !== 'jace48') return res.status(403).json({ ok: false });
-  await dbSaveAccount('__sys_maintenance__', { name: 'SYSTEM_MAINTENANCE', pw: '', state: { enabled: Boolean(enabled) } });
-  res.json({ ok: true, enabled: Boolean(enabled) });
+  const now = Date.now();
+  const nextState = enabled
+    ? { status: 'scheduled', startAt: now + 5 * 60 * 1000, endedAt: 0 }
+    : { status: 'ended', startAt: 0, endedAt: now };
+  await dbSaveAccount('__sys_maintenance__', { name: 'SYSTEM_MAINTENANCE', pw: '', state: nextState });
+  res.json({ ok: true, ...nextState });
 });
 
 app.post('/api/report-error', async (req, res) => {
@@ -805,6 +824,58 @@ app.get('/api/admin/errors', async (req, res) => {
   const rec = await dbGetAccount('__sys_errors__');
   const errors = (rec && rec.state && Array.isArray(rec.state.errors)) ? rec.state.errors : [];
   res.json({ ok: true, errors });
+});
+
+
+// 8. 건의사항 접수 (Gemini API 장난/무의미 판별) & jace48 열람
+app.post('/api/suggestions', async (req, res) => {
+  const { userId = 'guest', category = '건의', content = '' } = req.body || {};
+  const text = String(content || '').trim();
+  if (text.length < 5) {
+    return res.json({ ok: false, rejected: true, reason: '건의 내용을 5자 이상 구체적으로 작성해 주세요.' });
+  }
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (apiKey) {
+    try {
+      const checkPrompt = `당신은 교육 서비스 건의사항 검수 관리자입니다.
+아래 사용자 건의가 실제 서비스 개선·오류 제보·기출 수정 요청·제휴 문의에 해당하는지, 아니면 장난·비속어·도배·무의미한 글자 나열인지 판별해 JSON만 반환하세요.
+키: valid(boolean), reason(거절 시 사용자에게 띄울 정중한 경고 한 문장, 승인 시 빈 문자열).
+카테고리: ${category}
+내용: ${text}`;
+      const aiRes = await callGeminiWithFallback(apiKey, {
+        contents: [{ parts: [{ text: checkPrompt }] }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.1 }
+      }, 'chat');
+      if (aiRes && aiRes.text) {
+        const parsed = JSON.parse(aiRes.text);
+        if (parsed && parsed.valid === false) {
+          return res.json({
+            ok: false,
+            rejected: true,
+            reason: parsed.reason || '장난스럽거나 무의미한 건의는 접수할 수 없습니다. 구체적인 내용을 다시 작성해 주세요.'
+          });
+        }
+      }
+    } catch (e) {}
+  }
+
+  const now = new Date(Date.now() + 9 * 3600 * 1000);
+  const pad = (x) => String(x).padStart(2, '0');
+  const ts = `${now.getUTCFullYear()}-${pad(now.getUTCMonth()+1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}`;
+  const rec = await dbGetAccount('__sys_suggestions__');
+  const suggestions = (rec && rec.state && Array.isArray(rec.state.suggestions)) ? rec.state.suggestions : [];
+  suggestions.unshift({ id: 's-' + Date.now(), userId, category, content: text.slice(0, 1000), createdAt: ts });
+  if (suggestions.length > 100) suggestions.length = 100;
+  await dbSaveAccount('__sys_suggestions__', { name: 'SYSTEM_SUGGESTIONS', pw: '', state: { suggestions } });
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/suggestions', async (req, res) => {
+  const userId = String(req.query.userId || '').trim().toLowerCase();
+  if (userId !== 'jace48') return res.status(403).json({ ok: false });
+  const rec = await dbGetAccount('__sys_suggestions__');
+  const suggestions = (rec && rec.state && Array.isArray(rec.state.suggestions)) ? rec.state.suggestions : [];
+  res.json({ ok: true, suggestions });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
