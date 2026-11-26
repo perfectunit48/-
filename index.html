@@ -2530,26 +2530,52 @@
 
       const installModal = document.getElementById('installAppModal');
       const closeInstallModal = () => { installModal.classList.add('hidden'); installModal.classList.remove('flex'); };
-      function refreshInstallButtonState() {
-        const isInstalled = Boolean(
-          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-          window.navigator.standalone === true
-        );
+      let confirmedAppInstalled = false;
+      window.addEventListener('appinstalled', () => {
+        confirmedAppInstalled = true;
+        refreshInstallButtonState();
+      });
+
+      async function checkRealAppInstalled() {
+        if (deferredInstallPrompt) return false;
+        const ua = navigator.userAgent || '';
+        const isInAppBrowser = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line/i.test(ua);
+        if (navigator.getInstalledRelatedApps) {
+          try {
+            const apps = await navigator.getInstalledRelatedApps();
+            if (Array.isArray(apps)) return apps.length > 0;
+          } catch (e) {}
+        }
+        if (confirmedAppInstalled) return true;
+        if (!isInAppBrowser) {
+          const standalone = Boolean(
+            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+            window.navigator.standalone === true
+          );
+          if (standalone) return true;
+        }
+        return false;
+      }
+
+      async function refreshInstallButtonState() {
+        const isInstalled = await checkRealAppInstalled();
         const banner = document.getElementById('alreadyInstalledBanner');
         const saveBtn = document.getElementById('saveAppToDeviceBtn');
         if (banner) banner.classList.toggle('hidden', !isInstalled);
         if (saveBtn) {
           saveBtn.disabled = isInstalled;
-          saveBtn.classList.toggle('opacity-50', isInstalled);
+          saveBtn.classList.toggle('opacity-40', isInstalled);
           saveBtn.classList.toggle('cursor-not-allowed', isInstalled);
+          saveBtn.classList.toggle('pointer-events-none', isInstalled);
         }
       }
-      document.getElementById('openInstallModalBtn').addEventListener('click', () => {
-        refreshInstallButtonState();
+      document.getElementById('openInstallModalBtn').addEventListener('click', async () => {
+        await refreshInstallButtonState();
         installModal.classList.remove('hidden');
         installModal.classList.add('flex');
       });
       document.getElementById('saveAppToDeviceBtn').addEventListener('click', async () => {
+        if (document.getElementById('saveAppToDeviceBtn').disabled) return;
         if (deferredInstallPrompt) {
           deferredInstallPrompt.prompt();
           const { outcome } = await deferredInstallPrompt.userChoice;
