@@ -185,6 +185,8 @@ const ANIME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512
   <path d="M426 62l10 24 24 10-24 10-10 24-10-24-24-10 24-10z" fill="#fde047"/>
 </svg>`;
 
+app.get('/favicon.ico', (req, res) => { res.redirect(302, '/icon-192.png?v=5'); });
+
 app.get('/icon.svg', (req, res) => {
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=3600');
@@ -200,7 +202,7 @@ app.get('/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
   res.json({
-    id: '/?v=4',
+    id: '/?v=5',
     name: '학생관리 - 과외 관리',
     short_name: '학생관리',
     description: '과외 학생 글 첨삭 요약, 진도, 출결, 학부모 안내 통합 앱',
@@ -210,9 +212,9 @@ app.get('/manifest.json', (req, res) => {
     background_color: '#f8fafc',
     theme_color: '#6366f1',
     icons: [
-      { src: '/icon-192.png?v=4', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icon-512.png?v=4', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icon.svg?v=4', sizes: 'any', type: 'image/svg+xml' }
+      { src: '/icon-192.png?v=5', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon-512.png?v=5', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon.svg?v=5', sizes: 'any', type: 'image/svg+xml' }
     ]
   });
 });
