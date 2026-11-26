@@ -458,6 +458,9 @@
           <i data-lucide="megaphone" class="w-4 h-4"></i>
           <span id="noticeUnreadDot" class="hidden absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
         </button>
+        <button id="quickSaveAllBtn" type="button" class="inline-flex items-center justify-center p-2 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition" title="현재 내용 · 자료 저장" aria-label="현재 내용 저장">
+          <i data-lucide="save" class="w-4 h-4"></i>
+        </button>
         <button id="openInstallModalBtn" class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs sm:text-sm font-semibold transition" title="스마트폰 홈 화면에 앱 설치">
           <i data-lucide="smartphone" class="w-4 h-4"></i>
           <span class="hidden sm:inline">앱 설치</span>
@@ -471,7 +474,7 @@
           <i data-lucide="book-open" class="w-4 h-4"></i>
           <span class="hidden sm:inline">설명</span>
         </button>
-        <button id="openDebugLogBtn" type="button" class="relative inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition" title="모바일 오류 확인" aria-label="모바일 오류 확인">
+        <button id="openDebugLogBtn" type="button" class="hidden relative inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition" title="모바일 오류 확인" aria-label="모바일 오류 확인">
           <i data-lucide="bug" class="w-4 h-4"></i>
           <span id="debugErrorBadge" class="hidden absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">0</span>
         </button>
@@ -882,13 +885,13 @@
       </div>
     </section>
 
-    <!-- TAB 6: Past Exams (2020~2026 Humanities Essay) -->
+    <!-- TAB 6: Past Exams (2021~2026 Humanities Essay) -->
     <section id="tab-exams" class="tab-panel hidden space-y-6 animate-fade-in">
       <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
         <div>
           <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
             <i data-lucide="book-marked" class="w-5 h-5 text-indigo-600"></i>
-            주요 12개 대학 인문논술 기출 열람 (2020~2026학년도)
+            주요 12개 대학 인문논술 기출 열람 (2021~2026학년도)
           </h2>
           <p class="text-xs sm:text-sm text-slate-500 mt-0.5">연·고·서·성·한·중·경·외·건·동·홍·숙 대학과 학년도를 선택하면 해당 대학의 선행학습 영향평가 보고서 PDF가 바로 뜹니다.</p>
         </div>
@@ -1331,8 +1334,8 @@
         </button>
       </div>
       <div class="mt-4 flex-1 overflow-y-auto space-y-3.5 text-xs sm:text-sm text-slate-700 leading-relaxed custom-scrollbar pr-1">
-        <div class="rounded-xl bg-indigo-50/70 border border-indigo-100 p-3.5">
-          <div class="font-bold text-indigo-900 mb-1">1. 학생 등록 및 상단 요약</div>
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
+          <div class="font-bold text-slate-900 mb-1">1. 학생 등록 및 상단 요약</div>
           <p>우측 상단 <strong>학생 추가(+)</strong> 버튼으로 과외 학생을 등록하면, <strong>학생관리</strong> 바로 옆에 과목·누적 글·진도·출석률이 실시간으로 표시됩니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
@@ -1347,8 +1350,8 @@
           <div class="font-bold text-slate-900 mb-1">4. 논술 기출 · 공지사항</div>
           <p><strong>논술 기출</strong> 탭에서 주요 12개 대학의 2021~2026학년도 선행학습영향평가 보고서를 열람할 수 있으며, 상단 <strong>확성기 아이콘</strong>에서 새 공지사항을 확인할 수 있습니다.</p>
         </div>
-        <div class="rounded-xl bg-indigo-50/50 border border-indigo-100 p-3.5">
-          <div class="font-bold text-indigo-900 mb-1">5. 건의사항 · 문의하기</div>
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
+          <div class="font-bold text-slate-900 mb-1">5. 건의사항 · 문의하기</div>
           <p>화면 <strong>왼쪽 아래 편지 아이콘</strong>을 누르면 서비스 오류 제보, 기출 자료 수정 요청, 제휴/광고 문의를 바로 보낼 수 있습니다.</p>
         </div>
       </div>
@@ -4320,6 +4323,8 @@
         if (dBtn) dBtn.classList.toggle('hidden', !allowed);
         const devSetBtn = document.getElementById('openDevSettingsBtn');
         if (devSetBtn) devSetBtn.classList.toggle('hidden', !allowed);
+        const bugBtn = document.getElementById('openDebugLogBtn');
+        if (bugBtn) bugBtn.classList.toggle('hidden', !allowed);
         const guideBtn = document.getElementById('openUserGuideBtn');
         if (guideBtn) guideBtn.classList.toggle('hidden', allowed);
         if (typeof syncSystemStatus === 'function') syncSystemStatus();
@@ -4843,7 +4848,16 @@
             const el = document.getElementById(id);
             if (el) obj[id] = el.value || '';
           });
-          window.localStorage.setItem(getDraftStorageKey(), JSON.stringify(obj));
+          if (typeof passageImages !== 'undefined' && Array.isArray(passageImages)) obj._passageImages = passageImages;
+          if (typeof guideImages !== 'undefined' && Array.isArray(guideImages)) obj._guideImages = guideImages;
+          const serialized = JSON.stringify(obj);
+          if (serialized.length < 3500000) {
+            window.localStorage.setItem(getDraftStorageKey(), serialized);
+          } else {
+            delete obj._passageImages;
+            delete obj._guideImages;
+            window.localStorage.setItem(getDraftStorageKey(), JSON.stringify(obj));
+          }
         } catch (e) {}
       }
       function restoreDraftInputs() {
@@ -4858,11 +4872,27 @@
               el.value = obj[id];
             }
           });
+          if (Array.isArray(obj._passageImages) && obj._passageImages.length && typeof passageImages !== 'undefined' && passageImages.length === 0) {
+            passageImages = obj._passageImages;
+            if (typeof renderImagePreviews === 'function') renderImagePreviews(passageImages, 'passageImgPreview');
+          }
+          if (Array.isArray(obj._guideImages) && obj._guideImages.length && typeof guideImages !== 'undefined' && guideImages.length === 0) {
+            guideImages = obj._guideImages;
+            if (typeof renderImagePreviews === 'function') renderImagePreviews(guideImages, 'guideImgPreview');
+          }
           if (obj.promptSummaryOutput && document.getElementById('promptSummaryBox')) {
             document.getElementById('promptSummaryBox').classList.remove('hidden');
           }
           if (typeof updateEssayInputStats === 'function') updateEssayInputStats();
         } catch (e) {}
+      }
+      const quickSaveBtn = document.getElementById('quickSaveAllBtn');
+      if (quickSaveBtn) {
+        quickSaveBtn.addEventListener('click', () => {
+          saveDraftInputs();
+          if (typeof saveState === 'function') saveState();
+          showToast('현재까지 작성한 글과 올린 자료가 저장되었습니다.', 'success');
+        });
       }
       function clearEssayDraftInputs() {
         try {
