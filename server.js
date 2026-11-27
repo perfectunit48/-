@@ -49,6 +49,11 @@ app.use((req, res, next) => {
   };
   next();
 });
+const CLIENT_BUILD_VERSION = '20261127_1415';
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
 app.use(express.static(path.join(__dirname, 'public'), { index: false, maxAge: '1h' }));
 app.get(['/', '/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -565,6 +570,75 @@ app.get('/api/korean-exam', async (req, res) => {
 });
 
 
+
+app.post('/api/korean-parse-answers', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (!apiKey) {
+    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY 미설정' });
+  }
+  const { year, type, answerText, questionText } = req.body || {};
+  const yNum = Number(year || 2026);
+  const isElective = yNum >= 2022;
+  const typeLabel = type === '수능' ? '대학수학능력시험(수능)' : `${type || ''} 학력평가`;
+
+  const prompt = isElective
+    ? `다음은 ${yNum}학년도 ${typeLabel} 국어 영역 자료입니다.
+공통과목(1~34번), 화법과 작문(35~45번), 언어와 매체(35~45번)의 공식 정답을 원문자(①,②,③,④,⑤)로 정리해 JSON만 출력하세요.
+반드시 아래 JSON 형식만 출력하고 다른 설명은 쓰지 마세요:
+{"common":{"1":"①",...,"34":"③"},"hwajak":{"35":"④",...,"45":"②"},"eonmae":{"35":"①",...,"45":"⑤"}}
+
+[정답/해설지 텍스트]
+${String(answerText || '').slice(0, 12000)}
+
+[문제지 참고 텍스트]
+${String(questionText || '').slice(0, 4000)}`
+    : `다음은 ${yNum}학년도 ${typeLabel} 국어 영역 자료입니다.
+1~45번의 공식 정답을 원문자(①,②,③,④,⑤)로 정리해 JSON만 출력하세요.
+반드시 아래 JSON 형식만 출력하고 다른 설명은 쓰지 마세요:
+{"common":{"1":"①",...,"45":"⑤"}}
+
+[정답/해설지 텍스트]
+${String(answerText || '').slice(0, 12000)}
+
+[문제지 참고 텍스트]
+${String(questionText || '').slice(0, 4000)}`;
+
+  const result = await callGeminiWithFallback(
+    apiKey,
+    { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.0, maxOutputTokens: 2048 } },
+    'chat'
+  );
+  if (!result || !result.text) {
+    return res.status(502).json({ ok: false, error: '정답 추출 실패' });
+  }
+  try {
+    const m = result.text.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('JSON 없음');
+    const parsed = JSON.parse(m[0]);
+    const norm = (obj) => {
+      const out = {};
+      const cMap = { '1':'①','2':'②','3':'③','4':'④','5':'⑤','①':'①','②':'②','③':'③','④':'④','⑤':'⑤' };
+      if (obj && typeof obj === 'object') {
+        for (const [k, v] of Object.entries(obj)) {
+          const qn = String(Number(k));
+          const sv = String(v || '').trim();
+          if (qn !== 'NaN' && cMap[sv]) out[qn] = cMap[sv];
+        }
+      }
+      return out;
+    };
+    res.json({
+      ok: true,
+      commonMap: norm(parsed.common),
+      hwajakMap: norm(parsed.hwajak),
+      eonmaeMap: norm(parsed.eonmae)
+    });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: '정답 JSON 파싱 실패' });
+  }
+});
+
 app.post('/api/korean-explain', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
@@ -1044,7 +1118,8 @@ app.get('/api/system-status', async (req, res) => {
     endedAt,
     maintenance: isActive,
     blocked: isActive && userId !== 'jace48',
-    forceLogout
+    forceLogout,
+    clientVersion: CLIENT_BUILD_VERSION
   });
 });
 
