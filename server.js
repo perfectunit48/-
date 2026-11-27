@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1530';
+const CLIENT_BUILD_VERSION = '20261127_1540';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -471,15 +471,15 @@ function fetchBinaryWithTlsBypass(urlStr, redirectsLeft = 5) {
 // 3-1. 국어 기출(2016~2026학년도 6월·9월·수능) 문제/정답 PDF 자동 탐색 API
 const KOREAN_EXAM_PRESETS = {
   '2027_수능': {
-    questionPdfUrl: '',
-    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20261119/go3/kor_main_hsj_Y78V37UD.pdf'
+    questionPdfUrl: 'https://cdn.kice.re.kr/27dae-suneung/27DaeSuneung_1.pdf',
+    answerPdfUrl: 'https://cdn.kice.re.kr/27dae-suneung/27DaeSuneung_1a.pdf'
   },
   '2027_9월': {
     questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20260902/go3/kor_main_mun_23392788.pdf',
     answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20260902/go3/korA_1_hsj_TST9XSH4_1.pdf'
   },
   '2027_6월': {
-    questionPdfUrl: '',
+    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20260604/go3/kor_main_mun_95L2VLUY.pdf',
     answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20260604/go3/kor_main_hsj_2V29RZV3.pdf'
   },
   '2026_수능': {
