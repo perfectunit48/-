@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1800';
+const CLIENT_BUILD_VERSION = '20261127_1840';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -676,6 +676,87 @@ async function searchEbsiKoreanPdf(year, type, kind) {
     return '';
   }
 }
+
+
+const GRADE_CUTS_CACHE = {};
+const VERIFIED_EBSI_CUTS = {};
+
+app.get('/api/korean-grade-cuts', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const year = String(req.query.year || '2027').replace(/[^0-9]/g, '');
+  const type = String(req.query.type || '수능').trim();
+  const key = `${year}_${type}`;
+  if (GRADE_CUTS_CACHE[key]) {
+    return res.json({ ok: true, year, type, cuts: GRADE_CUTS_CACHE[key], cached: true });
+  }
+
+  const baseCuts = {
+    ebsi: { g1: '-', g2: '-', g3: '-' },
+    megastudy: { g1: '-', g2: '-', g3: '-' },
+    mimac: { g1: '-', g2: '-', g3: '-' },
+    jongro: { g1: '-', g2: '-', g3: '-' },
+    etoos: { g1: '-', g2: '-', g3: '-' }
+  };
+  if (VERIFIED_EBSI_CUTS[key] && VERIFIED_EBSI_CUTS[key].ebsi) {
+    baseCuts.ebsi = { ...VERIFIED_EBSI_CUTS[key].ebsi };
+  }
+
+  const examLabel = type === '수능' ? '수능' : `${type} 모의평가`;
+  const q = `"${year}학년도" "${examLabel}" 국어 원점수 1등급 2등급 3등급 컷 메가스터디 대성마이맥 종로학원 이투스 EBSi`;
+  let snippets = '';
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 6000);
+    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
+      signal: c.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    });
+    clearTimeout(t);
+    if (r.ok) {
+      const html = await r.text();
+      snippets = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 12000);
+    }
+  } catch (e) {}
+
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (apiKey && snippets.length > 100) {
+    const prompt = `아래 검색 결과 텍스트에서 ${year}학년도 ${examLabel} 국어 영역의 기관별(EBSi, 메가스터디, 대성마이맥, 종로학원, 이투스) 1등급·2등급·3등급 컷을 추출하세요.
+[절대 규칙]
+- 반드시 **원점수(100점 만점 기준, 예: 91 또는 화작92/언매88)**만 추출하세요. 표준점수(120점 이상)는 절대 넣지 마세요.
+- 검색 결과 텍스트에 원점수가 명시되지 않은 기관이나 등급은 절대 추측하지 말고 "-"로 두세요.
+반드시 아래 JSON 형식만 출력하세요:
+{"ebsi":{"g1":"-","g2":"-","g3":"-"},"megastudy":{"g1":"-","g2":"-","g3":"-"},"mimac":{"g1":"-","g2":"-","g3":"-"},"jongro":{"g1":"-","g2":"-","g3":"-"},"etoos":{"g1":"-","g2":"-","g3":"-"}}
+
+[검색 결과 텍스트]
+${snippets}`;
+    try {
+      const gRes = await callGeminiWithFallback(
+        apiKey,
+        { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.0, maxOutputTokens: 1024 } },
+        'chat'
+      );
+      if (gRes && gRes.text) {
+        const m = gRes.text.match(/\{[\s\S]*\}/);
+        if (m) {
+          const parsed = JSON.parse(m[0]);
+          for (const k of ['ebsi', 'megastudy', 'mimac', 'jongro', 'etoos']) {
+            if (parsed[k] && typeof parsed[k] === 'object') {
+              ['g1', 'g2', 'g3'].forEach(gk => {
+                const v = String(parsed[k][gk] || '-').trim();
+                if (v && v !== '-' && baseCuts[k][gk] === '-') {
+                  baseCuts[k][gk] = v.slice(0, 18);
+                }
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  GRADE_CUTS_CACHE[key] = baseCuts;
+  res.json({ ok: true, year, type, cuts: baseCuts });
+});
 
 app.get('/api/korean-exam', async (req, res) => {
   const year = String(req.query.year || '2026').replace(/[^0-9]/g, '');
