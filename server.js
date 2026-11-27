@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_2300';
+const CLIENT_BUILD_VERSION = '20261127_2325';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -692,7 +692,10 @@ const VERIFIED_GRADE_CUTS = {
     single: { g1: '화작89/언매84', g2: '화작82/언매77', g3: '화작73/언매68' }
   },
   '2027_6월': {
-    single: { g1: '화작96/언매95', g2: '-', g3: '-' }
+    single: { g1: '화작96/언매95', g2: '화작90/언매89', g3: '화작82/언매81' }
+  },
+  '2025_9월': {
+    single: { g1: '화작98/언매95', g2: '화작93/언매91', g3: '화작88/언매85' }
   },
   '2026_수능': {
     jongro: { g1: '화작90/언매85', g2: '화작83/언매78', g3: '화작73/언매69' }
@@ -1007,7 +1010,19 @@ app.get('/api/korean-exam', async (req, res) => {
 
 
 
-const KOREAN_PARSED_ANSWERS_CACHE = {};
+const KOREAN_PARSED_ANSWERS_CACHE = (() => {
+  try {
+    const db = readDb();
+    return (db && db.koreanParsedAnswers) ? db.koreanParsedAnswers : {};
+  } catch (e) { return {}; }
+})();
+function saveParsedAnswersCache() {
+  try {
+    const db = readDb();
+    db.koreanParsedAnswers = KOREAN_PARSED_ANSWERS_CACHE;
+    writeDb(db);
+  } catch (e) {}
+}
 app.post('/api/korean-parse-answers', async (req, res) => {
   const _reqKey = req.body && req.body.year && req.body.type ? `${req.body.year}_${req.body.type}` : '';
   if (_reqKey && KOREAN_PARSED_ANSWERS_CACHE[_reqKey]) return res.json(KOREAN_PARSED_ANSWERS_CACHE[_reqKey]);
@@ -1097,9 +1112,20 @@ app.post('/api/korean-mock-generate', async (req, res) => {
   if (!apiKey) {
     return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY가 설정되어 있지 않습니다.' });
   }
-  const { title = 'AI 자체제작 모의고사 1회', elective = '화법과 작문', userPrompt = '', userId = '' } = req.body || {};
+  const { title = 'AI 자체제작 모의고사 1회', elective = '화법과 작문', userPrompt = '', userId = '', stream = false } = req.body || {};
   if (String(userId || '').trim().toLowerCase() !== 'jace48') {
     return res.status(403).json({ ok: false, error: 'AI 모의고사 자체제작은 jace48 계정에서만 이용할 수 있습니다.' });
+  }
+
+  const sendEvent = (obj) => {
+    if (stream && !res.writableEnded) {
+      res.write(JSON.stringify(obj) + '\n');
+    }
+  };
+  if (stream) {
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    sendEvent({ type: 'progress', pct: 10, msg: '17~27학년도 기출 난이도·출제 틀 분석 중...' });
   }
 
   const commonPolicy = `당신은 한국교육과정평가원(KICE) 수능 국어 영역 출제위원입니다.
@@ -1133,7 +1159,6 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
         const fixed = candidate.replace(/,\s*([}\]])/g, '$1').replace(/[\u0000-\u0019]+/g, ' ');
         return tryExtract(fixed);
       } catch (e2) {
-        // Recover complete passage objects if truncated mid-stream
         const recovered = [];
         const pMatches = candidate.match(/\{"range"\s*:[\s\S]*?"questions"\s*:\s*\[[\s\S]*?\]\s*\}/g) || [];
         for (const pm of pMatches) {
@@ -1170,23 +1195,31 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
   };
 
   try {
-    // Run 3 parts sequentially with gentle pause to completely avoid 429 burst limits
-    const p1 = await callPart('공통과목 독서 1~17번(총 17문항): [1~3] 독서 이론(3문항), [4~9] 인문·사회 (가)/(나)(6문항), [10~13] 과학·기술(4문항), [14~17] 법·경제(4문항). 1번부터 17번까지 실제 수능 형식으로 출제하세요.');
-    await new Promise(r => setTimeout(r, 1200));
-    const p2 = await callPart('공통과목 문학 18~34번(총 17문항): [18~21] 현대소설(4문항), [22~27] 갈래 복합(6문항), [28~31] 고전소설(4문항), [32~34] 현대시 (가)/(나)(3문항). 18번부터 34번까지 실제 수능 형식으로 출제하세요.');
-    await new Promise(r => setTimeout(r, 1200));
-    const p3 = await callPart(`선택과목 '${elective}' 35~45번(총 11문항): 평가원 ${elective} 실제 구성에 맞춰 35번부터 45번까지 빠짐없이 출제하세요.`);
+    // 2 waves (Wave 1: Reading 1~17 + Elective 35~45; Wave 2: Literature 18~34) -> fast (<1 min) and safe from 429
+    sendEvent({ type: 'progress', pct: 25, msg: `독서(1~17번) 및 ${elective}(35~45번) 출제 중...` });
+    const [p1, p3] = await Promise.all([
+      callPart('공통과목 독서 1~17번(총 17문항): [1~3] 독서 이론(3문항), [4~9] 인문·사회 (가)/(나)(6문항), [10~13] 과학·기술(4문항), [14~17] 법·경제(4문항). 1번부터 17번까지 빠짐없이 출제하세요.'),
+      callPart(`선택과목 '${elective}' 35~45번(총 11문항): 평가원 ${elective} 실제 구성에 맞춰 35번부터 45번까지 빠짐없이 출제하세요.`)
+    ]);
+    sendEvent({ type: 'progress', pct: 65, msg: '독서·선택 완료! 문학(18~34번) 출제 및 검토 중...' });
+    await new Promise(r => setTimeout(r, 400));
+    const p2 = await callPart('공통과목 문학 18~34번(총 17문항): [18~21] 현대소설(4문항), [22~27] 갈래 복합(6문항), [28~31] 고전소설(4문항), [32~34] 현대시 (가)/(나)(3문항). 18번부터 34번까지 빠짐없이 출제하세요.');
+    sendEvent({ type: 'progress', pct: 95, msg: '45문항 시험지 및 PDF 조판 정리 중...' });
+
     const passages = [...p1, ...p2, ...p3];
     if (passages.length === 0) {
       const detail = [...new Set(partErrors)].slice(0, 3).join(' / ');
-      return res.status(502).json({
-        ok: false,
-        error: `모의고사 생성에 실패했습니다. (${detail || 'AI 응답 파싱 오류'}) 다시 시도해 주세요.`
-      });
+      const errObj = { ok: false, error: `모의고사 생성에 실패했습니다. (${detail || 'AI 응답 파싱 오류'}) 다시 시도해 주세요.` };
+      if (stream) { sendEvent(Object.assign({ type: 'error' }, errObj)); return res.end(); }
+      return res.status(502).json(errObj);
     }
-    res.json({ ok: true, title, elective, passages });
+    const doneObj = { ok: true, title, elective, passages };
+    if (stream) { sendEvent(Object.assign({ type: 'done' }, doneObj)); return res.end(); }
+    res.json(doneObj);
   } catch (e) {
-    res.status(500).json({ ok: false, error: '모의고사 생성 중 오류가 발생했습니다: ' + (e.message || '') });
+    const errObj = { ok: false, error: '모의고사 생성 중 오류가 발생했습니다: ' + (e.message || '') };
+    if (stream) { sendEvent(Object.assign({ type: 'error' }, errObj)); return res.end(); }
+    res.status(500).json(errObj);
   }
 });
 
