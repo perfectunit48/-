@@ -278,9 +278,13 @@ app.get('/sitemap.xml', (req, res) => {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   const today = new Date().toISOString().slice(0, 10);
   const univSlugs = ['yonsei','korea','sogang','skku','hanyang','cau','khu','hufs','konkuk','dongguk','hongik','sookmyung'];
+  const korYears = [2027,2026,2025,2024,2023,2022,2021,2020,2019,2018,2017];
+  const korTypes = ['6','9','suneung'];
   const urls = [
     { loc: `${baseUrl}/`, priority: '1.0', changefreq: 'daily' },
-    ...univSlugs.map(u => ({ loc: `${baseUrl}/?univ=${u}`, priority: '0.8', changefreq: 'weekly' }))
+    ...univSlugs.map(u => ({ loc: `${baseUrl}/guide/${u}`, priority: '0.9', changefreq: 'weekly' })),
+    ...korYears.flatMap(y => korTypes.map(t => ({ loc: `${baseUrl}/korean/${y}-${t}`, priority: y >= 2025 ? '0.9' : '0.8', changefreq: 'monthly' }))),
+    ...univSlugs.map(u => ({ loc: `${baseUrl}/?univ=${u}`, priority: '0.7', changefreq: 'weekly' }))
   ];
   const xmlItems = urls.map(u => `  <url>
     <loc>${u.loc}</loc>
@@ -289,6 +293,128 @@ app.get('/sitemap.xml', (req, res) => {
     <priority>${u.priority}</priority>
   </url>`).join('\n');
   res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${xmlItems}\n</urlset>`);
+});
+
+
+// 2-1. Programmatic SEO 전용 공개 페이지 (/guide/:univId & /korean/:slug)
+const SEO_UNIV_INFO = {
+  yonsei: { name: '연세대학교', time: '120분', feature: '영어 제시문 · 통계 도표 분석', desc: '다면적 사고를 요구하는 3~4개 제시문 비교·해석 및 통계 자료 분석 출제. 영어 제시문 독해력과 논리적 추론이 핵심입니다.' },
+  korea: { name: '고려대학교', time: '100분', feature: '요약 · 비교 · 적용 · 비판', desc: '제시문 핵심 논지 압축 요약과 다각적 비교·평가, 구체적 사례 적용 능력 평가. 정확한 독해와 간결한 논증이 중요합니다.' },
+  sogang: { name: '서강대학교', time: '100분', feature: '2문항 · 고밀도 개념 적용', desc: '2개 문항 각 800~1,000자 내외. 다양한 분야의 지문을 통합해 현실 사회 현상을 깊이 분석하는 능력을 평가합니다.' },
+  skku: { name: '성균관대학교', time: '100분', feature: '분류 · 자료 해석 · 대안 제시', desc: '1번 분류·요약, 2번 도표·통계 해석, 3번 입장 선택 및 반론 해결 구조로 명확한 틀과 논거 전개가 핵심입니다.' },
+  hanyang: { name: '한양대학교', time: '90분', feature: '단일 문항 · 1,200자 종합', desc: '1,200자 단일 문항 중심. 제시문 간 유기적 연결과 창의적·비판적 추론을 한 편의 완결된 글로 풀어내야 합니다.' },
+  cau: { name: '중앙대학교', time: '120분', feature: '3문항 · 언어논술·경영경제', desc: '3개 문항 구성. 제시문 핵심어 중심의 논지 비교와 문학·사회 지문을 연결한 다각적 해석이 중요합니다.' },
+  khu: { name: '경희대학교', time: '120분', feature: '2~3문항 · 요약 및 논술', desc: '인문·사회계열별 출제. 제시문 분류·요약 후 사회 문제에 대한 비판적 대안을 논리적으로 서술해야 합니다.' },
+  hufs: { name: '한국외국어대학교', time: '90분', feature: '영어 제시문 포함 · 3문항', desc: '영어 제시문 독해와 한국어 제시문 간 논지 비교·대조 및 구체적 사례 적용이 핵심 평가 요소입니다.' },
+  konkuk: { name: '건국대학교', time: '100분', feature: '도표·문학 통합 · 2문항', desc: '인문사회Ⅰ(문학+인문)과 Ⅱ(도표+사회)로 구분되며, 자료 해석과 문학 작품의 주제 연결이 중요합니다.' },
+  dongguk: { name: '동국대학교', time: '90분', feature: '3문항 · 짧은 분량 정밀 답안', desc: '300~700자 내외 3문항. 분량이 짧은 만큼 불필요한 수식을 줄이고 핵심 키워드를 정확히 짚어야 합니다.' },
+  hongik: { name: '홍익대학교(서울)', time: '120분', feature: '2문항 · 각 800자 내외', desc: '사회·예술·인문 지문을 바탕으로 핵심 개념을 대비하고 현실 문제에 적용하는 논증 능력을 평가합니다.' },
+  sookmyung: { name: '숙명여자대학교', time: '100분', feature: '2문항 · 제시문 비교 및 비판', desc: '제시문 간 공통점·차이점을 구조화해 정리하고 자신의 입장을 타당한 근거로 논증하는 데 초점을 둡니다.' }
+};
+
+function renderSeoSubPage({ title, description, canonicalUrl, badge, h1, bodyHtml, relatedLinks }) {
+  const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${esc(title)}</title>
+  <meta name="description" content="${esc(description)}" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <link rel="canonical" href="${esc(canonicalUrl)}" />
+  <meta property="og:title" content="${esc(title)}" />
+  <meta property="og:description" content="${esc(description)}" />
+  <meta property="og:url" content="${esc(canonicalUrl)}" />
+  <meta property="og:site_name" content="과외 학생 관리 · 학생관리" />
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2857484634759539" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-20">
+    <div class="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+      <a href="/" class="text-sm sm:text-base font-extrabold text-slate-900">과외 학생 관리 · 학생관리</a>
+      <a href="/" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">기출 PDF · AI 해설 바로가기</a>
+    </div>
+  </header>
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-8 space-y-6">
+    <article class="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
+      <span class="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold">${esc(badge)}</span>
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-snug">${esc(h1)}</h1>
+      <div class="text-sm sm:text-base text-slate-700 leading-relaxed space-y-4">${bodyHtml}</div>
+    </article>
+    <section class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-3">
+      <h2 class="text-sm sm:text-base font-bold text-slate-900">관련 기출 · 가이드 바로가기</h2>
+      <div class="flex flex-wrap gap-2">${relatedLinks}</div>
+    </section>
+  </main>
+  <footer class="bg-slate-900 text-slate-400 text-xs py-6 text-center">
+    <a href="/" class="text-slate-200 font-bold hover:underline">과외 학생 관리 홈으로 돌아가기</a>
+  </footer>
+</body>
+</html>`;
+}
+
+app.get('/guide/:univId', (req, res) => {
+  const uid = String(req.params.univId || '').toLowerCase();
+  const u = SEO_UNIV_INFO[uid];
+  if (!u) return res.redirect(302, '/');
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const related = Object.entries(SEO_UNIV_INFO)
+    .filter(([k]) => k !== uid)
+    .map(([k, v]) => `<a href="/guide/${k}" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-xs font-semibold text-slate-700">${v.name} 2026 논술</a>`)
+    .join('');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(renderSeoSubPage({
+    title: `${u.name} 2026 인문논술 출제 경향 · 기출 보고서 | 과외 학생 관리`,
+    description: `${u.name} 인문논술 시험 시간(${u.time}), 출제 특징(${u.feature}) 및 2026학년도 선행학습 영향평가 보고서 PDF 무료 열람 안내.`,
+    canonicalUrl: `${baseUrl}/guide/${uid}`,
+    badge: `2026 인문논술 가이드 · ${u.time}`,
+    h1: `${u.name} 인문논술 출제 경향 및 2026 기출 보고서`,
+    bodyHtml: `
+      <p><strong>시험 시간 및 핵심 유형:</strong> ${u.time} · ${u.feature}</p>
+      <p>${u.desc}</p>
+      <div class="rounded-xl bg-indigo-50 border border-indigo-200 p-4 space-y-2">
+        <div class="font-bold text-indigo-900">2026학년도 선행학습 영향평가 보고서 PDF 미리보기</div>
+        <p class="text-xs text-indigo-800">메인 화면에서 로그인 없이 ${u.name} 2026 기출 보고서 PDF 전체 페이지를 바로 열람할 수 있으며, 선생님 로그인 시 2021~2026 전체 연도 조회와 학생 첨삭 관리가 가능합니다.</p>
+        <a href="/?univ=${uid}#pubSearch" class="inline-block mt-1 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold">${u.name} 2026 보고서 바로 열기</a>
+      </div>`,
+    relatedLinks: related
+  }));
+});
+
+app.get('/korean/:slug', (req, res) => {
+  const m = String(req.params.slug || '').match(/^(201[7-9]|202[0-7])-(6|9|suneung)$/);
+  if (!m) return res.redirect(302, '/');
+  const year = m[1];
+  const typeSlug = m[2];
+  const type = typeSlug === 'suneung' ? '수능' : `${typeSlug}월`;
+  const typeName = typeSlug === 'suneung' ? '대학수학능력시험(수능)' : `${typeSlug}월 모의평가(학력평가)`;
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const isElective = Number(year) >= 2022;
+  const preset = (typeof KOREAN_EXAM_PRESETS !== 'undefined' && KOREAN_EXAM_PRESETS[`${year}_${type}`]) || {};
+  const related = [2027, 2026, 2025, 2024, 2023].flatMap(y => [
+    `<a href="/korean/${y}-suneung" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-xs font-semibold text-slate-700">${y}학년도 수능 국어</a>`,
+    `<a href="/korean/${y}-9" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-xs font-semibold text-slate-700">${y}학년도 9월 모평</a>`,
+    `<a href="/korean/${y}-6" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-xs font-semibold text-slate-700">${y}학년도 6월 모평</a>`
+  ]).join('');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(renderSeoSubPage({
+    title: `${year}학년도 ${typeName} 국어 기출 문제 · 정답표 · AI 해설 | 과외 학생 관리`,
+    description: `${year}학년도 ${typeName} 국어 영역 문제지 PDF 미리보기, ${isElective ? '공통(1~34)·화법과 작문·언어와 매체 정답표' : '1~45번 정답표'} 및 Gemini AI 지문·선지 해설 제공.`,
+    canonicalUrl: `${baseUrl}/korean/${year}-${typeSlug}`,
+    badge: `국어 영역 기출 · ${year}학년도 ${type}`,
+    h1: `${year}학년도 ${typeName} 국어 기출 문제 및 정답·해설`,
+    bodyHtml: `
+      <p><strong>시험 구성:</strong> ${isElective ? '공통과목(독서·문학 1~34번, 76점) + 선택과목(화법과 작문 / 언어와 매체 35~45번, 24점)' : '통합형 국어 영역 1~45번 (화법·작문·문법·독서·문학, 100점)'}</p>
+      <p>과외 학생 관리 서비스의 <strong>국어 기출</strong> 탭에서 ${year}학년도 ${typeName} 문제지 PDF 전체 페이지를 바로 미리보기하고, ${isElective ? '공통·화작·언매 분리 정답표' : '1~45번 정답표'}와 Gemini AI 문항·지문 해설 대화 기능을 함께 활용할 수 있습니다.</p>
+      <div class="flex flex-wrap gap-2 pt-1">
+        ${preset.questionPdfUrl ? `<a href="${preset.questionPdfUrl}" target="_blank" rel="noopener" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">문제지 PDF 열기</a>` : ''}
+        ${preset.answerPdfUrl ? `<a href="${preset.answerPdfUrl}" target="_blank" rel="noopener" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold">공식 정답·해설 PDF 열기</a>` : ''}
+        <a href="/" class="px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-bold">웹앱에서 AI 해설 · 성적 관리 시작하기</a>
+      </div>`,
+    relatedLinks: related
+  }));
 });
 
 app.get('/ads.txt', (req, res) => {
