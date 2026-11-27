@@ -152,7 +152,7 @@ app.post('/api/signup', async (req, res) => {
   const existing = await dbGetAccount(userId);
   if (existing) return res.status(409).json({ error: '이미 있는 아이디입니다. 다른 아이디를 사용하거나 로그인해 주세요.' });
   await dbSaveAccount(userId, { name: name || userId, pw, state: state || {} });
-  res.json({ ok: true });
+  res.json({ ok: true, loginAt: Date.now() });
 });
 
 app.post('/api/login', async (req, res) => {
@@ -160,7 +160,7 @@ app.post('/api/login', async (req, res) => {
   const acc = await dbGetAccount(userId);
   if (!acc) return res.status(404).json({ error: '등록되지 않은 아이디입니다.' });
   if (acc.pw && acc.pw !== pw) return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
-  res.json({ ok: true, name: acc.name, state: acc.state });
+  res.json({ ok: true, name: acc.name, state: acc.state, loginAt: Date.now() });
 });
 
 app.put('/api/state/:userId', async (req, res) => {
@@ -175,11 +175,31 @@ app.put('/api/state/:userId', async (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/logout', async (req, res) => {
+  const userId = String((req.body && req.body.userId) || '').trim();
+  if (!userId) return res.json({ ok: true });
+  const now = Date.now();
+  try {
+    const rec = await dbGetAccount('__sys_logout_epochs__');
+    const map = (rec && rec.state && typeof rec.state === 'object') ? { ...rec.state } : {};
+    map[userId] = now;
+    await dbSaveAccount('__sys_logout_epochs__', { name: 'SYSTEM_LOGOUT_EPOCHS', pw: '', state: map });
+  } catch (e) {}
+  res.json({ ok: true, logoutAt: now });
+});
+
 app.get('/api/state/:userId', async (req, res) => {
   const { userId } = req.params;
+  const loginAt = Number(req.query.loginAt || 0);
   const acc = await dbGetAccount(userId);
   if (!acc) return res.status(404).json({ ok: false });
-  res.json({ ok: true, name: acc.name, state: acc.state || {} });
+  let forceLogout = false;
+  try {
+    const loRec = await dbGetAccount('__sys_logout_epochs__');
+    const loAt = Number((loRec && loRec.state && loRec.state[userId]) || 0);
+    if (loAt > 0 && loginAt < loAt) forceLogout = true;
+  } catch (e) {}
+  res.json({ ok: true, name: acc.name, state: acc.state || {}, forceLogout });
 });
 
 const ANIME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
@@ -204,6 +224,29 @@ const ANIME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512
   <line x1="166" y1="404" x2="346" y2="404" stroke="#1e1b4b" stroke-width="18" stroke-linecap="round"/>
   <path d="M426 62l10 24 24 10-24 10-10 24-10-24-24-10 24-10z" fill="#fde047"/>
 </svg>`;
+
+app.use((req, res, next) => {
+  if (req.path === '/') {
+    res.setHeader('Link', '<https://student-manager-0rsy.onrender.com/>; rel="canonical"');
+  }
+  next();
+});
+
+app.get('/llms.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.send(`# 과외생 관리 (학생관리) · 대입 인문논술 기출 보고서
+> 주요 12개 대학(연세대학교, 고려대학교, 서강대학교, 성균관대학교, 한양대학교, 중앙대학교, 경희대학교, 한국외국어대학교, 건국대학교, 동국대학교, 홍익대학교, 숙명여자대학교)의 인문논술 출제 경향과 2026학년도 선행학습 영향평가 보고서 무료 열람 및 과외 학생 통합 관리 플랫폼
+
+## 공개 기능 (로그인 없이 이용 가능)
+- 2026학년도 주요 12개 대학 선행학습 영향평가 보고서 PDF 미리보기 및 다운로드: https://student-manager-0rsy.onrender.com/
+- 대학별 출제 경향 및 대비 포인트: 연세대, 고려대, 서강대, 성균관대, 한양대, 중앙대, 경희대, 한국외대, 건국대, 동국대, 홍익대, 숙명여대
+
+## 선생님 전용 기능 (로그인 후 이용 가능)
+- 2021~2026학년도 전체 논술 기출 및 선행학습 영향평가 보고서 열람
+- 과외 학생별 논술 글 첨삭·약점 분석(제시문·해설 스크린샷 요약 반영)
+- 회차별 누적 글 데이터, 진도·출결 관리, 학부모 문자 자동 작성
+`);
+});
 
 app.get('/robots.txt', (req, res) => {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -811,7 +854,17 @@ app.post('/api/heartbeat', async (req, res) => {
 });
 
 app.get('/api/system-status', async (req, res) => {
-  const userId = String(req.query.userId || '').trim().toLowerCase();
+  const rawUserId = String(req.query.userId || '').trim();
+  const userId = rawUserId.toLowerCase();
+  const loginAt = Number(req.query.loginAt || 0);
+  let forceLogout = false;
+  if (rawUserId) {
+    try {
+      const loRec = await dbGetAccount('__sys_logout_epochs__');
+      const loAt = Number((loRec && loRec.state && loRec.state[rawUserId]) || 0);
+      if (loAt > 0 && loginAt < loAt) forceLogout = true;
+    } catch (e) {}
+  }
   const rec = await dbGetAccount('__sys_maintenance__');
   const st = (rec && rec.state) ? rec.state : {};
   let status = st.status || (st.enabled ? 'active' : 'idle');
@@ -828,7 +881,8 @@ app.get('/api/system-status', async (req, res) => {
     startAt,
     endedAt,
     maintenance: isActive,
-    blocked: isActive && userId !== 'jace48'
+    blocked: isActive && userId !== 'jace48',
+    forceLogout
   });
 });
 
