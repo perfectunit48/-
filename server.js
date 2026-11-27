@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1430';
+const CLIENT_BUILD_VERSION = '20261127_1445';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -681,9 +681,9 @@ app.post('/api/korean-explain', async (req, res) => {
    - **오답 선지 분석**: ${choiceFocus && choiceFocus !== '전체' ? `${choiceFocus}번 선지를 중심으로` : '주요 오답 선지(①~⑤)가'} 지문의 어떤 부분과 어긋나서 틀렸는지 구체적으로 설명
 3. 학생이나 과외 선생님이 바로 수업에 쓸 수 있게 명확하고 논리적인 한국어로 작성하세요.`;
 
-  const userMsg = `[시험 정보] ${year || ''}학년도 ${typeLabel} 국어 영역 ${qNo ? `${qNo}번 문항` : ''}
-[분석 대상 선지] ${choiceFocus && choiceFocus !== '전체' ? `${choiceFocus}번 중심` : '전체 선지(①~⑤)'}
-[질문] ${userQuestion || `${qNo}번 문제의 정답 이유와 오답 선지가 틀린 이유를 지문 근거로 자세히 설명해 주세요.`}
+  const userMsg = `[시험 정보] ${year || ''}학년도 ${typeLabel} 국어 영역 ${qNo > 0 ? `${qNo}번 문항` : '지문 내용 전체'}
+[분석 대상] ${qNo > 0 ? (choiceFocus && choiceFocus !== '전체' ? `${choiceFocus}번 선지 중심` : '전체 선지(①~⑤)') : '지문 독해 · 구조 · 핵심 개념 해설'}
+[질문] ${userQuestion || (qNo > 0 ? `${qNo}번 문제의 정답 이유와 오답 선지가 틀린 이유를 지문 근거로 자세히 설명해 주세요.` : '해당 지문의 핵심 구조, 주제, 어려운 개념이나 문장 의미를 알기 쉽게 설명해 주세요.')}
 
 ${examText ? `[시험지 추출 원문]\n${String(examText).slice(0, 14000)}\n` : ''}
 ${answerText ? `[정답/해설지 참고]\n${String(answerText).slice(0, 4000)}\n` : ''}`;
