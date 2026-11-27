@@ -564,6 +564,55 @@ app.get('/api/korean-exam', async (req, res) => {
   });
 });
 
+
+app.post('/api/korean-explain', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (!apiKey) {
+    return res.status(503).json({ ok: false, error: '서버에 GEMINI_API_KEY가 설정되어 있지 않습니다.' });
+  }
+  const { year, type, questionNo, choiceFocus, userQuestion, examText, answerText, pageImagesBase64 } = req.body || {};
+  const qNo = Number(questionNo || 0);
+  const typeLabel = type === '수능' ? '대학수학능력시험(수능)' : `${type || ''} 학력평가`;
+  const imgs = Array.isArray(pageImagesBase64) ? pageImagesBase64.slice(0, 3) : [];
+
+  const sysPrompt = `당신은 대한민국 수능·평가원 국어 영역 최고 전문가입니다.
+제공된 기출 시험지 원문(및 이미지/해설지 참고)을 바탕으로 학생의 질문에 정확하고 명쾌하게 답하세요.
+
+[답변 작성 원칙]
+1. 반드시 제공된 시험지 지문·문제·선지 내용을 근거로 설명하세요. 추측이나 지문에 없는 내용을 지어내지 마세요.
+2. 아래 구조로 알기 쉽게 정리하세요:
+   - **핵심 지문 근거**: 해당 문항이 묻는 지문의 핵심 문장/문단 요점
+   - **정답 선지 해설**: 정답 번호와 왜 그 선지가 지문과 정확히 일치하는지
+   - **오답 선지 분석**: ${choiceFocus && choiceFocus !== '전체' ? `${choiceFocus}번 선지를 중심으로` : '주요 오답 선지(①~⑤)가'} 지문의 어떤 부분과 어긋나서 틀렸는지 구체적으로 설명
+3. 학생이나 과외 선생님이 바로 수업에 쓸 수 있게 명확하고 논리적인 한국어로 작성하세요.`;
+
+  const userMsg = `[시험 정보] ${year || ''}학년도 ${typeLabel} 국어 영역 ${qNo ? `${qNo}번 문항` : ''}
+[분석 대상 선지] ${choiceFocus && choiceFocus !== '전체' ? `${choiceFocus}번 중심` : '전체 선지(①~⑤)'}
+[질문] ${userQuestion || `${qNo}번 문제의 정답 이유와 오답 선지가 틀린 이유를 지문 근거로 자세히 설명해 주세요.`}
+
+${examText ? `[시험지 추출 원문]\n${String(examText).slice(0, 14000)}\n` : ''}
+${answerText ? `[정답/해설지 참고]\n${String(answerText).slice(0, 4000)}\n` : ''}`;
+
+  const parts = [{ text: sysPrompt + '\n\n' + userMsg }];
+  for (const b64 of imgs) {
+    if (typeof b64 === 'string' && b64.length > 100) {
+      const clean = b64.replace(/^data:image\/\w+;base64,/, '');
+      parts.push({ inline_data: { mime_type: 'image/jpeg', data: clean } });
+    }
+  }
+
+  const result = await callGeminiWithFallback(
+    apiKey,
+    { contents: [{ parts }], generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } },
+    imgs.length > 0 ? 'vision' : 'chat'
+  );
+  if (!result || !result.text) {
+    return res.status(502).json({ ok: false, error: (result && result.error) || 'AI 해설 생성에 실패했습니다.' });
+  }
+  res.json({ ok: true, explanation: result.text, model: result.model });
+});
+
 app.get('/api/pdf-proxy', async (req, res) => {
   const targetUrl = req.query.url;
   const isDownload = req.query.download === '1';
