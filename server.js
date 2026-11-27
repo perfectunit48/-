@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_2355';
+const CLIENT_BUILD_VERSION = '20261128_0100';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -1029,24 +1029,50 @@ function saveParsedAnswersCache() {
     writeDb(db);
   } catch (e) {}
 }
+app.post('/api/korean-cache-answers', (req, res) => {
+  const { year, type, commonMap, hwajakMap, eonmaeMap } = req.body || {};
+  const key = year && type ? `${year}_${type}` : '';
+  if (key && commonMap && Object.keys(commonMap).length >= 25) {
+    KOREAN_PARSED_ANSWERS_CACHE[key] = {
+      ok: true,
+      commonMap,
+      hwajakMap: hwajakMap || {},
+      eonmaeMap: eonmaeMap || {}
+    };
+    saveParsedAnswersCache();
+  }
+  res.json({ ok: true });
+});
+
 app.post('/api/korean-parse-answers', async (req, res) => {
   const _reqKey = req.body && req.body.year && req.body.type ? `${req.body.year}_${req.body.type}` : '';
-  if (_reqKey && KOREAN_PARSED_ANSWERS_CACHE[_reqKey]) return res.json(KOREAN_PARSED_ANSWERS_CACHE[_reqKey]);
+  if (_reqKey && KOREAN_PARSED_ANSWERS_CACHE[_reqKey]) {
+    const cached = KOREAN_PARSED_ANSWERS_CACHE[_reqKey];
+    const yN = Number(req.body.year || 2026);
+    const hasAll = yN >= 2022
+      ? (Object.keys(cached.commonMap || {}).length >= 34 && Object.keys(cached.hwajakMap || {}).length >= 11 && Object.keys(cached.eonmaeMap || {}).length >= 11)
+      : (Object.keys(cached.commonMap || {}).length >= 45);
+    if (hasAll) return res.json(cached);
+  }
   res.setHeader('Cache-Control', 'no-store');
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
   if (!apiKey) {
     return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY 미설정' });
   }
-  const { year, type, answerText, pageImageBase64 } = req.body || {};
+  const { year, type, answerText, pageImageBase64, pageImagesBase64 } = req.body || {};
   const yNum = Number(year || 2026);
   const isElective = yNum >= 2022;
   const typeLabel = type === '수능' ? '대학수학능력시험(수능)' : `${type || ''} 학력평가`;
 
   const prompt = isElective
     ? `다음은 ${yNum}학년도 ${typeLabel} 국어 영역 공식 정답표/해설지 자료입니다.
-제공된 이미지 또는 텍스트에서 실제로 확인되는 공식 정답만 정확히 추출해 원문자(①,②,③,④,⑤) JSON으로 출력하세요.
+제공된 이미지와 텍스트에서 **홀수형 기준**으로:
+1) 공통과목(1~34번)
+2) 화법과 작문(35~45번)
+3) 언어와 매체(35~45번)
+모든 문항의 정답을 빠짐없이 정확히 추출해 원문자(①,②,③,④,⑤) JSON으로 출력하세요.
 [절대 규칙]
-- 자료에 명시되지 않은 번호나 과목(예: 언어와 매체가 자료에 없는 경우)은 절대 추측하거나 임의의 번호(예: 전부 ①)로 채우지 말고 빈 객체 {}로 두세요.
+- 이미지나 텍스트에 실제로 보이는 정답만 추출하고, 없는 과목/문항은 {}로 두세요.
 - 화법과 작문 답을 언어와 매체에 복사하지 마세요.
 JSON 형식만 출력:
 {"common":{"1":"①"},"hwajak":{"35":"④"},"eonmae":{"35":"②"}}
@@ -1054,7 +1080,7 @@ JSON 형식만 출력:
 [정답/해설지 텍스트]
 ${String(answerText || '').slice(0, 14000)}`
     : `다음은 ${yNum}학년도 ${typeLabel} 국어 영역 공식 정답표/해설지 자료입니다.
-자료에서 실제로 확인되는 1~45번 공식 정답만 원문자(①,②,③,④,⑤) JSON으로 출력하세요. 확인되지 않는 문항은 비워두세요.
+자료에서 **홀수형 기준** 1~45번 공식 정답을 빠짐없이 원문자(①,②,③,④,⑤) JSON으로 출력하세요.
 JSON 형식만 출력:
 {"common":{"1":"①"}}
 
@@ -1062,15 +1088,28 @@ JSON 형식만 출력:
 ${String(answerText || '').slice(0, 14000)}`;
 
   const parts = [{ text: prompt }];
-  if (typeof pageImageBase64 === 'string' && pageImageBase64.length > 100) {
-    parts.push({ inline_data: { mime_type: 'image/jpeg', data: pageImageBase64.replace(/^data:image\/\w+;base64,/, '') } });
+  const imgsList = Array.isArray(pageImagesBase64) ? pageImagesBase64.slice(0, 2) : [];
+  if (imgsList.length === 0 && typeof pageImageBase64 === 'string' && pageImageBase64.length > 100) {
+    imgsList.push(pageImageBase64);
+  }
+  for (const imgB64 of imgsList) {
+    if (typeof imgB64 === 'string' && imgB64.length > 100) {
+      parts.push({ inline_data: { mime_type: 'image/jpeg', data: imgB64.replace(/^data:image\/\w+;base64,/, '') } });
+    }
   }
 
-  const result = await callGeminiWithFallback(
+  let result = await callGeminiWithFallback(
     apiKey,
     { contents: [{ parts }], generationConfig: { temperature: 0.0, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } } },
-    pageImageBase64 ? 'vision' : 'chat'
+    imgsList.length > 0 ? 'vision' : 'chat'
   );
+  if (!result || !result.text) {
+    result = await callGeminiWithFallback(
+      apiKey,
+      { contents: [{ parts }], generationConfig: { temperature: 0.0, maxOutputTokens: 2048 } },
+      imgsList.length > 0 ? 'vision' : 'chat'
+    );
+  }
   if (!result || !result.text) {
     return res.status(502).json({ ok: false, error: '정답 추출 실패' });
   }
@@ -1090,22 +1129,27 @@ ${String(answerText || '').slice(0, 14000)}`;
       }
       return out;
     };
-    const sanity = (m) => {
-      const vals = Object.values(m);
+    const sanity = (mp) => {
+      const vals = Object.values(mp);
       if (vals.length >= 6 && new Set(vals).size <= 1) return {};
       let run = 1;
       for (let i = 1; i < vals.length; i++) {
         run = (vals[i] === vals[i - 1]) ? run + 1 : 1;
         if (run >= 7) return {};
       }
-      return m;
+      return mp;
     };
-    res.json({
+    const outObj = {
       ok: true,
       commonMap: sanity(norm(parsed.common)),
       hwajakMap: sanity(norm(parsed.hwajak)),
       eonmaeMap: sanity(norm(parsed.eonmae))
-    });
+    };
+    if (_reqKey && Object.keys(outObj.commonMap).length >= 25) {
+      KOREAN_PARSED_ANSWERS_CACHE[_reqKey] = outObj;
+      saveParsedAnswersCache();
+    }
+    res.json(outObj);
   } catch (e) {
     res.status(502).json({ ok: false, error: '정답 JSON 파싱 실패' });
   }
@@ -1205,18 +1249,27 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
   };
 
   try {
-    // 2 waves (Wave 1: Reading 1~17 + Elective 35~45; Wave 2: Literature 18~34) -> fast (<1 min) and safe from 429
-    sendEvent({ type: 'progress', pct: 25, msg: `독서(1~17번) 및 ${elective}(35~45번) 출제 중...` });
-    const [p1, p3] = await Promise.all([
-      callPart('공통과목 독서 1~17번(총 17문항): [1~3] 독서 이론(3문항), [4~9] 인문·사회 (가)/(나)(6문항), [10~13] 과학·기술(4문항), [14~17] 법·경제(4문항). 1번부터 17번까지 빠짐없이 출제하세요.'),
-      callPart(`선택과목 '${elective}' 35~45번(총 11문항): 평가원 ${elective} 실제 구성에 맞춰 35번부터 45번까지 빠짐없이 출제하세요.`)
+    // 3 gentle waves (concurrency=2): gives each passage 2x token budget for full CSAT length without 429 bursts
+    sendEvent({ type: 'progress', pct: 15, msg: '공통과목 독서(1~17번) 장문 지문 · 고난도 문항 출제 중...' });
+    const [p1a, p1b] = await Promise.all([
+      callPart('공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론 지문(800~1,000자, 3문항), [4~9] 인문·사회 주제 통합 (가)/(나) 지문(가·나 합산 2,300자 이상, 6문항, [3점] 포함). 실제 기출처럼 긴 지문과 깊이 있는 선지를 작성하세요.'),
+      callPart('공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술 추론 지문(1,700자 이상, 4문항, [3점] 포함), [14~17] 법·경제 지문(1,700자 이상, 4문항, [3점] 포함). 실제 기출처럼 긴 지문과 정밀한 추론 선지를 작성하세요.')
     ]);
-    sendEvent({ type: 'progress', pct: 65, msg: '독서·선택 완료! 문학(18~34번) 출제 및 검토 중...' });
-    await new Promise(r => setTimeout(r, 400));
-    const p2 = await callPart('공통과목 문학 18~34번(총 17문항): [18~21] 현대소설(4문항), [22~27] 갈래 복합(6문항), [28~31] 고전소설(4문항), [32~34] 현대시 (가)/(나)(3문항). 18번부터 34번까지 빠짐없이 출제하세요.');
-    sendEvent({ type: 'progress', pct: 95, msg: '45문항 시험지 및 PDF 조판 정리 중...' });
 
-    const passages = [...p1, ...p2, ...p3].map(p => {
+    sendEvent({ type: 'progress', pct: 48, msg: '공통과목 문학(18~34번) 작품 지문 · <보기> 문항 출제 중...' });
+    await new Promise(r => setTimeout(r, 350));
+    const [p2a, p2b] = await Promise.all([
+      callPart('공통과목 문학 18~27번(총 10문항): [18~21] 현대소설 지문(1,700자 이상, 인물 대사·심리 포함, 4문항), [22~27] 갈래 복합 (가) 고전시가+(나) 현대수필/시 지문(1,500자 이상, 6문항, <보 기> 포함). 18~27번 빠짐없이 출제하세요.'),
+      callPart('공통과목 문학 28~34번(총 7문항): [28~31] 고전소설 지문(1,600자 이상, 고전 문체·장면 전환 포함, 4문항), [32~34] 현대시 (가)/(나) 2작품 전문 및 3문항(<보 기> 포함). 28~34번 빠짐없이 출제하세요.')
+    ]);
+
+    sendEvent({ type: 'progress', pct: 80, msg: `선택과목(${elective} 35~45번) 출제 및 45문항 자체 검토 중...` });
+    await new Promise(r => setTimeout(r, 350));
+    const p3 = await callPart(`선택과목 '${elective}' 35~45번(총 11문항): 실제 평가원 ${elective} 시험지 구성([35~37], [38~42], [43~45] 또는 문법/매체 세트)에 맞춰 지문·발표·대화·매체 자료를 충분히 길게 작성하고 35번부터 45번까지 빠짐없이 출제하세요.`);
+
+    sendEvent({ type: 'progress', pct: 95, msg: '45문항 번호·정답 검증 및 평가원 시험지 PDF 조판 중...' });
+
+    const passages = [...p1a, ...p1b, ...p2a, ...p2b, ...p3].map(p => {
       const qs = Array.isArray(p.questions) ? p.questions.map(q => {
         const no = Number(q.no || 0);
         let stem = String(q.stem || '').trim();
@@ -1227,6 +1280,7 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
       }).sort((a, b) => a.no - b.no) : [];
       return Object.assign({}, p, { questions: qs });
     }).sort((a, b) => ((a.questions[0] && a.questions[0].no) || 99) - ((b.questions[0] && b.questions[0].no) || 99));
+
     if (passages.length === 0) {
       const detail = [...new Set(partErrors)].slice(0, 3).join(' / ');
       const errObj = { ok: false, error: `모의고사 생성에 실패했습니다. (${detail || 'AI 응답 파싱 오류'}) 다시 시도해 주세요.` };
