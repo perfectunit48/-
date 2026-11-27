@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1840';
+const CLIENT_BUILD_VERSION = '20261127_1905';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -681,6 +681,43 @@ async function searchEbsiKoreanPdf(year, type, kind) {
 const GRADE_CUTS_CACHE = {};
 const VERIFIED_EBSI_CUTS = {};
 
+async function fetchDdgWithArticles(query) {
+  const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+  let combined = '';
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 6000);
+    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      signal: c.signal,
+      headers: { 'User-Agent': ua }
+    });
+    clearTimeout(t);
+    if (!r.ok) return '';
+    const html = await r.text();
+    const snippetTxt = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 6000);
+    combined += snippetTxt + '\n';
+
+    const urls = [...html.matchAll(/uddg=(https?%3A%2F%2F[^"&]+)/gi)]
+      .map(m => decodeURIComponent(m[1]))
+      .filter(u => !u.includes('duckduckgo.com') && !u.endsWith('.pdf'))
+      .slice(0, 2);
+
+    const pages = await Promise.all(urls.map(async (u) => {
+      try {
+        const ac = new AbortController();
+        const tm = setTimeout(() => ac.abort(), 4500);
+        const pr = await fetch(u, { signal: ac.signal, headers: { 'User-Agent': ua } });
+        clearTimeout(tm);
+        if (!pr.ok) return '';
+        const phtml = await pr.text();
+        return phtml.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 6500);
+      } catch (e) { return ''; }
+    }));
+    combined += pages.filter(Boolean).join('\n');
+  } catch (e) {}
+  return combined;
+}
+
 app.get('/api/korean-grade-cuts', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const year = String(req.query.year || '2027').replace(/[^0-9]/g, '');
@@ -697,37 +734,25 @@ app.get('/api/korean-grade-cuts', async (req, res) => {
     jongro: { g1: '-', g2: '-', g3: '-' },
     etoos: { g1: '-', g2: '-', g3: '-' }
   };
-  if (VERIFIED_EBSI_CUTS[key] && VERIFIED_EBSI_CUTS[key].ebsi) {
-    baseCuts.ebsi = { ...VERIFIED_EBSI_CUTS[key].ebsi };
-  }
 
   const examLabel = type === '수능' ? '수능' : `${type} 모의평가`;
-  const q = `"${year}학년도" "${examLabel}" 국어 원점수 1등급 2등급 3등급 컷 메가스터디 대성마이맥 종로학원 이투스 EBSi`;
-  let snippets = '';
-  try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 6000);
-    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
-      signal: c.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-    });
-    clearTimeout(t);
-    if (r.ok) {
-      const html = await r.text();
-      snippets = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 12000);
-    }
-  } catch (e) {}
+  const [txt1, txt2, txt3] = await Promise.all([
+    fetchDdgWithArticles(`"${year}학년도" "${examLabel}" 국어 원점수 등급컷 메가스터디 대성마이맥`),
+    fetchDdgWithArticles(`"${year}학년도" "${examLabel}" 국어 원점수 등급컷 종로학원 이투스`),
+    fetchDdgWithArticles(`"${year}학년도" "${examLabel}" 국어 등급컷 EBSi 1등급 2등급 3등급 원점수`)
+  ]);
+  const snippets = [txt1, txt2, txt3].join('\n').slice(0, 22000);
 
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
   if (apiKey && snippets.length > 100) {
-    const prompt = `아래 검색 결과 텍스트에서 ${year}학년도 ${examLabel} 국어 영역의 기관별(EBSi, 메가스터디, 대성마이맥, 종로학원, 이투스) 1등급·2등급·3등급 컷을 추출하세요.
+    const prompt = `아래 검색·기사 본문 텍스트에서 ${year}학년도 ${examLabel} 국어 영역의 기관별(EBSi, 메가스터디, 대성마이맥, 종로학원, 이투스) **원점수** 1등급·2등급·3등급 컷을 추출하세요.
 [절대 규칙]
 - 반드시 **원점수(100점 만점 기준, 예: 91 또는 화작92/언매88)**만 추출하세요. 표준점수(120점 이상)는 절대 넣지 마세요.
-- 검색 결과 텍스트에 원점수가 명시되지 않은 기관이나 등급은 절대 추측하지 말고 "-"로 두세요.
+- 본문에 실제로 원점수가 명시된 기관과 등급만 적고, 본문에 없는 기관이나 등급은 절대 추측하지 말고 "-"로 두세요.
 반드시 아래 JSON 형식만 출력하세요:
 {"ebsi":{"g1":"-","g2":"-","g3":"-"},"megastudy":{"g1":"-","g2":"-","g3":"-"},"mimac":{"g1":"-","g2":"-","g3":"-"},"jongro":{"g1":"-","g2":"-","g3":"-"},"etoos":{"g1":"-","g2":"-","g3":"-"}}
 
-[검색 결과 텍스트]
+[수집된 기사·검색 텍스트]
 ${snippets}`;
     try {
       const gRes = await callGeminiWithFallback(
@@ -743,9 +768,7 @@ ${snippets}`;
             if (parsed[k] && typeof parsed[k] === 'object') {
               ['g1', 'g2', 'g3'].forEach(gk => {
                 const v = String(parsed[k][gk] || '-').trim();
-                if (v && v !== '-' && baseCuts[k][gk] === '-') {
-                  baseCuts[k][gk] = v.slice(0, 18);
-                }
+                if (v && v !== '-') baseCuts[k][gk] = v.slice(0, 20);
               });
             }
           }
@@ -878,6 +901,58 @@ ${String(answerText || '').slice(0, 14000)}`;
     });
   } catch (e) {
     res.status(502).json({ ok: false, error: '정답 JSON 파싱 실패' });
+  }
+});
+
+
+app.post('/api/korean-mock-generate', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (!apiKey) {
+    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY가 설정되어 있지 않습니다.' });
+  }
+  const { title = 'AI 자체제작 모의고사 1회', elective = '화법과 작문', userPrompt = '' } = req.body || {};
+
+  const commonPolicy = `당신은 한국교육과정평가원(KICE) 수능 국어 영역 출제위원입니다.
+2017~2027학년도 수능·6월·9월 모의평가의 출제 기조, 지문 밀도, 선지 함정 패턴(인과 역전, 범위 확대/축소, 개념 뒤바꾸기, <보기> 적용)을 정밀하게 반영해 출제하세요.
+목표 난이도는 1등급 컷 원점수 80점대 중반~90점대 초반(변별력 있는 중상~상 난이도, [3점] 추론·적용 문항 포함)입니다.
+[선생님/사용자 추가 요청사항]
+${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
+
+반드시 아래 순수 JSON 형식만 출력하세요(마크다운 코드블록이나 부가 설명 금지):
+{"passages":[{"range":"[1~3]","header":"[1~3] 다음 글을 읽고 물음에 답하시오.","body":"지문 본문 (문단 구분은 \\n\\n, ㉠~㉤ 등 표기 포함)","questions":[{"no":1,"stem":"1. 발문","box":"(선택) <보 기> 내용 없으면 빈 문자열","points":2,"choices":["① 선지1","② 선지2","③ 선지3","④ 선지4","⑤ 선지5"],"answer":"③","explain":"정답 및 오답 핵심 근거 1~2줄"}]}]}`;
+
+  const callPart = async (partDesc) => {
+    const prompt = `${commonPolicy}\n\n[이번에 출제할 파트]\n${partDesc}`;
+    const r = await callGeminiWithFallback(
+      apiKey,
+      { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.55, maxOutputTokens: 8192 } },
+      'chat'
+    );
+    if (!r || !r.text) return [];
+    const m = r.text.match(/\{[\s\S]*\}/);
+    if (!m) return [];
+    try {
+      const parsed = JSON.parse(m[0]);
+      return Array.isArray(parsed.passages) ? parsed.passages : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  try {
+    const [p1, p2, p3] = await Promise.all([
+      callPart('공통과목 독서 영역 1~17번(총 17문항): [1~3] 독서 이론, [4~9] 인문·사회 주제 통합(가/나 지문), [10~13] 과학·기술 추론 지문(고난도 [3점] 포함), [14~17] 법·경제 지문(고난도 [3점] 포함). 모든 지문은 실제 수능 길이로 충실히 작성하세요.'),
+      callPart('공통과목 문학 영역 18~34번(총 17문항): [18~21] 현대소설, [22~27] 갈래 복합(고전시가+수필 등), [28~31] 고전소설, [32~34] 현대시(가/나). 실제 수능 수준 작품 지문과 <보기> 감상 문항을 충실히 작성하세요.'),
+      callPart(`선택과목 '${elective}' 영역 35~45번(총 11문항): 평가원 ${elective} 실제 문항 구성([35~37], [38~42], [43~45] 등)에 맞춰 35번부터 45번까지 빠짐없이 출제하세요.`)
+    ]);
+    const passages = [...p1, ...p2, ...p3];
+    if (passages.length === 0) {
+      return res.status(502).json({ ok: false, error: '모의고사 생성 중 응답을 해석하지 못했습니다. 다시 시도해 주세요.' });
+    }
+    res.json({ ok: true, title, elective, passages });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: '모의고사 생성 중 오류가 발생했습니다.' });
   }
 });
 
