@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1745';
+const CLIENT_BUILD_VERSION = '20261127_1755';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -166,6 +166,7 @@ app.post('/api/signup', async (req, res) => {
   const existing = await dbGetAccount(userId);
   if (existing) return res.status(409).json({ error: '이미 있는 아이디입니다. 다른 아이디를 사용하거나 로그인해 주세요.' });
   await dbSaveAccount(userId, { name: name || userId, pw, state: state || {} });
+  await recordUserSeen(userId, true);
   res.json({ ok: true, loginAt: Date.now() });
 });
 
@@ -174,6 +175,7 @@ app.post('/api/login', async (req, res) => {
   const acc = await dbGetAccount(userId);
   if (!acc) return res.status(404).json({ error: '등록되지 않은 아이디입니다.' });
   if (acc.pw && acc.pw !== pw) return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
+  await recordUserSeen(userId, true);
   res.json({ ok: true, name: acc.name, state: acc.state, loginAt: Date.now() });
 });
 
@@ -209,6 +211,7 @@ app.get('/api/state/:userId', async (req, res) => {
   const loginAt = Number(req.query.loginAt || 0);
   const acc = await dbGetAccount(userId);
   if (!acc) return res.status(404).json({ ok: false });
+  recordUserSeen(userId, false).catch(() => {});
   let forceLogout = false;
   try {
     const loRec = await dbGetAccount('__sys_logout_epochs__');
@@ -250,7 +253,7 @@ app.use((req, res, next) => {
 
 app.get('/llms.txt', (req, res) => {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.send(`# 과외생 관리 (학생관리) · 대입 인문논술 기출 보고서
+  res.send(`# 과외 학생 관리 (학생관리) · 대입 인문논술 기출 보고서
 > 주요 12개 대학(연세대학교, 고려대학교, 서강대학교, 성균관대학교, 한양대학교, 중앙대학교, 경희대학교, 한국외국어대학교, 건국대학교, 동국대학교, 홍익대학교, 숙명여자대학교)의 인문논술 출제 경향과 2026학년도 선행학습 영향평가 보고서 무료 열람 및 과외 학생 통합 관리 플랫폼
 
 ## 공개 기능 (로그인 없이 이용 가능)
@@ -1117,23 +1120,31 @@ app.delete('/api/notices/:id', async (req, res) => {
 
 // 7. 시스템 상태(점검 모드), 하트비트, 다른 계정 오류 수집 & jace48 개발자 모드
 const ONLINE_HEARTBEATS = {};
+const LAST_DB_HB_WRITE = {};
+
+async function recordUserSeen(userId, forcePersist = false) {
+  const uid = String(userId || '').trim();
+  if (!uid || uid.startsWith('__sys_')) return;
+  const now = Date.now();
+  ONLINE_HEARTBEATS[uid] = now;
+  const lastWrite = LAST_DB_HB_WRITE[uid] || 0;
+  if (!forcePersist && (now - lastWrite) < 20000) return;
+  LAST_DB_HB_WRITE[uid] = now;
+  try {
+    const rec = await dbGetAccount('__sys_heartbeats__');
+    const map = (rec && rec.state && typeof rec.state === 'object') ? { ...rec.state } : {};
+    for (const [k, v] of Object.entries(ONLINE_HEARTBEATS)) {
+      if (Number(v) > Number(map[k] || 0)) map[k] = Number(v);
+    }
+    map[uid] = Math.max(now, Number(map[uid] || 0));
+    await dbSaveAccount('__sys_heartbeats__', { name: 'SYSTEM_HEARTBEATS', pw: '', state: map });
+  } catch (e) {}
+}
 
 app.post('/api/heartbeat', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const { userId = '' } = req.body || {};
-  if (userId) {
-    const now = Date.now();
-    ONLINE_HEARTBEATS[userId] = now;
-    try {
-      const rec = await dbGetAccount('__sys_heartbeats__');
-      const map = (rec && rec.state && typeof rec.state === 'object') ? { ...rec.state } : {};
-      for (const [k, v] of Object.entries(ONLINE_HEARTBEATS)) {
-        if (Number(v) > Number(map[k] || 0)) map[k] = Number(v);
-      }
-      map[userId] = now;
-      await dbSaveAccount('__sys_heartbeats__', { name: 'SYSTEM_HEARTBEATS', pw: '', state: map });
-    } catch (e) {}
-  }
+  if (userId) await recordUserSeen(userId, true);
   res.json({ ok: true });
 });
 
@@ -1144,7 +1155,7 @@ app.get('/api/system-status', async (req, res) => {
   const loginAt = Number(req.query.loginAt || 0);
   let forceLogout = false;
   if (rawUserId) {
-    ONLINE_HEARTBEATS[rawUserId] = Date.now();
+    await recordUserSeen(rawUserId, false);
     try {
       const loRec = await dbGetAccount('__sys_logout_epochs__');
       const loAt = Number((loRec && loRec.state && loRec.state[rawUserId]) || 0);
