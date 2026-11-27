@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1755';
+const CLIENT_BUILD_VERSION = '20261127_1800';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -367,7 +367,7 @@ app.get('/guide/:univId', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(renderSeoSubPage({
     title: `${u.name} 2026 인문논술 출제 경향 · 기출 보고서 | 과외 학생 관리`,
-    description: `${u.name} 인문논술 시험 시간(${u.time}), 출제 특징(${u.feature}) 및 2026학년도 선행학습 영향평가 보고서 PDF 무료 열람 안내.`,
+    description: `${u.name} 2026 인문논술 출제 경향(${u.time}) 및 기출 보고서 PDF 무료 열람.`,
     canonicalUrl: `${baseUrl}/guide/${uid}`,
     badge: `2026 인문논술 가이드 · ${u.time}`,
     h1: `${u.name} 인문논술 출제 경향 및 2026 기출 보고서`,
@@ -401,7 +401,7 @@ app.get('/korean/:slug', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(renderSeoSubPage({
     title: `${year}학년도 ${typeName} 국어 기출 문제 · 정답표 · AI 해설 | 과외 학생 관리`,
-    description: `${year}학년도 ${typeName} 국어 영역 문제지 PDF 미리보기, ${isElective ? '공통(1~34)·화법과 작문·언어와 매체 정답표' : '1~45번 정답표'} 및 Gemini AI 지문·선지 해설 제공.`,
+    description: `${year}학년도 ${type} 국어 기출 문제 PDF, 정답표 및 AI 지문·선지 해설 제공.`,
     canonicalUrl: `${baseUrl}/korean/${year}-${typeSlug}`,
     badge: `국어 영역 기출 · ${year}학년도 ${type}`,
     h1: `${year}학년도 ${typeName} 국어 기출 문제 및 정답·해설`,
