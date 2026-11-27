@@ -152,7 +152,7 @@ app.post('/api/signup', async (req, res) => {
   const existing = await dbGetAccount(userId);
   if (existing) return res.status(409).json({ error: '이미 있는 아이디입니다. 다른 아이디를 사용하거나 로그인해 주세요.' });
   await dbSaveAccount(userId, { name: name || userId, pw, state: state || {} });
-  res.json({ ok: true, loginAt: Date.now() });
+  res.json({ ok: true });
 });
 
 app.post('/api/login', async (req, res) => {
@@ -160,7 +160,7 @@ app.post('/api/login', async (req, res) => {
   const acc = await dbGetAccount(userId);
   if (!acc) return res.status(404).json({ error: '등록되지 않은 아이디입니다.' });
   if (acc.pw && acc.pw !== pw) return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
-  res.json({ ok: true, name: acc.name, state: acc.state, loginAt: Date.now() });
+  res.json({ ok: true, name: acc.name, state: acc.state });
 });
 
 app.put('/api/state/:userId', async (req, res) => {
@@ -175,31 +175,11 @@ app.put('/api/state/:userId', async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/logout', async (req, res) => {
-  const userId = String((req.body && req.body.userId) || '').trim();
-  if (!userId) return res.json({ ok: true });
-  const now = Date.now();
-  try {
-    const rec = await dbGetAccount('__sys_logout_epochs__');
-    const map = (rec && rec.state && typeof rec.state === 'object') ? { ...rec.state } : {};
-    map[userId] = now;
-    await dbSaveAccount('__sys_logout_epochs__', { name: 'SYSTEM_LOGOUT_EPOCHS', pw: '', state: map });
-  } catch (e) {}
-  res.json({ ok: true, logoutAt: now });
-});
-
 app.get('/api/state/:userId', async (req, res) => {
   const { userId } = req.params;
-  const loginAt = Number(req.query.loginAt || 0);
   const acc = await dbGetAccount(userId);
   if (!acc) return res.status(404).json({ ok: false });
-  let forceLogout = false;
-  try {
-    const loRec = await dbGetAccount('__sys_logout_epochs__');
-    const loAt = Number((loRec && loRec.state && loRec.state[userId]) || 0);
-    if (loAt > 0 && loginAt < loAt) forceLogout = true;
-  } catch (e) {}
-  res.json({ ok: true, name: acc.name, state: acc.state || {}, forceLogout });
+  res.json({ ok: true, name: acc.name, state: acc.state || {} });
 });
 
 const ANIME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
@@ -224,29 +204,6 @@ const ANIME_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512
   <line x1="166" y1="404" x2="346" y2="404" stroke="#1e1b4b" stroke-width="18" stroke-linecap="round"/>
   <path d="M426 62l10 24 24 10-24 10-10 24-10-24-24-10 24-10z" fill="#fde047"/>
 </svg>`;
-
-app.use((req, res, next) => {
-  if (req.path === '/') {
-    res.setHeader('Link', '<https://student-manager-0rsy.onrender.com/>; rel="canonical"');
-  }
-  next();
-});
-
-app.get('/llms.txt', (req, res) => {
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.send(`# 과외생 관리 (학생관리) · 대입 인문논술 기출 보고서
-> 주요 12개 대학(연세대학교, 고려대학교, 서강대학교, 성균관대학교, 한양대학교, 중앙대학교, 경희대학교, 한국외국어대학교, 건국대학교, 동국대학교, 홍익대학교, 숙명여자대학교)의 인문논술 출제 경향과 2026학년도 선행학습 영향평가 보고서 무료 열람 및 과외 학생 통합 관리 플랫폼
-
-## 공개 기능 (로그인 없이 이용 가능)
-- 2026학년도 주요 12개 대학 선행학습 영향평가 보고서 PDF 미리보기 및 다운로드: https://student-manager-0rsy.onrender.com/
-- 대학별 출제 경향 및 대비 포인트: 연세대, 고려대, 서강대, 성균관대, 한양대, 중앙대, 경희대, 한국외대, 건국대, 동국대, 홍익대, 숙명여대
-
-## 선생님 전용 기능 (로그인 후 이용 가능)
-- 2021~2026학년도 전체 논술 기출 및 선행학습 영향평가 보고서 열람
-- 과외 학생별 논술 글 첨삭·약점 분석(제시문·해설 스크린샷 요약 반영)
-- 회차별 누적 글 데이터, 진도·출결 관리, 학부모 문자 자동 작성
-`);
-});
 
 app.get('/robots.txt', (req, res) => {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -451,115 +408,6 @@ function fetchBinaryWithTlsBypass(urlStr, redirectsLeft = 5) {
     r.end();
   });
 }
-
-// 3-1. 국어 기출(2016~2026학년도 6월·9월·수능) 문제/정답 PDF 자동 탐색 API
-const KOREAN_EXAM_PRESETS = {
-  '2026_수능': {
-    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20251113/go3/live_main_paper_1_kor_352K8BKR.pdf',
-    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20251113/go3/korA_1_hsj_46NL9282_1.pdf'
-  },
-  '2026_9월': {
-    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20250903/go3/kor_main_mun_O973Z9C5.pdf',
-    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20250903/go3/korA_1_hsj_K962J13R_3.pdf'
-  },
-  '2026_6월': {
-    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20250604/go3/kor_main_mun_G745R5NZ_1.pdf',
-    answerPdfUrl: ''
-  },
-  '2025_수능': {
-    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20241114/go3/korB_1_mun_Y6RJMQA1_1.pdf',
-    answerPdfUrl: ''
-  },
-  '2025_9월': {
-    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20240904/go3/kor_main_mun_86FDX88U_1.pdf',
-    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20240904/go3/kor_main_hsj_EFE33512_1.pdf'
-  },
-  '2025_6월': {
-    questionPdfUrl: '',
-    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20240604/go3/kor_main_hsj_2C42VZKT_2.pdf'
-  }
-};
-
-async function checkUrlExists(url) {
-  if (!url) return false;
-  try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 3500);
-    const r = await fetch(url, { method: 'HEAD', signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
-    clearTimeout(t);
-    return r.ok;
-  } catch (e) {
-    return false;
-  }
-}
-
-async function searchEbsiKoreanPdf(year, type, kind) {
-  const examLabel = type === '수능' ? '대학수학능력시험' : (type === '9월' ? '9월 모의평가' : '6월 모의평가');
-  const q = kind === 'mun'
-    ? `site:wdown.ebsi.co.kr "${year}학년도" "${examLabel}" 국어 문제`
-    : `site:wdown.ebsi.co.kr "${year}학년도" "${examLabel}" 국어 정답`;
-  try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 6000);
-    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
-      signal: c.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-    });
-    clearTimeout(t);
-    if (!r.ok) return '';
-    const html = await r.text();
-    const matches = [...html.matchAll(/https?:\/\/wdown\.ebsi\.co\.kr\/[^"'\s<>]+\.pdf/gi)].map(m => m[0]);
-    const execYear = Number(year) - 1;
-    const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
-    const prefix = `${execYear}${mm}`;
-    const filtered = matches.filter(u => u.includes('/go3/') && u.includes('kor') && (kind === 'mun' ? (u.includes('mun') || u.includes('paper')) : (u.includes('hsj') || u.includes('answer'))));
-    const exact = filtered.find(u => u.includes(prefix));
-    return exact || filtered[0] || '';
-  } catch (e) {
-    return '';
-  }
-}
-
-app.get('/api/korean-exam', async (req, res) => {
-  const year = String(req.query.year || '2026').replace(/[^0-9]/g, '');
-  const type = String(req.query.type || '수능').trim();
-  const yNum = Number(year);
-  if (!yNum || yNum < 2016 || yNum > 2026) {
-    return res.status(400).json({ ok: false, error: '학년도는 2016~2026 사이여야 합니다.' });
-  }
-  const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
-  const execYear = yNum - 1;
-  const preset = KOREAN_EXAM_PRESETS[`${year}_${type}`] || {};
-
-  let questionPdfUrl = preset.questionPdfUrl || '';
-  let answerPdfUrl = preset.answerPdfUrl || '';
-
-  const ttProb = `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-p-01.pdf`;
-  const ttAns = `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-s-01.pdf`;
-
-  const checks = await Promise.all([
-    !questionPdfUrl ? checkUrlExists(ttProb) : Promise.resolve(false),
-    !answerPdfUrl ? checkUrlExists(ttAns) : Promise.resolve(false)
-  ]);
-  if (!questionPdfUrl && checks[0]) questionPdfUrl = ttProb;
-  if (!answerPdfUrl && checks[1]) answerPdfUrl = ttAns;
-
-  const fallbacks = await Promise.all([
-    !questionPdfUrl ? searchEbsiKoreanPdf(year, type, 'mun') : Promise.resolve(''),
-    !answerPdfUrl ? searchEbsiKoreanPdf(year, type, 'hsj') : Promise.resolve('')
-  ]);
-  if (!questionPdfUrl && fallbacks[0]) questionPdfUrl = fallbacks[0];
-  if (!answerPdfUrl && fallbacks[1]) answerPdfUrl = fallbacks[1];
-
-  res.json({
-    ok: true,
-    year,
-    type,
-    questionPdfUrl,
-    answerPdfUrl,
-    ebsiUrl: 'https://www.ebsi.co.kr/ebs/xip/xipc/previousPaperList.ebs?targetCd=D300'
-  });
-});
 
 app.get('/api/pdf-proxy', async (req, res) => {
   const targetUrl = req.query.url;
@@ -963,17 +811,7 @@ app.post('/api/heartbeat', async (req, res) => {
 });
 
 app.get('/api/system-status', async (req, res) => {
-  const rawUserId = String(req.query.userId || '').trim();
-  const userId = rawUserId.toLowerCase();
-  const loginAt = Number(req.query.loginAt || 0);
-  let forceLogout = false;
-  if (rawUserId) {
-    try {
-      const loRec = await dbGetAccount('__sys_logout_epochs__');
-      const loAt = Number((loRec && loRec.state && loRec.state[rawUserId]) || 0);
-      if (loAt > 0 && loginAt < loAt) forceLogout = true;
-    } catch (e) {}
-  }
+  const userId = String(req.query.userId || '').trim().toLowerCase();
   const rec = await dbGetAccount('__sys_maintenance__');
   const st = (rec && rec.state) ? rec.state : {};
   let status = st.status || (st.enabled ? 'active' : 'idle');
@@ -990,8 +828,7 @@ app.get('/api/system-status', async (req, res) => {
     startAt,
     endedAt,
     maintenance: isActive,
-    blocked: isActive && userId !== 'jace48',
-    forceLogout
+    blocked: isActive && userId !== 'jace48'
   });
 });
 
