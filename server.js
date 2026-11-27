@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_0200';
+const CLIENT_BUILD_VERSION = '20261128_0300';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -1156,27 +1156,16 @@ ${String(answerText || '').slice(0, 14000)}`;
 });
 
 
-app.post('/api/korean-mock-generate', async (req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
-  if (!apiKey) {
-    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY가 설정되어 있지 않습니다.' });
-  }
-  const { title = 'AI 자체제작 모의고사 1회', elective = '화법과 작문', userPrompt = '', userId = '', stream = false } = req.body || {};
-  if (String(userId || '').trim().toLowerCase() !== 'jace48') {
-    return res.status(403).json({ ok: false, error: 'AI 모의고사 자체제작은 jace48 계정에서만 이용할 수 있습니다.' });
-  }
+const KOREAN_MOCK_JOBS = {};
 
-  const sendEvent = (obj) => {
-    if (stream && !res.writableEnded) {
-      res.write(JSON.stringify(obj) + '\n');
-    }
+async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt, apiKey }) {
+  const job = KOREAN_MOCK_JOBS[jobId];
+  const updateJob = (pct, msg) => {
+    if (!job) return;
+    job.pct = pct;
+    job.msg = msg;
+    job.updatedAt = Date.now();
   };
-  if (stream) {
-    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
-    res.setHeader('Transfer-Encoding', 'chunked');
-    sendEvent({ type: 'progress', pct: 10, msg: '17~27학년도 기출 난이도·출제 틀 분석 중...' });
-  }
 
   if (!global._korMockRecentSeeds) global._korMockRecentSeeds = [];
   const pickFresh = (pool, count = 1) => {
@@ -1186,8 +1175,8 @@ app.post('/api/korean-mock-generate', async (req, res) => {
     const shuffled = [...src].sort(() => Math.random() - 0.5);
     const chosen = shuffled.slice(0, count);
     global._korMockRecentSeeds.push(...chosen);
-    if (global._korMockRecentSeeds.length > 35) {
-      global._korMockRecentSeeds = global._korMockRecentSeeds.slice(-35);
+    if (global._korMockRecentSeeds.length > 40) {
+      global._korMockRecentSeeds = global._korMockRecentSeeds.slice(-40);
     }
     return chosen;
   };
@@ -1195,13 +1184,13 @@ app.post('/api/korean-mock-generate', async (req, res) => {
   const [tHum] = pickFresh(['조선 후기 실학파의 인식론과 이용후생(가)/(나)', '고대 동양의 예악 사상과 근대 시민 윤리(가)/(나)', '현상학과 해석학의 의미 이해 이론(가)/(나)', '언어철학의 지시 이론과 화용론(가)/(나)', '미학에서의 숭고 개념과 현대 예술론(가)/(나)', '역사 서술의 객관성과 사료 해석(가)/(나)'], 1);
   const [tSci] = pickFresh(['세포 내 자가포식과 리소좀 분해 메커니즘', '열역학 제2법칙과 비평형 통계역학의 엔트로피', '디지털 영상 압축과 이산 코사인 변환(DCT)', '항생제 내성 박테리아의 유전자 수평 전달', '인공신경망의 역전파와 경사 소실 문제', '대기 복사 평형과 구름 알베도 피드백', '양자 암호 키 분배와 광자 편광 상태'], 1);
   const [tLaw] = pickFresh(['행정행위의 부관과 비례의 원칙', '계약 해제와 원상회복 의무 및 손해배상', '불완전 경쟁 시장의 가격 차별과 후생 변화', '중앙은행의 통화 정책과 유동성 함정', '저작권법상 공정이용 법리와 변형적 이용', '채권자취소권과 사해행위의 성립 요건'], 1);
-  const [wModNov] = pickFresh(['염상섭 계열의 도시 지식인 심리 소설(가상 창작/재구성)', '채만식·박태원 계열의 풍자·세태 소설', '황순원·오영수 계열의 서정적 단편 소설', '김승옥·이청준 계열의 1960년대 내면 의식 소설', '박완서·윤흥길 계열의 가족사·현대사 소설'], 1);
+  const [wModNov] = pickFresh(['염상섭 계열의 도시 지식인 심리 소설', '채만식·박태원 계열의 풍자·세태 소설', '황순원·오영수 계열의 서정적 단편 소설', '김승옥·이청준 계열의 1960년대 내면 의식 소설', '박완서·윤흥길 계열의 가족사·현대사 소설'], 1);
   const [wGal] = pickFresh(['조선 전기 강호가도 시조/가사 + 현대 수필', '조선 후기 사설시조 + 고전 한문 수필', '고려 속요/경기체가 + 현대 비평 수필', '유배 가사 + 현대 산문 수필'], 1);
   const [wClsNov] = pickFresh(['영웅 군담 소설(새로운 인물·전투 서사)', '가정·쟁총형 고전 소설(새로운 가문 서사)', '애정·전기 소설(새로운 만남과 시련 서사)', '판소리계 우화·풍자 소설(새로운 풍자 서사)'], 1);
   const [wModPoem] = pickFresh(['생명파·자연 서정 현대시 2편', '모더니즘·도시 감각 현대시 2편', '민중·역사 성찰 현대시 2편', '전통 정서·존재 탐구 현대시 2편'], 1);
 
   const uniquePromptSeed = `출제 고유 시드: ${Date.now()}-${Math.floor(Math.random()*100000)}
-이번 회차 배정 제재(반드시 이전 회차와 다른 새로운 지문·작품으로 창작/구성):
+이번 회차 배정 제재(이전 회차와 겹치지 않는 새로운 지문·작품):
 - 독서 이론: ${tTheory}
 - 인문·사회(가/나): ${tHum}
 - 과학·기술: ${tSci}
@@ -1211,23 +1200,23 @@ app.post('/api/korean-mock-generate', async (req, res) => {
 - 고전소설: ${wClsNov}
 - 현대시(가/나): ${wModPoem}`;
 
-  const commonPolicy = `당신은 한국교육과정평가원(KICE) 수능 국어 영역 출제위원입니다.
-2017~2027학년도 수능·6월·9월 모의평가의 출제 기조, 실제 수능 지문 분량과 밀도, 선지 함정 패턴(인과 역전, 범위 확대/축소, 개념 뒤바꾸기, <보기> 적용)을 정밀하게 반영해 출제하세요.
+  const commonPolicy = `당신은 한국교육과정평가원(KICE) 수능 국어 영역 수석 출제위원입니다.
+2017~2027학년도 수능(특히 최신 2027학년도 수능 국어)의 출제 기조, 실제 수능 지문 분량과 논리 밀도, 선지 함정 패턴(인과 역전, 범위 확대/축소, 개념 뒤바꾸기, <보 기> 적용)을 극한으로 정밀하게 반영해 출제하세요.
 목표 난이도는 1등급 컷 원점수 80점대 중반~90점대 초반(변별력 있는 중상~상 난이도, [3점] 추론·적용 문항 포함)입니다.
-[분량 및 문항 수 필수 조건]
-- 독서 지문은 실제 평가원 기출처럼 충분히 길고 깊이 있게 작성하세요([1~3] 700자 이상, [4~9] (가)/(나) 합산 2,000자 이상, [10~13]·[14~17] 각 1,500자 이상).
-- <보 기> 문항은 실제 수능처럼 구체적 사례·자료·비평을 180~320자 분량으로 충실히 작성하세요.
+[분량 · 최신 2027 평가원 문항 틀 필수 조건]
+- 독서 지문은 실제 2027 수능 PDF와 동일한 분량과 밀도로 작성하세요([1~3] 900자+, [4~9] (가)/(나) 합산 2,600자+, [10~13]·[14~17] 각 1,800자+).
+- 문학 지문도 실제 수능처럼 대사·서술·시 연이 충분히 살아있는 완성도 높은 분량으로 작성하세요.
+- box 필드(<보 기> 내용) 안에는 절대 "<보 기>"나 "<보기>" 제목 글자를 쓰지 마세요.
+- 어휘 문항은 반드시 최신 평가원 형식("문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?" 또는 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?")으로 출제하고, 어휘 문항의 box는 반드시 빈 문자열("")로 두세요.
+- stem 안에 [학습 활동] 본문이나 비교표를 섞어 넣지 말고, 추가 자료는 box 필드에 넣으세요.
 - 모든 문항의 stem 앞에는 반드시 문항 번호("1. ", "2. " ... "45. ")를 붙이고, 지정된 범위의 모든 번호를 1문항도 빠짐없이 출제하세요.
-[출제 자체 검토 기준]
-1. 모든 문항의 정답 선지는 지문·<보기>의 근거와 100% 논리적으로 일치해야 합니다.
-2. 나머지 4개 오답 선지는 지문 내용과 어긋나는 명확한 오답 근거를 갖추어야 하며 복수 정답이 없어야 합니다.
 [회차별 다양성 지침]
 ${uniquePromptSeed}
 [추가 요청사항]
-${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
+${userPrompt || '2027학년도 수능 국어와 동등한 최고 난이도·완성도로 균형 있게 출제'}
 
 반드시 아래 순수 JSON 형식만 출력하세요:
-{"passages":[{"range":"[1~3]","header":"[1~3] 다음 글을 읽고 물음에 답하시오.","body":"지문 본문(문단 구분은 \n\n, ㉠~㉤ 포함)","questions":[{"no":1,"stem":"1. 발문","box":"<보 기> 내용 없으면 빈 문자열","points":2,"choices":["① 선지1","② 선지2","③ 선지3","④ 선지4","⑤ 선지5"],"answer":"③","explain":"정답 및 오답 핵심 근거 1~2줄"}]}]}`;
+{"passages":[{"range":"[1~3]","header":"[1~3] 다음 글을 읽고 물음에 답하시오.","body":"지문 본문(문단 구분은 \n\n, ㉠~㉤, ⓐ~ⓔ 포함)","questions":[{"no":1,"stem":"1. 발문","box":"<보 기> 내용 없으면 빈 문자열","points":2,"choices":["① 선지1","② 선지2","③ 선지3","④ 선지4","⑤ 선지5"],"answer":"③","explain":"정답 및 오답 핵심 근거 2~3줄"}]}]}`;
 
   const safeParsePassages = (txt) => {
     if (!txt) return [];
@@ -1259,17 +1248,16 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
   };
 
   const partErrors = [];
-  const callPart = async (partDesc) => {
-    const prompt = `${commonPolicy}\n\n[이번에 출제할 파트]\n${partDesc}`;
+  const callGeminiJson = async (promptText) => {
     const configs = [
-      { temperature: 0.78, maxOutputTokens: 8192, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
-      { temperature: 0.78, maxOutputTokens: 8192, responseMimeType: 'application/json' },
-      { temperature: 0.45, maxOutputTokens: 8192 }
+      { temperature: 0.78, maxOutputTokens: 16384, responseMimeType: 'application/json' },
+      { temperature: 0.72, maxOutputTokens: 8192, responseMimeType: 'application/json' },
+      { temperature: 0.65, maxOutputTokens: 8192 }
     ];
     for (const genCfg of configs) {
       const r = await callGeminiWithFallback(
         apiKey,
-        { contents: [{ parts: [{ text: prompt }] }], generationConfig: genCfg },
+        { contents: [{ parts: [{ text: promptText }] }], generationConfig: genCfg },
         'chat'
       );
       if (r && r.text) {
@@ -1279,31 +1267,55 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
       } else if (r && r.error) {
         partErrors.push(r.error);
       }
+      await new Promise(res => setTimeout(res, 1200));
     }
     return [];
   };
 
+  // Pass 1: Draft + Pass 2: KICE Review Committee Refinement (self-critique, expand short texts, fix dual-answers & modern formatting)
+  const draftAndRefinePart = async (partName, partDesc, expectedRange) => {
+    const draftPrompt = `${commonPolicy}\n\n[이번에 출제할 파트: ${partName}]\n${partDesc}`;
+    const draft = await callGeminiJson(draftPrompt);
+    if (!draft.length) return [];
+
+    await new Promise(res => setTimeout(res, 1000));
+    const reviewPrompt = `당신은 한국교육과정평가원(KICE) 수능 국어 검토위원장입니다.
+아래 출제 초안(${partName}, 문항 범위 ${expectedRange})을 최고 수준으로 정밀 검수하고 보완해 최종 JSON으로 출력하세요.
+[검토 및 수정 체크리스트]
+1. 지문 분량이 실제 2027 수능 PDF처럼 충분히 길고 논리적으로 치밀한가? 짧거나 피상적인 지문은 개념 설명과 추론 단서를 추가해 30% 이상 더 깊고 길게 보강하세요.
+2. ${expectedRange} 범위의 모든 문항 번호가 1문항도 빠짐없이 들어있는가? 빠진 번호가 있으면 보충하세요.
+3. 각 문항의 정답 선지가 지문·<보 기> 근거와 100% 일치하고, 나머지 4개 오답 선지가 복수 정답 여지 없이 명확히 배제되는가? 모호한 선지는 즉시 정교하게 고치세요.
+4. 어휘 문항에는 <보 기>를 넣지 말고("box":""), box 문자열 앞의 중복 "<보 기>" 문구는 제거하세요. stem 안의 [학습 활동] 본문은 box로 분리하세요.
+
+[검수 대상 초안 JSON]
+${JSON.stringify({ passages: draft }).slice(0, 26000)}
+
+동일한 JSON 스키마({"passages":[...]})로 완벽하게 수정된 최종본만 출력하세요:`;
+    const refined = await callGeminiJson(reviewPrompt);
+    return refined.length > 0 ? refined : draft;
+  };
+
   try {
-    // 3 gentle waves (concurrency=2): gives each passage 2x token budget for full CSAT length without 429 bursts
-    sendEvent({ type: 'progress', pct: 15, msg: '공통과목 독서(1~17번) 장문 지문 · 고난도 문항 출제 중...' });
-    const [p1a, p1b] = await Promise.all([
-      callPart('공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론 지문(800~1,000자, 3문항), [4~9] 인문·사회 주제 통합 (가)/(나) 지문(가·나 합산 2,300자 이상, 6문항, [3점] 포함). 실제 기출처럼 긴 지문과 깊이 있는 선지를 작성하세요.'),
-      callPart('공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술 추론 지문(1,700자 이상, 4문항, [3점] 포함), [14~17] 법·경제 지문(1,700자 이상, 4문항, [3점] 포함). 실제 기출처럼 긴 지문과 정밀한 추론 선지를 작성하세요.')
-    ]);
+    updateJob(8, '1단계: 독서 이론 · 인문·사회(가/나) 지문 심층 출제 및 검토 중...');
+    const p1a = await draftAndRefinePart('독서 1~9번', '공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론(900자+, 3문항), [4~9] 인문·사회 주제 통합 (가)/(나)(합산 2,600자+, 6문항, [3점] 포함).', '1~9번');
 
-    sendEvent({ type: 'progress', pct: 48, msg: '공통과목 문학(18~34번) 작품 지문 · <보기> 문항 출제 중...' });
-    await new Promise(r => setTimeout(r, 350));
-    const [p2a, p2b] = await Promise.all([
-      callPart('공통과목 문학 18~27번(총 10문항): [18~21] 현대소설 지문(1,700자 이상, 인물 대사·심리 포함, 4문항), [22~27] 갈래 복합 (가) 고전시가+(나) 현대수필/시 지문(1,500자 이상, 6문항, <보 기> 포함). 18~27번 빠짐없이 출제하세요.'),
-      callPart('공통과목 문학 28~34번(총 7문항): [28~31] 고전소설 지문(1,600자 이상, 고전 문체·장면 전환 포함, 4문항), [32~34] 현대시 (가)/(나) 2작품 전문 및 3문항(<보 기> 포함). 28~34번 빠짐없이 출제하세요.')
-    ]);
+    updateJob(26, '2단계: 과학·기술 · 법·경제 고난도 추론 지문 출제 및 검토 중...');
+    await new Promise(r => setTimeout(r, 1000));
+    const p1b = await draftAndRefinePart('독서 10~17번', '공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술(1,800자+, 4문항, [3점] 포함), [14~17] 법·경제(1,800자+, 4문항, [3점] 포함).', '10~17번');
 
-    sendEvent({ type: 'progress', pct: 80, msg: `선택과목(${elective} 35~45번) 출제 및 45문항 자체 검토 중...` });
-    await new Promise(r => setTimeout(r, 350));
-    const p3 = await callPart(`선택과목 '${elective}' 35~45번(총 11문항): 실제 평가원 ${elective} 시험지 구성([35~37], [38~42], [43~45] 또는 문법/매체 세트)에 맞춰 지문·발표·대화·매체 자료를 충분히 길게 작성하고 35번부터 45번까지 빠짐없이 출제하세요.`);
+    updateJob(45, '3단계: 현대소설 · 갈래 복합 작품 선정 및 문항 검토 중...');
+    await new Promise(r => setTimeout(r, 1000));
+    const p2a = await draftAndRefinePart('문학 18~27번', '공통과목 문학 18~27번(총 10문항): [18~21] 현대소설(1,800자+, 4문항), [22~27] 갈래 복합 (가) 고전시가+(나) 현대시/수필(1,600자+, 6문항).', '18~27번');
 
-    sendEvent({ type: 'progress', pct: 95, msg: '45문항 번호·정답 검증 및 평가원 시험지 PDF 조판 중...' });
+    updateJob(64, '4단계: 고전소설 · 현대시(가/나) 출제 및 <보기> 검토 중...');
+    await new Promise(r => setTimeout(r, 1000));
+    const p2b = await draftAndRefinePart('문학 28~34번', '공통과목 문학 28~34번(총 7문항): [28~31] 고전소설(1,700자+, 4문항), [32~34] 현대시 (가)/(나) 2편 전문 및 3문항.', '28~34번');
 
+    updateJob(82, `5단계: 선택과목(${elective} 35~45번) 출제 및 최종 45문항 검수 중...`);
+    await new Promise(r => setTimeout(r, 1000));
+    const p3 = await draftAndRefinePart(`선택과목 ${elective} 35~45번`, `선택과목 '${elective}' 35~45번(총 11문항): 실제 평가원 ${elective} 시험지 구성에 맞춰 지문·대화·자료·문법을 충실히 작성하고 35~45번을 모두 출제하세요.`, '35~45번');
+
+    updateJob(96, '6단계: 1~45번 문항 번호 · 2027 수능 PDF 시험지 조판 최종 정리 중...');
     const passages = [...p1a, ...p1b, ...p2a, ...p2b, ...p3].map(p => {
       const qs = Array.isArray(p.questions) ? p.questions.map(q => {
         const no = Number(q.no || 0);
@@ -1311,25 +1323,87 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
         if (no > 0 && !new RegExp('^' + no + '\\s*[\\.\\)]').test(stem)) {
           stem = `${no}. ${stem}`;
         }
-        return Object.assign({}, q, { no, stem });
+        let box = String(q.box || '').replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '').trim();
+        return Object.assign({}, q, { no, stem, box });
       }).sort((a, b) => a.no - b.no) : [];
       return Object.assign({}, p, { questions: qs });
     }).sort((a, b) => ((a.questions[0] && a.questions[0].no) || 99) - ((b.questions[0] && b.questions[0].no) || 99));
 
     if (passages.length === 0) {
       const detail = [...new Set(partErrors)].slice(0, 3).join(' / ');
-      const errObj = { ok: false, error: `모의고사 생성에 실패했습니다. (${detail || 'AI 응답 파싱 오류'}) 다시 시도해 주세요.` };
-      if (stream) { sendEvent(Object.assign({ type: 'error' }, errObj)); return res.end(); }
-      return res.status(502).json(errObj);
+      job.status = 'error';
+      job.error = `모의고사 생성에 실패했습니다. (${detail || 'AI 응답 파싱 오류'}) 다시 시도해 주세요.`;
+      return;
     }
-    const doneObj = { ok: true, title, elective, passages };
-    if (stream) { sendEvent(Object.assign({ type: 'done' }, doneObj)); return res.end(); }
-    res.json(doneObj);
+    job.status = 'done';
+    job.pct = 100;
+    job.msg = '최고 퀄리티 45문항 모의고사 제작 완료!';
+    job.result = { ok: true, title, elective, passages };
   } catch (e) {
-    const errObj = { ok: false, error: '모의고사 생성 중 오류가 발생했습니다: ' + (e.message || '') };
-    if (stream) { sendEvent(Object.assign({ type: 'error' }, errObj)); return res.end(); }
-    res.status(500).json(errObj);
+    job.status = 'error';
+    job.error = '모의고사 생성 중 오류가 발생했습니다: ' + (e.message || '');
   }
+}
+
+app.post('/api/korean-mock-generate/start', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (!apiKey) {
+    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY가 설정되어 있지 않습니다.' });
+  }
+  const { title = 'AI 자체제작 모의고사 1회', elective = '화법과 작문', userPrompt = '', userId = '' } = req.body || {};
+  if (String(userId || '').trim().toLowerCase() !== 'jace48') {
+    return res.status(403).json({ ok: false, error: 'AI 모의고사 자체제작은 jace48 계정에서만 이용할 수 있습니다.' });
+  }
+  const jobId = 'kmock_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  KOREAN_MOCK_JOBS[jobId] = {
+    id: jobId,
+    status: 'running',
+    pct: 3,
+    msg: '고품질 모의고사 출제 파이프라인 시작...',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    result: null,
+    error: ''
+  };
+  // Clean old jobs > 1 hour
+  for (const [k, v] of Object.entries(KOREAN_MOCK_JOBS)) {
+    if (Date.now() - v.createdAt > 3600000) delete KOREAN_MOCK_JOBS[k];
+  }
+  runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt, apiKey });
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/korean-mock-generate/status/:jobId', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const job = KOREAN_MOCK_JOBS[req.params.jobId];
+  if (!job) {
+    return res.status(404).json({ ok: false, error: '출제 작업을 찾을 수 없습니다.' });
+  }
+  if (job.status === 'done') {
+    return res.json({ ok: true, status: 'done', pct: 100, msg: job.msg, data: job.result });
+  }
+  if (job.status === 'error') {
+    return res.json({ ok: false, status: 'error', pct: job.pct, error: job.error });
+  }
+  res.json({ ok: true, status: 'running', pct: job.pct, msg: job.msg });
+});
+
+app.post('/api/korean-mock-generate', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (!apiKey) return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY가 설정되어 있지 않습니다.' });
+  const { title = 'AI 자체제작 모의고사 1회', elective = '화법과 작문', userPrompt = '', userId = '' } = req.body || {};
+  if (String(userId || '').trim().toLowerCase() !== 'jace48') {
+    return res.status(403).json({ ok: false, error: 'AI 모의고사 자체제작은 jace48 계정에서만 이용할 수 있습니다.' });
+  }
+  const jobId = 'kmock_sync_' + Date.now();
+  KOREAN_MOCK_JOBS[jobId] = { id: jobId, status: 'running', pct: 3, msg: '출제 중...', createdAt: Date.now(), updatedAt: Date.now(), result: null, error: '' };
+  await runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt, apiKey });
+  const job = KOREAN_MOCK_JOBS[jobId];
+  delete KOREAN_MOCK_JOBS[jobId];
+  if (job && job.status === 'done') return res.json(job.result);
+  return res.status(502).json({ ok: false, error: (job && job.error) || '모의고사 생성 실패' });
 });
 
 app.post('/api/korean-explain', async (req, res) => {

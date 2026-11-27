@@ -6584,17 +6584,18 @@
               stemTxt = `${no}. ${stemTxt}`;
             }
             const pts = Number(q.points) === 3 ? ' <span style="font-weight:700;">[3점]</span>' : '';
-            const boxHtml = q.box
+            const cleanBox = String(q.box || '').replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '').trim();
+            const boxHtml = cleanBox
               ? `<div style="position:relative;border:1px solid #111;padding:11px 12px 9px 12px;margin:10px 0 8px 0;font-family:${serifFont};font-size:12px;line-height:1.65;background:#fff;">
                    <div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#fff;padding:0 10px;font-family:${serifFont};font-weight:700;font-size:11.5px;letter-spacing:0.3em;white-space:nowrap;">&lt;보 기&gt;</div>
-                   <div>${fmtBody(q.box)}</div>
+                   <div>${fmtBody(cleanBox)}</div>
                  </div>`
               : '';
             const chHtml = (q.choices || []).map(c =>
               `<div style="font-family:${serifFont};padding-left:1.35em;text-indent:-1.35em;line-height:1.62;margin-top:2px;font-size:12.3px;">${esc(c)}</div>`
             ).join('');
             return `<div style="margin-top:12px;break-inside:avoid;">
-              <div style="font-family:${serifFont};font-weight:600;font-size:12.6px;line-height:1.62;text-align:justify;"><span style="font-family:${sansFont};font-weight:700;">${esc(stemTxt.split('.')[0])}.</span>${esc(stemTxt.slice(stemTxt.indexOf('.') + 1))}${pts}</div>
+              <div style="font-family:${serifFont};font-weight:500;font-size:12.6px;line-height:1.64;text-align:justify;">${esc(stemTxt)}${pts}</div>
               ${boxHtml}
               <div style="margin-top:4px;">${chHtml}</div>
             </div>`;
@@ -6752,9 +6753,11 @@
           const setGenProgress = (pct, msg) => {
             const p = Math.min(100, Math.max(0, Number(pct || 0)));
             if (p > curDispPct) curDispPct = p;
-            if (p < 20) targetPct = 46;
-            else if (p < 55) targetPct = 78;
-            else if (p < 95) targetPct = 94;
+            if (p < 25) targetPct = 25;
+            else if (p < 45) targetPct = 44;
+            else if (p < 64) targetPct = 63;
+            else if (p < 82) targetPct = 81;
+            else if (p < 95) targetPct = 95;
             else targetPct = 100;
             if (msg) curMsg = msg;
             renderGenProgress();
@@ -6767,35 +6770,32 @@
           }, 420);
           setGenProgress(3, '17~27학년도 기출 기반 45문항 출제 시작...');
           try {
-            const r = await fetch('/api/korean-mock-generate', {
+            const startRes = await fetch('/api/korean-mock-generate/start', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ title, elective, userPrompt, stream: true, userId: typeof currentUserId !== 'undefined' ? currentUserId : '' })
+              body: JSON.stringify({ title, elective, userPrompt, userId: typeof currentUserId !== 'undefined' ? currentUserId : '' })
             });
+            const startData = await startRes.json().catch(() => ({}));
             let d = {};
-            if (r.ok && r.body && r.headers.get('content-type') && r.headers.get('content-type').includes('ndjson')) {
-              const reader = r.body.getReader();
-              const dec = new TextDecoder();
-              let buf = '';
+            if (!startRes.ok || !startData.ok || !startData.jobId) {
+              d = { ok: false, error: startData.error || '출제 작업 시작에 실패했습니다.' };
+            } else {
+              const jobId = startData.jobId;
               while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                buf += dec.decode(value, { stream: true });
-                const lines = buf.split('\n');
-                buf = lines.pop() || '';
-                for (const ln of lines) {
-                  if (!ln.trim()) continue;
-                  try {
-                    const ev = JSON.parse(ln);
-                    if (ev.type === 'progress') setGenProgress(ev.pct, ev.msg);
-                    else if (ev.type === 'done') { d = ev; setGenProgress(100, '45문항 출제 완료!'); }
-                    else if (ev.type === 'error') d = ev;
-                  } catch (e) {}
+                await new Promise(res => setTimeout(res, 2200));
+                const stRes = await fetch(`/api/korean-mock-generate/status/${encodeURIComponent(jobId)}`);
+                const stData = await stRes.json().catch(() => ({}));
+                if (stData.status === 'done' && stData.data) {
+                  d = stData.data;
+                  setGenProgress(100, stData.msg || '45문항 출제 완료!');
+                  break;
+                } else if (stData.status === 'error' || !stRes.ok) {
+                  d = { ok: false, error: stData.error || '모의고사 생성 중 오류가 발생했습니다.' };
+                  break;
+                } else {
+                  setGenProgress(stData.pct || curDispPct, stData.msg || '고품질 심층 출제 및 검토 중...');
                 }
               }
-            } else {
-              d = await r.json().catch(() => ({}));
-              if (r.ok && d.ok) setGenProgress(100, '45문항 출제 완료!');
             }
             if (d.ok && Array.isArray(d.passages)) {
               lastGeneratedKorMock = d;
@@ -7267,18 +7267,14 @@
             if (p === 1 && pdf.numPages <= 2) break;
           }
           let fullText = pageTexts.filter(Boolean).join(' ');
-          // Check if 화법과 작문 & 언어와 매체 are missing in early pages; if so, scan back pages too!
+          // For elective era multi-page answer PDFs, scan ALL pages so back-half 화법과 작문 / 언어와 매체 tables are never missed!
           if (Number(year) >= 2022 && pdf.numPages > 3) {
-            const hasHw = /화법과\s*작문/.test(fullText);
-            const hasEm = /언어와\s*매체/.test(fullText);
-            if (!hasHw || !hasEm) {
-              for (let p = 4; p <= pdf.numPages; p++) {
-                const page = await pdf.getPage(p);
-                const tc = await page.getTextContent();
-                pageTexts[p] = tc.items.map(it => it.str).join(' ');
-              }
-              fullText = pageTexts.filter(Boolean).join(' ');
+            for (let p = 4; p <= pdf.numPages; p++) {
+              const page = await pdf.getPage(p);
+              const tc = await page.getTextContent();
+              pageTexts[p] = tc.items.map(it => it.str).join(' ');
             }
+            fullText = pageTexts.filter(Boolean).join(' ');
           }
           currentKorExamContext.aText = fullText;
           currentKorExamContext.aPageTexts = pageTexts;
@@ -7888,7 +7884,15 @@
                   const targetSet = new Set([1]);
                   for (let pi = 1; pi <= nP; pi++) {
                     const pt = pTexts[pi] || '';
-                    if (/화법과\s*작문|언어와\s*매체/.test(pt)) targetSet.add(pi);
+                    if (/(\[선택\s*:?\s*(화법과\s*작문|언어와\s*매체)|(화법과\s*작문|언어와\s*매체)[\s\S]{0,400}35)/.test(pt)) {
+                      targetSet.add(pi);
+                    }
+                  }
+                  if (targetSet.size < 3 && nP > 4) {
+                    for (let pi = nP; pi >= 4 && targetSet.size < 4; pi--) {
+                      const pt = pTexts[pi] || '';
+                      if (/화법과\s*작문|언어와\s*매체/.test(pt)) targetSet.add(pi);
+                    }
                   }
                   if (nP >= 2 && targetSet.size === 1) {
                     targetSet.add(2);
@@ -7905,8 +7909,10 @@
                     type,
                     answerText: (() => {
                       const full = currentKorExamContext.aText || '';
-                      const hwIdx = full.search(/화법과\s*작문/);
-                      const emIdx = full.search(/언어와\s*매체/);
+                      const hwM = full.match(/(?:\[선택\s*:?\s*)?화법과\s*작문\]?[\s\S]{0,600}(?:35|①)/);
+                      const emM = full.match(/(?:\[선택\s*:?\s*)?언어와\s*매체\]?[\s\S]{0,600}(?:35|①)/);
+                      const hwIdx = hwM ? hwM.index : full.lastIndexOf('화법과');
+                      const emIdx = emM ? emM.index : full.lastIndexOf('언어와');
                       const hwSlice = hwIdx >= 0 ? full.slice(hwIdx, hwIdx + 2200) : '';
                       const emSlice = emIdx >= 0 ? full.slice(emIdx, emIdx + 2200) : '';
                       return [full.slice(0, 3500), hwSlice, emSlice].filter(Boolean).join('\n');
