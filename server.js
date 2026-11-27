@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_2325';
+const CLIENT_BUILD_VERSION = '20261127_2355';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -709,8 +709,14 @@ const VERIFIED_GRADE_CUTS = {
     mimac: { g1: '화작92', g2: '화작84~85', g3: '-' },
     jongro: { g1: '화작95/언매92', g2: '화작88/언매86', g3: '화작79/언매77' }
   },
+  '2026_9월': {
+    single: { g1: '화작92/언매86', g2: '화작87/언매81', g3: '화작78/언매73' }
+  },
   '2024_수능': {
     jongro: { g1: '88', g2: '81', g3: '72' }
+  },
+  '2023_수능': {
+    ebsi: { g1: '화작96', g2: '화작92', g3: '화작86' }
   }
 };
 
@@ -916,7 +922,7 @@ ${snippets}`;
       try {
         const gRes = await callGeminiWithFallback(
           apiKey,
-          { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.0, maxOutputTokens: 1024 } },
+          { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.0, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 0 } } },
           'chat'
         );
         if (gRes && gRes.text) {
@@ -1062,7 +1068,7 @@ ${String(answerText || '').slice(0, 14000)}`;
 
   const result = await callGeminiWithFallback(
     apiKey,
-    { contents: [{ parts }], generationConfig: { temperature: 0.0, maxOutputTokens: 2048 } },
+    { contents: [{ parts }], generationConfig: { temperature: 0.0, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } } },
     pageImageBase64 ? 'vision' : 'chat'
   );
   if (!result || !result.text) {
@@ -1129,8 +1135,12 @@ app.post('/api/korean-mock-generate', async (req, res) => {
   }
 
   const commonPolicy = `당신은 한국교육과정평가원(KICE) 수능 국어 영역 출제위원입니다.
-2017~2027학년도 수능·6월·9월 모의평가의 출제 기조, 지문 밀도, 선지 함정 패턴(인과 역전, 범위 확대/축소, 개념 뒤바꾸기, <보기> 적용)을 정밀하게 반영해 출제하세요.
+2017~2027학년도 수능·6월·9월 모의평가의 출제 기조, 실제 수능 지문 분량과 밀도, 선지 함정 패턴(인과 역전, 범위 확대/축소, 개념 뒤바꾸기, <보기> 적용)을 정밀하게 반영해 출제하세요.
 목표 난이도는 1등급 컷 원점수 80점대 중반~90점대 초반(변별력 있는 중상~상 난이도, [3점] 추론·적용 문항 포함)입니다.
+[분량 및 문항 수 필수 조건]
+- 독서 지문은 실제 평가원 기출처럼 충분히 길고 깊이 있게 작성하세요([1~3] 700자 이상, [4~9] (가)/(나) 합산 2,000자 이상, [10~13]·[14~17] 각 1,500자 이상).
+- <보 기> 문항은 실제 수능처럼 구체적 사례·자료·비평을 180~320자 분량으로 충실히 작성하세요.
+- 모든 문항의 stem 앞에는 반드시 문항 번호("1. ", "2. " ... "45. ")를 붙이고, 지정된 범위의 모든 번호를 1문항도 빠짐없이 출제하세요.
 [출제 자체 검토 기준]
 1. 모든 문항의 정답 선지는 지문·<보기>의 근거와 100% 논리적으로 일치해야 합니다.
 2. 나머지 4개 오답 선지는 지문 내용과 어긋나는 명확한 오답 근거를 갖추어야 하며 복수 정답이 없어야 합니다.
@@ -1206,7 +1216,17 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
     const p2 = await callPart('공통과목 문학 18~34번(총 17문항): [18~21] 현대소설(4문항), [22~27] 갈래 복합(6문항), [28~31] 고전소설(4문항), [32~34] 현대시 (가)/(나)(3문항). 18번부터 34번까지 빠짐없이 출제하세요.');
     sendEvent({ type: 'progress', pct: 95, msg: '45문항 시험지 및 PDF 조판 정리 중...' });
 
-    const passages = [...p1, ...p2, ...p3];
+    const passages = [...p1, ...p2, ...p3].map(p => {
+      const qs = Array.isArray(p.questions) ? p.questions.map(q => {
+        const no = Number(q.no || 0);
+        let stem = String(q.stem || '').trim();
+        if (no > 0 && !new RegExp('^' + no + '\\s*[\\.\\)]').test(stem)) {
+          stem = `${no}. ${stem}`;
+        }
+        return Object.assign({}, q, { no, stem });
+      }).sort((a, b) => a.no - b.no) : [];
+      return Object.assign({}, p, { questions: qs });
+    }).sort((a, b) => ((a.questions[0] && a.questions[0].no) || 99) - ((b.questions[0] && b.questions[0].no) || 99));
     if (passages.length === 0) {
       const detail = [...new Set(partErrors)].slice(0, 3).join(' / ');
       const errObj = { ok: false, error: `모의고사 생성에 실패했습니다. (${detail || 'AI 응답 파싱 오류'}) 다시 시도해 주세요.` };
