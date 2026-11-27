@@ -49,14 +49,22 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1415';
+const CLIENT_BUILD_VERSION = '20261127_1430';
 app.get('/sw.js', (req, res) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('CDN-Cache-Control', 'no-store');
+  res.setHeader('Surrogate-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'public', 'sw.js'));
 });
 app.use(express.static(path.join(__dirname, 'public'), { index: false, maxAge: '1h' }));
 app.get(['/', '/index.html'], (req, res) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('CDN-Cache-Control', 'no-store');
+  res.setHeader('Surrogate-Control', 'no-store');
   const pubIdx = path.join(__dirname, 'public', 'index.html');
   const rootIdx = path.join(__dirname, 'index.html');
   res.sendFile(fs.existsSync(pubIdx) ? pubIdx : rootIdx);
@@ -462,9 +470,21 @@ function fetchBinaryWithTlsBypass(urlStr, redirectsLeft = 5) {
 
 // 3-1. 국어 기출(2016~2026학년도 6월·9월·수능) 문제/정답 PDF 자동 탐색 API
 const KOREAN_EXAM_PRESETS = {
+  '2027_수능': {
+    questionPdfUrl: '',
+    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20261119/go3/kor_main_hsj_Y78V37UD.pdf'
+  },
+  '2027_9월': {
+    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20260902/go3/kor_main_mun_23392788.pdf',
+    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20260902/go3/korA_1_hsj_TST9XSH4_1.pdf'
+  },
+  '2027_6월': {
+    questionPdfUrl: '',
+    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20260604/go3/kor_main_hsj_2V29RZV3.pdf'
+  },
   '2026_수능': {
     questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20251113/go3/live_main_paper_1_kor_352K8BKR.pdf',
-    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20251113/go3/korA_1_hsj_46NL9282_1.pdf'
+    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20251113/go3/live_main_answer_1_kor_8ZE3E1XR.pdf'
   },
   '2026_9월': {
     questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20250903/go3/kor_main_mun_O973Z9C5.pdf',
@@ -532,8 +552,8 @@ app.get('/api/korean-exam', async (req, res) => {
   const year = String(req.query.year || '2026').replace(/[^0-9]/g, '');
   const type = String(req.query.type || '수능').trim();
   const yNum = Number(year);
-  if (!yNum || yNum < 2016 || yNum > 2026) {
-    return res.status(400).json({ ok: false, error: '학년도는 2016~2026 사이여야 합니다.' });
+  if (!yNum || yNum < 2016 || yNum > 2027) {
+    return res.status(400).json({ ok: false, error: '학년도는 2016~2027 사이여야 합니다.' });
   }
   const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
   const execYear = yNum - 1;
