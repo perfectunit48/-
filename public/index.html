@@ -175,9 +175,9 @@
         </a>
 
         <nav class="hidden md:flex items-center gap-5 text-sm font-semibold text-slate-600">
-<a href="#pubUnivs" class="hover:text-indigo-600 transition">대학별 출제 경향</a>
-          <a href="#pubSearch" class="hover:text-indigo-600 transition">2026 기출 보고서</a>
-          <a href="#pubFaq" class="hover:text-indigo-600 transition">자주 묻는 질문</a>
+<a id="pubNavUnivLink" href="#pubUnivs" class="pub-nav-link hover:text-indigo-600 transition">대학별 출제 경향</a>
+          <a id="pubNavReportLink" href="#pubSearch" class="pub-nav-link hover:text-indigo-600 transition">2026 기출 보고서</a>
+          <a id="pubNavFaqLink" href="#pubFaq" class="pub-nav-link hover:text-indigo-600 transition">자주 묻는 질문</a>
         </nav>
 
         <button id="openTeacherLoginBtn" type="button" onclick="var ls=document.getElementById('loginScreen');if(ls){ls.classList.remove('hidden');ls.classList.add('flex');ls.style.display='flex';}" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer">
@@ -412,6 +412,24 @@
             <div id="pubKorSearchOutput" class="hidden space-y-3"></div>
             <div id="pubKorAdSlot" class="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-center text-xs text-slate-400">
               광고 및 입시 정보 배너 영역
+            </div>
+          </div>
+        </section>
+
+        <section id="pubKorFaq" class="max-w-6xl mx-auto px-4 sm:px-6 pb-14 space-y-4">
+          <h2 class="text-xl font-extrabold text-slate-900">자주 묻는 질문</h2>
+          <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+            <div class="p-4 space-y-1">
+              <div class="text-sm font-bold text-slate-900">Q. 2017~2027학년도 국어 기출과 선택과목 정답·등급컷도 볼 수 있나요?</div>
+              <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">네, 오른쪽 상단의 <strong>선생님 로그인</strong> 버튼을 눌러 로그인하시면 2017~2027학년도 6월·9월 모의평가 및 수능 국어 기출 PDF, 공통·화법과 작문·언어와 매체 정답표, 그리고 2023~2027학년도 주요 5개 기관 원점수 등급컷까지 한눈에 확인하실 수 있습니다.</p>
+            </div>
+            <div class="p-4 space-y-1">
+              <div class="text-sm font-bold text-slate-900">Q. 수능 국어 관리 모드에서는 어떤 기능을 사용할 수 있나요?</div>
+              <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">모의고사 성적과 개별 문제풀이 기록을 구분해 추이 그래프를 확인할 수 있으며, 진도·출결 관리, 학부모 문자 자동 작성, 그리고 기출 시험지 지문·선지에 대한 Gemini AI 해설 기능을 지원합니다.</p>
+            </div>
+            <div class="p-4 space-y-1">
+              <div class="text-sm font-bold text-slate-900">Q. 모의고사 성적과 개별 문제풀이 기록을 따로 관리할 수 있나요?</div>
+              <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">네. 성적 데이터 탭에서 <strong>모의고사 입력</strong>과 <strong>개별 입력</strong>을 구분해 기록하고, 누적 모의고사 성적 기록과 누적 개별 성적 기록을 각각 ON/OFF로 전환해 그래프와 기록을 따로 볼 수 있습니다.</p>
             </div>
           </div>
         </section>
@@ -936,36 +954,58 @@
         <!-- 모의고사 성적 및 영역별 맞힌 문제·강약점 입력 -->
         <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                <i data-lucide="trending-up" class="w-4 h-4 text-emerald-600"></i>
-                모의고사 성적 · 맞힌 문항 · 강약점 기록
-              </h3>
-              <p class="text-xs text-slate-500 mt-0.5">공통·선택 점수와 영역별 정답 개수를 입력하면 성적 변화, 강약점 요약, 학부모 문자까지 자동 반영됩니다.</p>
+            <div class="flex items-start gap-2.5">
+              <button id="korInputHelpBtn" type="button" title="입력 방법 안내" aria-label="입력 방법 안내" class="mt-0.5 inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-extrabold transition shrink-0">?</button>
+              <div>
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <i data-lucide="trending-up" class="w-4 h-4 text-emerald-600"></i>
+                  모의고사 성적 · 개별 학습 · 강약점 기록
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">모의고사 점수와 개별 문제풀이 결과를 구분해 입력하면 성적 변화와 학부모 문자가 자동 반영됩니다.</p>
+              </div>
             </div>
           </div>
 
           <div class="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200">
-            <button id="korModeScoreBtn" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold transition">점수 입력</button>
-            <button id="korModeCountBtn" type="button" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-xs font-bold transition">개수 입력</button>
+            <button id="korModeScoreBtn" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold transition">모의고사 입력</button>
+            <button id="korModeCountBtn" type="button" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-xs font-bold transition">개별 입력</button>
           </div>
           <form id="addKorScoreForm" class="space-y-3 bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200">
-            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
               <div class="sm:col-span-5">
-                <label class="block text-xs font-semibold text-slate-700 mb-1">시험명 / 회차 *</label>
+                <div class="h-6 flex items-center mb-1"><label class="block text-xs font-semibold text-slate-700 whitespace-nowrap">시험명 / 학습 내용 *</label></div>
                 <input id="korScoreTitle" type="text" required placeholder="예: 2027학년도 9월 모의평가" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
               <div class="sm:col-span-3">
-                <label class="block text-xs font-semibold text-slate-700 mb-1">시험일</label>
+                <div class="h-6 flex items-center mb-1"><label class="block text-xs font-semibold text-slate-700 whitespace-nowrap">시험일 / 학습일</label></div>
                 <input id="korScoreDate" type="date" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
-              <div class="sm:col-span-2">
-                <label id="korCommonLabel" class="block text-xs font-semibold text-slate-700 mb-1">공통 점수 (76점)</label>
+              <div id="korScoreCommonWrap" class="sm:col-span-2">
+                <div class="h-6 flex items-center mb-1"><label id="korCommonLabel" class="block text-xs font-semibold text-slate-700 whitespace-nowrap">공통 점수 (76점)</label></div>
                 <input id="korScoreCommon" type="number" min="0" max="76" placeholder="예: 68" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
-              <div class="sm:col-span-2">
-                <div class="flex items-center justify-between gap-1 mb-1"><label id="korElectiveLabel" class="block text-xs font-semibold text-slate-700">선택 점수 (24점)</label><label class="inline-flex items-center gap-1 text-[10px] text-slate-500 cursor-pointer"><input id="korNoElectiveChk" type="checkbox" class="rounded border-slate-300" />없음</label></div>
+              <div id="korScoreElectiveWrap" class="sm:col-span-2">
+                <div class="h-6 flex items-center justify-between gap-1 mb-1">
+                  <label id="korElectiveLabel" class="block text-xs font-semibold text-slate-700 whitespace-nowrap truncate">선택 (24점)</label>
+                  <button id="korElectiveToggleBtn" type="button" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white transition whitespace-nowrap shrink-0">있음 ON</button>
+                  <input id="korNoElectiveChk" type="checkbox" class="hidden" />
+                </div>
                 <input id="korScoreElective" type="number" min="0" max="24" placeholder="예: 21" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+
+            <div id="korIndividualCountRow" class="hidden grid grid-cols-3 gap-2.5 bg-white p-3 rounded-xl border border-emerald-200">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">총 문제 개수</label>
+                <input id="korIndTotalQ" type="number" min="1" max="200" placeholder="예: 45" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">맞춘 문제 개수</label>
+                <input id="korIndCorrectQ" type="number" min="0" max="200" placeholder="예: 39" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">틀린 문제 개수</label>
+                <input id="korIndWrongQ" type="number" min="0" max="200" placeholder="예: 6" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-rose-600 outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
             </div>
 
@@ -1041,10 +1081,41 @@
           <div id="korGrowthSummary" class="text-sm text-slate-700 leading-relaxed space-y-2"></div>
         </div>
 
-        <!-- 누적 모의고사 성적 기록 -->
+        <!-- 누적 모의고사 / 개별 성적 기록 -->
         <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
-          <h3 class="text-base font-bold text-slate-900">누적 모의고사 성적 기록</h3>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="text-base font-bold text-slate-900">누적 성적 기록</h3>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="korFilterMockToggle" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white transition">
+                <span>누적 모의고사 성적 기록</span>
+                <span class="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px]">ON</span>
+              </button>
+              <button id="korFilterIndToggle" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 transition">
+                <span>누적 개별 성적 기록</span>
+                <span class="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px]">OFF</span>
+              </button>
+            </div>
+          </div>
           <div id="korScoreHistoryList" class="space-y-3"></div>
+        </div>
+
+        <!-- 입력 방법 안내 모달 -->
+        <div id="korInputHelpModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[75] hidden items-center justify-center p-4">
+          <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">?</span>
+                성적 입력 방법 안내
+              </h3>
+              <button type="button" id="closeKorInputHelpBtn" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">✕</button>
+            </div>
+            <p class="text-sm text-slate-700 leading-relaxed">
+              모의고사를 본 성적을 입력할 때는 <strong>모의고사 입력</strong>을, 모의고사가 아닌 일반 문제풀이·단원별 학습을 입력할 때는 <strong>개별 입력</strong>을 클릭해서 입력해 주시면 됩니다.
+            </p>
+            <div class="text-right">
+              <button type="button" id="confirmKorInputHelpBtn" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">확인</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -2205,7 +2276,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261127_1925';
+    const CLIENT_BUILD_VERSION = '20261127_2210';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -2767,8 +2838,17 @@
       return withB;
     }
 
+    let korShowMockRecords = true;
+    let korShowIndRecords = false;
     function getSortedKoreanScores(stu) {
-      return (stu && Array.isArray(stu.koreanScores)) ? [...stu.koreanScores] : [];
+      const all = (stu && Array.isArray(stu.koreanScores)) ? [...stu.koreanScores] : [];
+      return all.filter(sc => {
+        const isInd = sc && sc.inputMode === 'count';
+        if (korShowMockRecords && korShowIndRecords) return true;
+        if (korShowMockRecords && !isInd) return true;
+        if (korShowIndRecords && isInd) return true;
+        return false;
+      });
     }
 
     let korChartPoints = [];
@@ -5853,8 +5933,12 @@
       function updateNoticeUnreadDot() {
         const dot = document.getElementById('noticeUnreadDot');
         if (!dot) return;
-        const seen = getSeenNoticeIds();
-        const hasUnread = cachedNotices.some(n => n && n.id && !seen.includes(n.id));
+        const lastClicked = Number(safeGetItem('tutor_notice_last_clicked_at') || 0);
+        const latestNoticeMs = cachedNotices.reduce((mx, n) => {
+          const ts = Date.parse((n && (n.updatedAt || n.createdAt)) || '') || 0;
+          return Math.max(mx, ts);
+        }, 0);
+        const hasUnread = cachedNotices.length > 0 && (latestNoticeMs > 0 ? lastClicked < latestNoticeMs : !lastClicked);
         dot.classList.toggle('hidden', !hasUnread);
       }
 
@@ -5920,6 +6004,9 @@
         showNoticesListView();
       };
       document.getElementById('openNoticesBtn').addEventListener('click', async () => {
+        safeSetItem('tutor_notice_last_clicked_at', String(Date.now()));
+        const dot = document.getElementById('noticeUnreadDot');
+        if (dot) dot.classList.add('hidden');
         await fetchNotices();
         markNoticesSeen(cachedNotices.map(n => n.id));
         showNoticesListView();
@@ -6536,6 +6623,29 @@
 
       // Score vs Count input mode toggle
       let korInputMode = 'score';
+      const updateKorElectiveUi = () => {
+        const chk = document.getElementById('korNoElectiveChk');
+        const btn = document.getElementById('korElectiveToggleBtn');
+        const ei = document.getElementById('korScoreElective');
+        const ci = document.getElementById('korScoreCommon');
+        const cl = document.getElementById('korCommonLabel');
+        const noEle = Boolean(chk && chk.checked);
+        const isCnt = korInputMode === 'count';
+        if (btn) {
+          btn.textContent = noEle ? '없음 OFF' : '있음 ON';
+          btn.className = noEle
+            ? 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 transition whitespace-nowrap shrink-0'
+            : 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white transition whitespace-nowrap shrink-0';
+        }
+        if (ei) {
+          ei.disabled = noEle;
+          if (noEle) { ei.value = ''; ei.classList.add('bg-slate-100'); }
+          else { ei.classList.remove('bg-slate-100'); }
+        }
+        if (cl) cl.textContent = isCnt ? (noEle ? '공통 맞힌 개수 (45문항)' : '공통 맞힌 개수 (34문항)') : (noEle ? '공통 점수 (100점)' : '공통 점수 (76점)');
+        if (ci) ci.max = isCnt ? (noEle ? '45' : '34') : (noEle ? '100' : '76');
+      };
+
       const setKorInputMode = (mode) => {
         korInputMode = mode;
         const isCnt = mode === 'count';
@@ -6545,16 +6655,22 @@
           sb.className = !isCnt ? 'px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold transition' : 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-xs font-bold transition';
           cb.className = isCnt ? 'px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold transition' : 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 text-xs font-bold transition';
         }
-        const cl = document.getElementById('korCommonLabel');
+        const comWrap = document.getElementById('korScoreCommonWrap');
+        const eleWrap = document.getElementById('korScoreElectiveWrap');
+        const indRow = document.getElementById('korIndividualCountRow');
+        if (comWrap) comWrap.classList.toggle('hidden', isCnt);
+        if (eleWrap) eleWrap.classList.toggle('hidden', isCnt);
+        if (indRow) indRow.classList.toggle('hidden', !isCnt);
+
         const el = document.getElementById('korElectiveLabel');
         const tl = document.getElementById('korTotalLabel');
-        if (cl) cl.textContent = isCnt ? '공통 맞힌 개수 (34문항)' : '공통 점수 (76점)';
-        if (el) el.textContent = isCnt ? '선택 맞힌 개수 (11문항)' : '선택 점수 (24점)';
-        if (tl) tl.textContent = isCnt ? '전체 맞힌 개수 (45문항)' : '전체 점수 (100점)';
+        if (el) el.textContent = isCnt ? '선택 (11문항)' : '선택 (24점)';
+        if (tl) tl.textContent = isCnt ? '맞춘 문제 개수' : '전체 점수 (100점)';
         const ci = document.getElementById('korScoreCommon');
         const ei = document.getElementById('korScoreElective');
-        if (ci) { ci.max = isCnt ? '34' : '76'; ci.placeholder = isCnt ? '예: 30' : '예: 68'; }
+        if (ci) ci.placeholder = isCnt ? '예: 30' : '예: 68';
         if (ei) { ei.max = isCnt ? '11' : '24'; ei.placeholder = isCnt ? '예: 10' : '예: 21'; }
+        updateKorElectiveUi();
       };
       const msb = document.getElementById('korModeScoreBtn');
       const mcb = document.getElementById('korModeCountBtn');
@@ -6592,7 +6708,31 @@
         if (kh) kh.classList.toggle('hidden', !isKor);
         if (es) es.classList.toggle('hidden', isKor);
         if (ks) ks.classList.toggle('hidden', !isKor);
+
+        const navUniv = document.getElementById('pubNavUnivLink');
+        const navRep = document.getElementById('pubNavReportLink');
+        const navFaq = document.getElementById('pubNavFaqLink');
+        if (navUniv) navUniv.classList.toggle('hidden', isKor);
+        if (navRep) {
+          navRep.textContent = isKor ? '2027 국어 기출' : '2026 기출 보고서';
+          navRep.setAttribute('href', isKor ? '#pubKorSearch' : '#pubSearch');
+        }
+        if (navFaq) {
+          navFaq.setAttribute('href', isKor ? '#pubKorFaq' : '#pubFaq');
+        }
       };
+      document.querySelectorAll('.pub-nav-link').forEach(a => {
+        a.addEventListener('click', (e) => {
+          const href = a.getAttribute('href');
+          if (href && href.startsWith('#')) {
+            const target = document.querySelector(href);
+            if (target) {
+              e.preventDefault();
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        });
+      });
       if (pubEssayBtn) pubEssayBtn.addEventListener('click', () => setPubMode('essay'));
       if (pubKorBtn) pubKorBtn.addEventListener('click', () => setPubMode('korean'));
 
@@ -6668,13 +6808,71 @@
       if (korComIn) korComIn.addEventListener('input', syncKorTot);
       if (korEleIn) korEleIn.addEventListener('input', syncKorTot);
       const korNoEleChk = document.getElementById('korNoElectiveChk');
-      if (korNoEleChk && korEleIn) {
-        korNoEleChk.addEventListener('change', () => {
-          korEleIn.disabled = korNoEleChk.checked;
-          if (korNoEleChk.checked) { korEleIn.value = ''; korEleIn.classList.add('bg-slate-100'); }
-          else { korEleIn.classList.remove('bg-slate-100'); }
+      const korEleToggleBtn = document.getElementById('korElectiveToggleBtn');
+      if (korEleToggleBtn && korNoEleChk) {
+        korEleToggleBtn.addEventListener('click', () => {
+          korNoEleChk.checked = !korNoEleChk.checked;
+          updateKorElectiveUi();
         });
       }
+      if (korNoEleChk) {
+        korNoEleChk.addEventListener('change', updateKorElectiveUi);
+      }
+
+      // ? help modal & individual count sync & 누적 기록 toggles
+      const helpBtn = document.getElementById('korInputHelpBtn');
+      const helpModal = document.getElementById('korInputHelpModal');
+      const closeHelp = () => { if (helpModal) { helpModal.classList.add('hidden'); helpModal.classList.remove('flex'); } };
+      if (helpBtn && helpModal) helpBtn.addEventListener('click', () => { helpModal.classList.remove('hidden'); helpModal.classList.add('flex'); });
+      const chb1 = document.getElementById('closeKorInputHelpBtn');
+      const chb2 = document.getElementById('confirmKorInputHelpBtn');
+      if (chb1) chb1.addEventListener('click', closeHelp);
+      if (chb2) chb2.addEventListener('click', closeHelp);
+      if (helpModal) helpModal.addEventListener('click', (e) => { if (e.target === helpModal) closeHelp(); });
+
+      const indTotEl = document.getElementById('korIndTotalQ');
+      const indCorEl = document.getElementById('korIndCorrectQ');
+      const indWrgEl = document.getElementById('korIndWrongQ');
+      const syncIndCounts = (src) => {
+        const tot = Number(indTotEl && indTotEl.value ? indTotEl.value : 0);
+        if (src === 'correct' && indCorEl) {
+          const c = Number(indCorEl.value || 0);
+          if (korTotIn) korTotIn.value = String(c);
+          if (tot > 0 && indWrgEl) indWrgEl.value = String(Math.max(0, tot - c));
+        } else if (src === 'wrong' && indWrgEl && tot > 0) {
+          const w = Number(indWrgEl.value || 0);
+          const c = Math.max(0, tot - w);
+          if (indCorEl) indCorEl.value = String(c);
+          if (korTotIn) korTotIn.value = String(c);
+        } else if (src === 'total' && tot > 0 && indCorEl && indCorEl.value !== '') {
+          const c = Number(indCorEl.value || 0);
+          if (indWrgEl) indWrgEl.value = String(Math.max(0, tot - c));
+        }
+      };
+      if (indTotEl) indTotEl.addEventListener('input', () => syncIndCounts('total'));
+      if (indCorEl) indCorEl.addEventListener('input', () => syncIndCounts('correct'));
+      if (indWrgEl) indWrgEl.addEventListener('input', () => syncIndCounts('wrong'));
+
+      const fMockBtn = document.getElementById('korFilterMockToggle');
+      const fIndBtn = document.getElementById('korFilterIndToggle');
+      const updateKorFilterBtns = () => {
+        if (fMockBtn) {
+          fMockBtn.className = korShowMockRecords
+            ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white transition'
+            : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 transition';
+          const badge = fMockBtn.querySelector('span:last-child');
+          if (badge) { badge.textContent = korShowMockRecords ? 'ON' : 'OFF'; badge.className = korShowMockRecords ? 'px-1.5 py-0.5 rounded-md bg-white/20 text-[10px]' : 'px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px]'; }
+        }
+        if (fIndBtn) {
+          fIndBtn.className = korShowIndRecords
+            ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white transition'
+            : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 transition';
+          const badge = fIndBtn.querySelector('span:last-child');
+          if (badge) { badge.textContent = korShowIndRecords ? 'ON' : 'OFF'; badge.className = korShowIndRecords ? 'px-1.5 py-0.5 rounded-md bg-white/20 text-[10px]' : 'px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px]'; }
+        }
+      };
+      if (fMockBtn) fMockBtn.addEventListener('click', () => { korShowMockRecords = !korShowMockRecords; updateKorFilterBtns(); renderKoreanScoreTab(); });
+      if (fIndBtn) fIndBtn.addEventListener('click', () => { korShowIndRecords = !korShowIndRecords; updateKorFilterBtns(); renderKoreanScoreTab(); });
 
       const korScoreForm = document.getElementById('addKorScoreForm');
       if (korScoreForm) {
@@ -6691,9 +6889,12 @@
             inputMode: korInputMode,
             title: document.getElementById('korScoreTitle').value.trim(),
             date: document.getElementById('korScoreDate').value || new Date().toISOString().slice(0, 10),
-            common: document.getElementById('korScoreCommon').value !== '' ? Number(document.getElementById('korScoreCommon').value) : '',
-            elective: document.getElementById('korScoreElective').value !== '' ? Number(document.getElementById('korScoreElective').value) : '',
-            total: Number(document.getElementById('korScoreTotal').value || 0),
+            common: korInputMode === 'score' && document.getElementById('korScoreCommon').value !== '' ? Number(document.getElementById('korScoreCommon').value) : '',
+            elective: korInputMode === 'score' && document.getElementById('korScoreElective').value !== '' ? Number(document.getElementById('korScoreElective').value) : '',
+            totalQuestions: korInputMode === 'count' && document.getElementById('korIndTotalQ').value !== '' ? Number(document.getElementById('korIndTotalQ').value) : '',
+            correctCount: korInputMode === 'count' && document.getElementById('korIndCorrectQ').value !== '' ? Number(document.getElementById('korIndCorrectQ').value) : '',
+            wrongCount: korInputMode === 'count' && document.getElementById('korIndWrongQ').value !== '' ? Number(document.getElementById('korIndWrongQ').value) : '',
+            total: korInputMode === 'count' && document.getElementById('korIndCorrectQ').value !== '' ? Number(document.getElementById('korIndCorrectQ').value) : Number(document.getElementById('korScoreTotal').value || 0),
             std: document.getElementById('korScoreStd').value !== '' ? Number(document.getElementById('korScoreStd').value) : '',
             pct: document.getElementById('korScorePct').value !== '' ? Number(document.getElementById('korScorePct').value) : '',
             readHit: document.getElementById('korReadHit').value !== '' ? Number(document.getElementById('korReadHit').value) : '',
@@ -6838,7 +7039,7 @@
 
           const parseAnswerBlock = (txt, minQ, maxQ) => {
             const map = {};
-            const re1 = /(?:^|\s)0?([1-9]|[1-3][0-9]|4[0-5])\s*[\.\)]?\s*([①②③④⑤])(?=\s|$)/g;
+            const re1 = /(?:^|\s)0?([1-9]|[1-3][0-9]|4[0-5])\s*[\.\)]?\s*([①②③④⑤])(?=\s|$|[123]점?|[0-9])/g;
             let m;
             while ((m = re1.exec(txt)) !== null) {
               const q = Number(m[1]);
@@ -6863,8 +7064,8 @@
               let emX = W * 0.78;
               for (const it of tc.items) {
                 const st = String(it.str || '').replace(/\s+/g, '');
-                if (st.includes('화법과작문') || st === '화법과') hwX = Math.min(hwX, it.transform[4] - 25);
-                if (st.includes('언어와매체') || st === '언어와') emX = Math.min(emX, it.transform[4] - 25);
+                if (st.includes('화법과작문') || st === '화법과' || st === '화법') hwX = Math.min(hwX, it.transform[4] - 25);
+                if (st.includes('언어와매체') || st === '언어와' || st === '언어') emX = Math.min(emX, it.transform[4] - 25);
               }
               if (emX <= hwX) emX = W * 0.75;
 
@@ -6929,6 +7130,11 @@
       }
 
       function renderKoreanGradeCuts(cuts, loading) {
+        const boxEl = document.getElementById('korGradeCutsBox');
+        const yrSel = document.getElementById('korExamYearSelect');
+        const curYr = yrSel ? Number(yrSel.value) : 2027;
+        if (boxEl) boxEl.classList.toggle('hidden', curYr < 2023);
+        if (curYr < 2023) return;
         const tbody = document.getElementById('korGradeCutsBody');
         const stEl = document.getElementById('korGradeCutsStatus');
         if (!tbody) return;
@@ -7350,7 +7556,7 @@
           renderKoreanAnswerGrid(null, '', '', year);
           renderKoreanGradeCuts(null, true);
           if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
-            fetch(`/api/korean-grade-cuts?year=${encodeURIComponent(year)}&type=${encodeURIComponent(type)}`).then(r => r.ok ? r.json() : null).then(gd => {
+            (Number(year) >= 2023 ? fetch(`/api/korean-grade-cuts?year=${encodeURIComponent(year)}&type=${encodeURIComponent(type)}`) : Promise.resolve({ ok: false })).then(r => r.ok ? r.json() : null).then(gd => {
               renderKoreanGradeCuts(gd && gd.cuts ? gd.cuts : null, false);
             }).catch(() => renderKoreanGradeCuts(null, false));
           } else { renderKoreanGradeCuts(null, false); }
@@ -7407,7 +7613,7 @@
               if (stEl) stEl.textContent = '화법과 작문 · 언어와 매체 정답 보완 중...';
               try {
                 let ansImg = '';
-                if (currentKorExamContext.ansPdfDoc && currentKorExamContext.ansPdfDoc.numPages <= 2) {
+                if (currentKorExamContext.ansPdfDoc) {
                   const imgs = await renderPdfPagesAsJpegBase64(currentKorExamContext.ansPdfDoc, [1]);
                   if (imgs && imgs[0]) ansImg = imgs[0];
                 }
@@ -7431,6 +7637,10 @@
                   }
                 }
               } catch (e) {}
+            }
+            if (aUrl && parsed && Object.keys(parsed.commonMap || {}).length >= 25) {
+              window._korAnsCache = window._korAnsCache || {};
+              window._korAnsCache[`${year}::/api/pdf-proxy?url=${encodeURIComponent(aUrl)}`] = parsed;
             }
             renderKoreanAnswerGrid(parsed, aUrl, ebsiUrl, year);
           } else {
