@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_2235';
+const CLIENT_BUILD_VERSION = '20261127_2300';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -688,20 +688,26 @@ const VERIFIED_GRADE_CUTS = {
     jongro: { g1: '화작95/언매91', g2: '화작89/언매84', g3: '화작81/언매77' },
     etoos: { g1: '화작94~95/언매90~91', g2: '화작88/언매84', g3: '화작80~81/언매76~77' }
   },
+  '2027_9월': {
+    single: { g1: '화작89/언매84', g2: '화작82/언매77', g3: '화작73/언매68' }
+  },
+  '2027_6월': {
+    single: { g1: '화작96/언매95', g2: '-', g3: '-' }
+  },
   '2026_수능': {
     jongro: { g1: '화작90/언매85', g2: '화작83/언매78', g3: '화작73/언매69' }
   },
   '2026_6월': {
-    ebsi: { g1: '화작96/언매93', g2: '-', g3: '-' },
-    megastudy: { g1: '화작96~97/언매93~94', g2: '-', g3: '-' },
-    mimac: { g1: '화작97/언매93', g2: '-', g3: '-' },
-    jongro: { g1: '화작98/언매97', g2: '-', g3: '-' },
-    etoos: { g1: '화작90~91/언매85~86', g2: '-', g3: '-' }
+    single: { g1: '화작96/언매93', g2: '-', g3: '-' }
   },
   '2025_수능': {
     ebsi: { g1: '화작91', g2: '화작85', g3: '화작79' },
     megastudy: { g1: '화작91~92', g2: '화작83~84', g3: '-' },
-    mimac: { g1: '화작92', g2: '화작84~85', g3: '-' }
+    mimac: { g1: '화작92', g2: '화작84~85', g3: '-' },
+    jongro: { g1: '화작95/언매92', g2: '화작88/언매86', g3: '화작79/언매77' }
+  },
+  '2024_수능': {
+    jongro: { g1: '88', g2: '81', g3: '72' }
   }
 };
 
@@ -837,6 +843,7 @@ async function fetchDirectInstitutePages(key) {
   const urls = [
     { name: 'EBSi', url: `https://www.ebsi.co.kr/ebs/xip/xipa/retrieveSCVMainInfo.ebs?irecord=${irecord}&targetCd=D300` },
     { name: '종로학원', url: `https://b.jongro.co.kr/exam/ex${yymmdd}/go3_cut.asp` },
+    { name: '종로학원확정', url: `https://www.jongro.co.kr/service/examResult/ex${yyyymmdd}/go3_resultCut.asp` },
     { name: '이투스', url: `https://m.etoos.com/exam/quiz/${yyyymmdd}_3/grade.asp` },
     { name: '대성마이맥', url: `https://www.mimacstudy.com/entexm/info/entexmMain.ds?requestMenuId=MNMN_M008` }
   ];
@@ -862,79 +869,88 @@ app.get('/api/korean-grade-cuts', async (req, res) => {
     return res.json({ ok: false, year, type, error: '기관별 원점수 등급컷은 2023~2027학년도만 지원됩니다.', cuts: null });
   }
   const key = `${year}_${type}`;
+  const isMock = (type === '6월' || type === '9월');
   if (GRADE_CUTS_CACHE[key]) {
-    return res.json({ ok: true, year, type, cuts: GRADE_CUTS_CACHE[key], cached: true });
+    return res.json(Object.assign({ ok: true, year, type, isMock, cached: true }, GRADE_CUTS_CACHE[key]));
   }
 
+  const preset = VERIFIED_GRADE_CUTS[key] || {};
   const baseCuts = {
-    ebsi: { g1: '-', g2: '-', g3: '-' },
-    megastudy: { g1: '-', g2: '-', g3: '-' },
-    mimac: { g1: '-', g2: '-', g3: '-' },
-    jongro: { g1: '-', g2: '-', g3: '-' },
-    etoos: { g1: '-', g2: '-', g3: '-' }
+    ebsi: Object.assign({ g1: '-', g2: '-', g3: '-' }, preset.ebsi || {}),
+    megastudy: Object.assign({ g1: '-', g2: '-', g3: '-' }, preset.megastudy || {}),
+    mimac: Object.assign({ g1: '-', g2: '-', g3: '-' }, preset.mimac || {}),
+    jongro: Object.assign({ g1: '-', g2: '-', g3: '-' }, preset.jongro || {}),
+    etoos: Object.assign({ g1: '-', g2: '-', g3: '-' }, preset.etoos || {})
   };
+  const singleCut = Object.assign({ g1: '-', g2: '-', g3: '-' }, preset.single || {});
 
-  if (VERIFIED_GRADE_CUTS[key]) {
-    for (const inst of Object.keys(VERIFIED_GRADE_CUTS[key])) {
-      if (baseCuts[inst]) Object.assign(baseCuts[inst], VERIFIED_GRADE_CUTS[key][inst]);
-    }
-  }
+  const needScrape = isMock
+    ? (singleCut.g1 === '-' || singleCut.g2 === '-' || singleCut.g3 === '-')
+    : Object.values(baseCuts).some(c => c.g1 === '-' || c.g2 === '-' || c.g3 === '-');
 
-  const examLabel = type === '수능' ? '수능' : `${type} 모의평가`;
-  const [ebsiTxt, naver1, naver2, daum1, gNews1, ddg1] = await Promise.all([
-    fetchDirectInstitutePages(key),
-    fetchNaverSearchWithArticles(`${year}학년도 ${examLabel} 국어 원점수 등급컷 화작 언매 메가스터디 대성 종로 이투스 EBSi`),
-    fetchNaverSearchWithArticles(`${year} ${examLabel} 국어 1등급 2등급 3등급 원점수 컷`),
-    fetchDaumSearchWithArticles(`${year}학년도 ${examLabel} 국어 원점수 등급컷 메가스터디 대성마이맥 종로학원 이투스 EBSi`),
-    fetchGoogleNewsRssWithArticles(`${year}학년도 ${examLabel} 국어 등급컷 원점수 메가스터디 대성 종로 이투스`),
-    fetchDdgWithArticles(`"${year}학년도" "${examLabel}" 국어 원점수 등급컷 메가스터디 대성 종로 이투스 EBSi`)
-  ]);
-  const snippets = [ebsiTxt, naver1, naver2, daum1, gNews1, ddg1].filter(Boolean).join('\n').slice(0, 32000);
-
-  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
-  if (apiKey && snippets.length > 80) {
-    const prompt = `아래 검색·공식 페이지·기사 본문 텍스트에서 ${year}학년도 ${examLabel} 국어 영역의 기관별(EBSi, 메가스터디, 대성마이맥, 종로학원, 이투스) **원점수** 1등급·2등급·3등급 컷을 추출하세요.
-[절대 규칙]
-- 반드시 **원점수(100점 만점 기준, 예: 91 또는 화작92/언매88)**만 추출하세요. 표준점수(101점 이상)는 절대 넣지 마세요.
-- 화법과 작문 / 언어와 매체가 구분되어 있으면 "화작92/언매88" 형태로 간결히 적고, 하나만 확인되면 "화작92" 또는 "언매88"로 적으세요.
-- 본문에 실제로 원점수가 명시된 기관과 등급만 적고, 본문에 없는 기관이나 등급은 절대 추측하지 말고 "-"로 두세요.
-반드시 아래 JSON 형식만 출력하세요:
-{"ebsi":{"g1":"-","g2":"-","g3":"-"},"megastudy":{"g1":"-","g2":"-","g3":"-"},"mimac":{"g1":"-","g2":"-","g3":"-"},"jongro":{"g1":"-","g2":"-","g3":"-"},"etoos":{"g1":"-","g2":"-","g3":"-"}}
-
-[수집된 텍스트]
+  if (needScrape) {
+    const examLabel = type === '수능' ? '수능' : `${type} 모의평가`;
+    const [dirTxt, naver1, daum1, gNews1] = await Promise.all([
+      fetchDirectInstitutePages(key),
+      fetchNaverSearchWithArticles(`${year}학년도 ${examLabel} 국어 원점수 등급컷 화작 언매 1등급 2등급 3등급`),
+      fetchDaumSearchWithArticles(`${year}학년도 ${examLabel} 국어 원점수 등급컷 메가스터디 대성 종로 이투스 EBSi`),
+      fetchGoogleNewsRssWithArticles(`${year}학년도 ${examLabel} 국어 원점수 등급컷 화작 언매`)
+    ]);
+    const snippets = [dirTxt, naver1, daum1, gNews1].filter(Boolean).join('\n').slice(0, 32000);
+    const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+    if (apiKey && snippets.length > 80) {
+      const prompt = isMock
+        ? `아래 텍스트에서 ${year}학년도 ${examLabel} 국어 영역의 **원점수** 대표 1등급·2등급·3등급 컷을 추출하세요.
+[규칙] 100점 만점 원점수만(101점 이상 표준점수 제외). 화작/언매 구분 시 "화작89/언매84" 형태로 적고 없으면 "-".
+JSON만 출력: {"g1":"-","g2":"-","g3":"-"}
+[텍스트]
+${snippets}`
+        : `아래 텍스트에서 ${year}학년도 수능 국어 영역의 기관별(EBSi, 메가스터디, 대성마이맥, 종로학원, 이투스) **원점수** 1등급·2등급·3등급 컷을 추출하세요.
+[규칙] 100점 만점 원점수만(101점 이상 표준점수 제외). 화작/언매 구분 시 "화작94/언매90" 형태. 본문에 없는 것은 "-".
+JSON만 출력: {"ebsi":{"g1":"-","g2":"-","g3":"-"},"megastudy":{"g1":"-","g2":"-","g3":"-"},"mimac":{"g1":"-","g2":"-","g3":"-"},"jongro":{"g1":"-","g2":"-","g3":"-"},"etoos":{"g1":"-","g2":"-","g3":"-"}}
+[텍스트]
 ${snippets}`;
-    try {
-      const gRes = await callGeminiWithFallback(
-        apiKey,
-        { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.0, maxOutputTokens: 1024 } },
-        'chat'
-      );
-      if (gRes && gRes.text) {
-        const m = gRes.text.match(/\{[\s\S]*\}/);
-        if (m) {
-          const parsed = JSON.parse(m[0]);
-          for (const k of ['ebsi', 'megastudy', 'mimac', 'jongro', 'etoos']) {
-            if (parsed[k] && typeof parsed[k] === 'object') {
+      try {
+        const gRes = await callGeminiWithFallback(
+          apiKey,
+          { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.0, maxOutputTokens: 1024 } },
+          'chat'
+        );
+        if (gRes && gRes.text) {
+          const m = gRes.text.match(/\{[\s\S]*\}/);
+          if (m) {
+            const parsed = JSON.parse(m[0]);
+            const validRaw = (v) => {
+              const str = String(v || '-').trim();
+              const nums = str.match(/\d+/g) || [];
+              return str && str !== '-' && !nums.some(n => Number(n) > 100) ? str.slice(0, 22) : '';
+            };
+            if (isMock) {
               ['g1', 'g2', 'g3'].forEach(gk => {
-                const v = String(parsed[k][gk] || '-').trim();
-                const nums = v.match(/\d+/g) || [];
-                const hasStdScore = nums.some(n => Number(n) > 100);
-                if (v && v !== '-' && !hasStdScore && baseCuts[k][gk] === '-') {
-                  baseCuts[k][gk] = v.slice(0, 22);
-                }
+                const okv = validRaw(parsed[gk]);
+                if (okv && singleCut[gk] === '-') singleCut[gk] = okv;
               });
+            } else {
+              for (const k of ['ebsi', 'megastudy', 'mimac', 'jongro', 'etoos']) {
+                if (parsed[k] && typeof parsed[k] === 'object') {
+                  ['g1', 'g2', 'g3'].forEach(gk => {
+                    const okv = validRaw(parsed[k][gk]);
+                    if (okv && baseCuts[k][gk] === '-') baseCuts[k][gk] = okv;
+                  });
+                }
+              }
             }
           }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
   }
 
-  const filledInsts = Object.values(baseCuts).filter(c => c.g1 !== '-' || c.g2 !== '-' || c.g3 !== '-').length;
-  if (filledInsts >= 4) {
-    GRADE_CUTS_CACHE[key] = baseCuts;
+  const outObj = isMock ? { isMock: true, singleCut, cuts: baseCuts } : { isMock: false, cuts: baseCuts };
+  if (isMock ? (singleCut.g1 !== '-') : (Object.values(baseCuts).filter(c => c.g1 !== '-').length >= 4)) {
+    GRADE_CUTS_CACHE[key] = outObj;
   }
-  res.json({ ok: true, year, type, cuts: baseCuts });
+  res.json(Object.assign({ ok: true, year, type }, outObj));
 });
 
 app.get('/api/korean-exam', async (req, res) => {
@@ -1154,17 +1170,13 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
   };
 
   try {
-    // Run in 2 staggered waves (3 + 2) to stay under 1~2 min while avoiding 429 burst limits
-    const [p1, p2, p3] = await Promise.all([
-      callPart('공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론 지문 + 3문항, [4~9] 인문·사회 주제 통합 (가)/(나) 지문 + 6문항([3점] 포함). 실제 수능 형식으로 출제하세요.'),
-      callPart('공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술 추론 지문 + 4문항([3점] 포함), [14~17] 법·경제 지문 + 4문항([3점] 포함). 실제 수능 형식으로 출제하세요.'),
-      callPart('공통과목 문학 18~27번(총 10문항): [18~21] 현대소설 지문 + 4문항, [22~27] 갈래 복합(고전시가+수필) 지문 + 6문항(<보기> 포함). 실제 수능 형식으로 출제하세요.')
-    ]);
-    const [p4, p5] = await Promise.all([
-      callPart('공통과목 문학 28~34번(총 7문항): [28~31] 고전소설 지문 + 4문항, [32~34] 현대시 (가)/(나) 지문 + 3문항(<보기> 포함). 실제 수능 형식으로 출제하세요.'),
-      callPart(`선택과목 '${elective}' 35~45번(총 11문항): 평가원 ${elective} 실제 구성([35~37], [38~42], [43~45] 등)에 맞춰 35번부터 45번까지 빠짐없이 출제하세요.`)
-    ]);
-    const passages = [...p1, ...p2, ...p3, ...p4, ...p5];
+    // Run 3 parts sequentially with gentle pause to completely avoid 429 burst limits
+    const p1 = await callPart('공통과목 독서 1~17번(총 17문항): [1~3] 독서 이론(3문항), [4~9] 인문·사회 (가)/(나)(6문항), [10~13] 과학·기술(4문항), [14~17] 법·경제(4문항). 1번부터 17번까지 실제 수능 형식으로 출제하세요.');
+    await new Promise(r => setTimeout(r, 1200));
+    const p2 = await callPart('공통과목 문학 18~34번(총 17문항): [18~21] 현대소설(4문항), [22~27] 갈래 복합(6문항), [28~31] 고전소설(4문항), [32~34] 현대시 (가)/(나)(3문항). 18번부터 34번까지 실제 수능 형식으로 출제하세요.');
+    await new Promise(r => setTimeout(r, 1200));
+    const p3 = await callPart(`선택과목 '${elective}' 35~45번(총 11문항): 평가원 ${elective} 실제 구성에 맞춰 35번부터 45번까지 빠짐없이 출제하세요.`);
+    const passages = [...p1, ...p2, ...p3];
     if (passages.length === 0) {
       const detail = [...new Set(partErrors)].slice(0, 3).join(' / ');
       return res.status(502).json({
@@ -1321,8 +1333,8 @@ const CACHED_MODELS = { vision: '', chat: '' };
 
 async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   const preferred = mode === 'chat'
-    ? ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash']
-    : ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+    ? ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-4-hydrogen', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-4-argon']
+    : ['gemini-3.8-flash', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-4-hydrogen', 'gemini-3.5-flash'];
 
   const order = CACHED_MODELS[mode]
     ? [CACHED_MODELS[mode], ...preferred.filter(m => m !== CACHED_MODELS[mode])]
@@ -1365,7 +1377,8 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   for (const model of order) {
     const ok = await tryModel(model);
     if (ok) return ok;
-    await new Promise(r => setTimeout(r, 750));
+    const lastErr = errors[errors.length - 1] || '';
+    await new Promise(r => setTimeout(r, lastErr.includes('429') ? 2200 : 500));
   }
 
   const discovered = await discoverAvailableGeminiModels(apiKey);

@@ -2015,14 +2015,20 @@
   <!-- Modal: User Guide (Non-jace48) -->
   <div id="userGuideModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[65] hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col p-5 sm:p-6 shadow-xl">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
           <i data-lucide="book-open" class="w-5 h-5 text-indigo-600"></i>
           <h3 class="text-base sm:text-lg font-bold text-slate-900">학생관리 사용 설명서</h3>
         </div>
-        <button type="button" id="closeUserGuideBtn" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" aria-label="닫기">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+        <div class="flex items-center gap-2">
+          <div class="inline-flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200">
+            <button type="button" id="ugSwitchEssayBtn" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold transition">인문논술</button>
+            <button type="button" id="ugSwitchKoreanBtn" class="px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 text-xs font-bold transition">수능 국어</button>
+          </div>
+          <button type="button" id="closeUserGuideBtn" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" aria-label="닫기">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
       </div>
       <div id="userGuideEssayBody" class="mt-4 flex-1 overflow-y-auto space-y-3.5 text-xs sm:text-sm text-slate-700 leading-relaxed custom-scrollbar pr-1">
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
@@ -2276,7 +2282,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261127_2240';
+    const CLIENT_BUILD_VERSION = '20261127_2300';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -3592,8 +3598,19 @@
       if (korStudio) korStudio.classList.toggle('hidden', !isKor);
 
       const ugKor = document.getElementById('userGuideKoreanBody');
-      if (ugEssay) ugEssay.classList.toggle('hidden', isKor);
-      if (ugKor) ugKor.classList.toggle('hidden', !isKor);
+      const setUgTab = (korMode) => {
+        if (ugEssay) ugEssay.classList.toggle('hidden', korMode);
+        if (ugKor) ugKor.classList.toggle('hidden', !korMode);
+        const eb = document.getElementById('ugSwitchEssayBtn');
+        const kb = document.getElementById('ugSwitchKoreanBtn');
+        if (eb) eb.className = !korMode ? 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold transition' : 'px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 text-xs font-bold transition';
+        if (kb) kb.className = korMode ? 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold transition' : 'px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 text-xs font-bold transition';
+      };
+      setUgTab(isKor);
+      const ugeBtn = document.getElementById('ugSwitchEssayBtn');
+      const ugkBtn = document.getElementById('ugSwitchKoreanBtn');
+      if (ugeBtn && !ugeBtn.dataset.bound) { ugeBtn.dataset.bound = '1'; ugeBtn.addEventListener('click', () => setUgTab(false)); }
+      if (ugkBtn && !ugkBtn.dataset.bound) { ugkBtn.dataset.bound = '1'; ugkBtn.addEventListener('click', () => setUgTab(true)); }
 
       const tabEssay = document.getElementById('tab-essay');
       if (isKor && tabEssay && !tabEssay.classList.contains('hidden') && typeof switchTab === 'function') {
@@ -7135,15 +7152,40 @@
         }
       }
 
-      function renderKoreanGradeCuts(cuts, loading) {
+      function renderKoreanGradeCuts(gd, loading) {
         const boxEl = document.getElementById('korGradeCutsBox');
         const yrSel = document.getElementById('korExamYearSelect');
+        const tpSel = document.getElementById('korExamTypeSelect');
         const curYr = yrSel ? Number(yrSel.value) : 2027;
+        const curType = tpSel ? tpSel.value : '수능';
         if (boxEl) boxEl.classList.toggle('hidden', curYr < 2023);
         if (curYr < 2023) return;
+
         const tbody = document.getElementById('korGradeCutsBody');
         const stEl = document.getElementById('korGradeCutsStatus');
+        const hdrEl = boxEl ? boxEl.querySelector('h4') : null;
         if (!tbody) return;
+
+        const isMock = (gd && typeof gd.isMock === 'boolean') ? gd.isMock : (curType === '6월' || curType === '9월');
+        if (hdrEl) {
+          hdrEl.textContent = isMock
+            ? '대표 원점수 1 · 2 · 3등급 컷 (평가원·주요기관 기준)'
+            : '기관별 원점수 1 · 2 · 3등급 컷 (EBSi · 메가 · 대성 · 종로 · 이투스)';
+        }
+        if (stEl) stEl.textContent = loading ? '등급컷 불러오는 중...' : (isMock ? '원점수 대표 컷' : '기관별 원점수 컷');
+
+        if (isMock) {
+          const sc = (gd && gd.singleCut) || { g1: '-', g2: '-', g3: '-' };
+          tbody.innerHTML = `<tr class="hover:bg-slate-50/70">
+            <td class="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">대표 원점수 등급컷</td>
+            <td class="py-2.5 px-3 text-center font-bold text-emerald-700">${escapeHtml(sc.g1 || '-')}</td>
+            <td class="py-2.5 px-3 text-center font-bold text-indigo-700">${escapeHtml(sc.g2 || '-')}</td>
+            <td class="py-2.5 px-3 text-center font-semibold text-slate-700">${escapeHtml(sc.g3 || '-')}</td>
+          </tr>`;
+          return;
+        }
+
+        const cuts = (gd && gd.cuts) ? gd.cuts : gd;
         const rows = [
           { key: 'ebsi', name: 'EBSi' },
           { key: 'megastudy', name: '메가스터디' },
@@ -7151,7 +7193,6 @@
           { key: 'jongro', name: '종로학원' },
           { key: 'etoos', name: '이투스' }
         ];
-        if (stEl) stEl.textContent = loading ? '등급컷 불러오는 중...' : '기관별 공개 등급컷 반영';
         tbody.innerHTML = rows.map(r => {
           const c = (cuts && cuts[r.key]) || { g1: '-', g2: '-', g3: '-' };
           return `<tr class="hover:bg-slate-50/70">
@@ -7559,7 +7600,7 @@
           renderKoreanGradeCuts(null, true);
           if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
             (Number(year) >= 2023 ? fetch(`/api/korean-grade-cuts?year=${encodeURIComponent(year)}&type=${encodeURIComponent(type)}`) : Promise.resolve({ ok: false })).then(r => r.ok ? r.json() : null).then(gd => {
-              renderKoreanGradeCuts(gd && gd.cuts ? gd.cuts : null, false);
+              renderKoreanGradeCuts(gd, false);
             }).catch(() => renderKoreanGradeCuts(null, false));
           } else { renderKoreanGradeCuts(null, false); }
 
@@ -7598,7 +7639,7 @@
           }
 
           if (typeof USE_LOCAL_NODE_SERVER !== 'undefined' && USE_LOCAL_NODE_SERVER) {
-            let parsed = d.cachedAnswers || null;
+            let parsed = (data && data.cachedAnswers) || null;
             if (!parsed && aUrl) {
               const aProxy = `/api/pdf-proxy?url=${encodeURIComponent(aUrl)}`;
               currentKorExamContext.aProxyUrl = aProxy;
