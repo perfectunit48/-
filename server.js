@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_2210';
+const CLIENT_BUILD_VERSION = '20261127_2235';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -682,7 +682,11 @@ const GRADE_CUTS_CACHE = {};
 const KOREAN_EXAM_URL_CACHE = {};
 const VERIFIED_GRADE_CUTS = {
   '2027_수능': {
-    ebsi: { g1: '화작94/언매90', g2: '화작89/언매85', g3: '화작81/언매77' }
+    ebsi: { g1: '화작94/언매90', g2: '화작89/언매85', g3: '화작81/언매77' },
+    megastudy: { g1: '화작94~95/언매90~91', g2: '화작88~90/언매84~86', g3: '화작80~83/언매76~79' },
+    mimac: { g1: '화작95/언매91', g2: '화작89/언매85', g3: '화작81/언매77' },
+    jongro: { g1: '화작95/언매91', g2: '화작89/언매84', g3: '화작81/언매77' },
+    etoos: { g1: '화작94~95/언매90~91', g2: '화작88/언매84', g3: '화작80~81/언매76~77' }
   },
   '2026_수능': {
     jongro: { g1: '화작90/언매85', g2: '화작83/언매78', g3: '화작73/언매69' }
@@ -727,7 +731,14 @@ async function fetchTextWithTimeout(url, timeoutMs = 4500) {
     });
     clearTimeout(tm);
     if (!r.ok) return '';
-    return await r.text();
+    const buf = Buffer.from(await r.arrayBuffer());
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    const headLatin = buf.slice(0, 1200).toString('latin1').toLowerCase();
+    const isEucKr = ct.includes('euc-kr') || ct.includes('ks_c_5601') || headLatin.includes('euc-kr') || headLatin.includes('ks_c_5601');
+    if (isEucKr) {
+      try { return new TextDecoder('euc-kr').decode(buf); } catch (e) {}
+    }
+    return buf.toString('utf8');
   } catch (e) {
     return '';
   }
@@ -818,12 +829,28 @@ async function fetchNaverSearchWithArticles(query) {
   return out;
 }
 
-async function fetchEbsiDirectPage(key) {
+async function fetchDirectInstitutePages(key) {
   const irecord = EBSI_IRECORD_MAP[key];
   if (!irecord) return '';
-  const url = `https://www.ebsi.co.kr/ebs/xip/xipa/retrieveSCVMainInfo.ebs?irecord=${irecord}&targetCd=D300`;
-  const html = await fetchTextWithTimeout(url, 5000);
-  return html ? ('[EBSi 공식 페이지] ' + stripHtmlText(html).slice(0, 5000)) : '';
+  const yyyymmdd = irecord.slice(0, 8);
+  const yymmdd = irecord.slice(2, 8);
+  const urls = [
+    { name: 'EBSi', url: `https://www.ebsi.co.kr/ebs/xip/xipa/retrieveSCVMainInfo.ebs?irecord=${irecord}&targetCd=D300` },
+    { name: '종로학원', url: `https://b.jongro.co.kr/exam/ex${yymmdd}/go3_cut.asp` },
+    { name: '이투스', url: `https://m.etoos.com/exam/quiz/${yyyymmdd}_3/grade.asp` },
+    { name: '대성마이맥', url: `https://www.mimacstudy.com/entexm/info/entexmMain.ds?requestMenuId=MNMN_M008` }
+  ];
+  const results = await Promise.all(urls.map(async (u) => {
+    const html = await fetchTextWithTimeout(u.url, 5000);
+    if (!html) return '';
+    const txt = stripHtmlText(html);
+    if (!txt || txt.length < 60) return '';
+    // Focus on Korean section if long
+    const kIdx = txt.indexOf('국어');
+    const slice = kIdx >= 0 ? txt.slice(Math.max(0, kIdx - 80), kIdx + 2600) : txt.slice(0, 2600);
+    return `[${u.name} 공식 사이트 직접 수집] ${slice}`;
+  }));
+  return results.filter(Boolean).join('\n');
 }
 
 app.get('/api/korean-grade-cuts', async (req, res) => {
@@ -855,7 +882,7 @@ app.get('/api/korean-grade-cuts', async (req, res) => {
 
   const examLabel = type === '수능' ? '수능' : `${type} 모의평가`;
   const [ebsiTxt, naver1, naver2, daum1, gNews1, ddg1] = await Promise.all([
-    fetchEbsiDirectPage(key),
+    fetchDirectInstitutePages(key),
     fetchNaverSearchWithArticles(`${year}학년도 ${examLabel} 국어 원점수 등급컷 화작 언매 메가스터디 대성 종로 이투스 EBSi`),
     fetchNaverSearchWithArticles(`${year} ${examLabel} 국어 1등급 2등급 3등급 원점수 컷`),
     fetchDaumSearchWithArticles(`${year}학년도 ${examLabel} 국어 원점수 등급컷 메가스터디 대성마이맥 종로학원 이투스 EBSi`),
@@ -919,7 +946,9 @@ app.get('/api/korean-exam', async (req, res) => {
   }
   const cacheKey = `${year}_${type}`;
   if (KOREAN_EXAM_URL_CACHE[cacheKey]) {
-    return res.json(KOREAN_EXAM_URL_CACHE[cacheKey]);
+    const cachedP = Object.assign({}, KOREAN_EXAM_URL_CACHE[cacheKey]);
+    if (typeof KOREAN_PARSED_ANSWERS_CACHE !== 'undefined' && KOREAN_PARSED_ANSWERS_CACHE[cacheKey]) cachedP.cachedAnswers = KOREAN_PARSED_ANSWERS_CACHE[cacheKey];
+    return res.json(cachedP);
   }
   const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
   const execYear = yNum - 1;
@@ -951,6 +980,7 @@ app.get('/api/korean-exam', async (req, res) => {
     type,
     questionPdfUrl,
     answerPdfUrl,
+    cachedAnswers: (typeof KOREAN_PARSED_ANSWERS_CACHE !== 'undefined' && KOREAN_PARSED_ANSWERS_CACHE[cacheKey]) || null,
     ebsiUrl: 'https://www.ebsi.co.kr/ebs/xip/xipc/previousPaperList.ebs?targetCd=D300'
   };
   if (questionPdfUrl && answerPdfUrl) {
@@ -1070,56 +1100,81 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
 
   const safeParsePassages = (txt) => {
     if (!txt) return [];
-    const cleaned = String(txt).replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-    const m = cleaned.match(/\{[\s\S]*\}/);
+    let cleaned = String(txt).replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    const tryExtract = (raw) => {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && Array.isArray(parsed.passages)) return parsed.passages;
+      if (parsed && Array.isArray(parsed.data)) return parsed.data;
+      return [];
+    };
+    const m = cleaned.match(/\{[\s\S]*\}/) || cleaned.match(/\[[\s\S]*\]/);
     const candidate = m ? m[0] : cleaned;
     try {
-      const parsed = JSON.parse(candidate);
-      return Array.isArray(parsed.passages) ? parsed.passages : [];
+      return tryExtract(candidate);
     } catch (e) {
       try {
         const fixed = candidate.replace(/,\s*([}\]])/g, '$1').replace(/[\u0000-\u0019]+/g, ' ');
-        const parsed2 = JSON.parse(fixed);
-        return Array.isArray(parsed2.passages) ? parsed2.passages : [];
+        return tryExtract(fixed);
       } catch (e2) {
-        return [];
+        // Recover complete passage objects if truncated mid-stream
+        const recovered = [];
+        const pMatches = candidate.match(/\{"range"\s*:[\s\S]*?"questions"\s*:\s*\[[\s\S]*?\]\s*\}/g) || [];
+        for (const pm of pMatches) {
+          try { recovered.push(JSON.parse(pm.replace(/,\s*([}\]])/g, '$1'))); } catch (e3) {}
+        }
+        return recovered;
       }
     }
   };
 
+  const partErrors = [];
   const callPart = async (partDesc) => {
     const prompt = `${commonPolicy}\n\n[이번에 출제할 파트]\n${partDesc}`;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const genCfg = attempt === 0
-        ? { temperature: 0.5, maxOutputTokens: 8192, responseMimeType: 'application/json' }
-        : { temperature: 0.45, maxOutputTokens: 8192 };
+    const configs = [
+      { temperature: 0.5, maxOutputTokens: 8192, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+      { temperature: 0.5, maxOutputTokens: 8192, responseMimeType: 'application/json' },
+      { temperature: 0.45, maxOutputTokens: 8192 }
+    ];
+    for (const genCfg of configs) {
       const r = await callGeminiWithFallback(
         apiKey,
         { contents: [{ parts: [{ text: prompt }] }], generationConfig: genCfg },
         'chat'
       );
-      const list = safeParsePassages(r && r.text);
-      if (list.length > 0) return list;
+      if (r && r.text) {
+        const list = safeParsePassages(r.text);
+        if (list.length > 0) return list;
+        partErrors.push('JSON 파싱 실패');
+      } else if (r && r.error) {
+        partErrors.push(r.error);
+      }
     }
     return [];
   };
 
   try {
-    const [p1, p2, p3, p4, p5, p6] = await Promise.all([
-      callPart('공통과목 독서 1~3번(총 3문항): [1~3] 독서 이론·방법론 지문 + 3문항. 실제 수능 형식으로 충실히 작성하세요.'),
-      callPart('공통과목 독서 4~9번(총 6문항): [4~9] 인문·사회 주제 통합 (가)/(나) 지문 + 6문항([3점] 포함). 실제 수능 형식으로 충실히 작성하세요.'),
-      callPart('공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술 추론 지문 + 4문항([3점] 포함), [14~17] 법·경제 지문 + 4문항([3점] 포함). 실제 수능 형식으로 충실히 작성하세요.'),
-      callPart('공통과목 문학 18~27번(총 10문항): [18~21] 현대소설 지문 + 4문항, [22~27] 갈래 복합(고전시가+수필) 지문 + 6문항(<보기> 포함). 실제 수능 형식으로 충실히 작성하세요.'),
-      callPart('공통과목 문학 28~34번(총 7문항): [28~31] 고전소설 지문 + 4문항, [32~34] 현대시 (가)/(나) 지문 + 3문항(<보기> 포함). 실제 수능 형식으로 충실히 작성하세요.'),
+    // Run in 2 staggered waves (3 + 2) to stay under 1~2 min while avoiding 429 burst limits
+    const [p1, p2, p3] = await Promise.all([
+      callPart('공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론 지문 + 3문항, [4~9] 인문·사회 주제 통합 (가)/(나) 지문 + 6문항([3점] 포함). 실제 수능 형식으로 출제하세요.'),
+      callPart('공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술 추론 지문 + 4문항([3점] 포함), [14~17] 법·경제 지문 + 4문항([3점] 포함). 실제 수능 형식으로 출제하세요.'),
+      callPart('공통과목 문학 18~27번(총 10문항): [18~21] 현대소설 지문 + 4문항, [22~27] 갈래 복합(고전시가+수필) 지문 + 6문항(<보기> 포함). 실제 수능 형식으로 출제하세요.')
+    ]);
+    const [p4, p5] = await Promise.all([
+      callPart('공통과목 문학 28~34번(총 7문항): [28~31] 고전소설 지문 + 4문항, [32~34] 현대시 (가)/(나) 지문 + 3문항(<보기> 포함). 실제 수능 형식으로 출제하세요.'),
       callPart(`선택과목 '${elective}' 35~45번(총 11문항): 평가원 ${elective} 실제 구성([35~37], [38~42], [43~45] 등)에 맞춰 35번부터 45번까지 빠짐없이 출제하세요.`)
     ]);
-    const passages = [...p1, ...p2, ...p3, ...p4, ...p5, ...p6];
+    const passages = [...p1, ...p2, ...p3, ...p4, ...p5];
     if (passages.length === 0) {
-      return res.status(502).json({ ok: false, error: '모의고사 생성 중 응답을 해석하지 못했습니다. 다시 시도해 주세요.' });
+      const detail = [...new Set(partErrors)].slice(0, 3).join(' / ');
+      return res.status(502).json({
+        ok: false,
+        error: `모의고사 생성에 실패했습니다. (${detail || 'AI 응답 파싱 오류'}) 다시 시도해 주세요.`
+      });
     }
     res.json({ ok: true, title, elective, passages });
   } catch (e) {
-    res.status(500).json({ ok: false, error: '모의고사 생성 중 오류가 발생했습니다.' });
+    res.status(500).json({ ok: false, error: '모의고사 생성 중 오류가 발생했습니다: ' + (e.message || '') });
   }
 });
 
