@@ -452,6 +452,115 @@ function fetchBinaryWithTlsBypass(urlStr, redirectsLeft = 5) {
   });
 }
 
+// 3-1. 국어 기출(2016~2026학년도 6월·9월·수능) 문제/정답 PDF 자동 탐색 API
+const KOREAN_EXAM_PRESETS = {
+  '2026_수능': {
+    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20251113/go3/live_main_paper_1_kor_352K8BKR.pdf',
+    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20251113/go3/korA_1_hsj_46NL9282_1.pdf'
+  },
+  '2026_9월': {
+    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20250903/go3/kor_main_mun_O973Z9C5.pdf',
+    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20250903/go3/korA_1_hsj_K962J13R_3.pdf'
+  },
+  '2026_6월': {
+    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20250604/go3/kor_main_mun_G745R5NZ_1.pdf',
+    answerPdfUrl: ''
+  },
+  '2025_수능': {
+    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20241114/go3/korB_1_mun_Y6RJMQA1_1.pdf',
+    answerPdfUrl: ''
+  },
+  '2025_9월': {
+    questionPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20240904/go3/kor_main_mun_86FDX88U_1.pdf',
+    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20240904/go3/kor_main_hsj_EFE33512_1.pdf'
+  },
+  '2025_6월': {
+    questionPdfUrl: '',
+    answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20240604/go3/kor_main_hsj_2C42VZKT_2.pdf'
+  }
+};
+
+async function checkUrlExists(url) {
+  if (!url) return false;
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 3500);
+    const r = await fetch(url, { method: 'HEAD', signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+    clearTimeout(t);
+    return r.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function searchEbsiKoreanPdf(year, type, kind) {
+  const examLabel = type === '수능' ? '대학수학능력시험' : (type === '9월' ? '9월 모의평가' : '6월 모의평가');
+  const q = kind === 'mun'
+    ? `site:wdown.ebsi.co.kr "${year}학년도" "${examLabel}" 국어 문제`
+    : `site:wdown.ebsi.co.kr "${year}학년도" "${examLabel}" 국어 정답`;
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 6000);
+    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
+      signal: c.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    });
+    clearTimeout(t);
+    if (!r.ok) return '';
+    const html = await r.text();
+    const matches = [...html.matchAll(/https?:\/\/wdown\.ebsi\.co\.kr\/[^"'\s<>]+\.pdf/gi)].map(m => m[0]);
+    const execYear = Number(year) - 1;
+    const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
+    const prefix = `${execYear}${mm}`;
+    const filtered = matches.filter(u => u.includes('/go3/') && u.includes('kor') && (kind === 'mun' ? (u.includes('mun') || u.includes('paper')) : (u.includes('hsj') || u.includes('answer'))));
+    const exact = filtered.find(u => u.includes(prefix));
+    return exact || filtered[0] || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+app.get('/api/korean-exam', async (req, res) => {
+  const year = String(req.query.year || '2026').replace(/[^0-9]/g, '');
+  const type = String(req.query.type || '수능').trim();
+  const yNum = Number(year);
+  if (!yNum || yNum < 2016 || yNum > 2026) {
+    return res.status(400).json({ ok: false, error: '학년도는 2016~2026 사이여야 합니다.' });
+  }
+  const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
+  const execYear = yNum - 1;
+  const preset = KOREAN_EXAM_PRESETS[`${year}_${type}`] || {};
+
+  let questionPdfUrl = preset.questionPdfUrl || '';
+  let answerPdfUrl = preset.answerPdfUrl || '';
+
+  const ttProb = `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-p-01.pdf`;
+  const ttAns = `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-s-01.pdf`;
+
+  const checks = await Promise.all([
+    !questionPdfUrl ? checkUrlExists(ttProb) : Promise.resolve(false),
+    !answerPdfUrl ? checkUrlExists(ttAns) : Promise.resolve(false)
+  ]);
+  if (!questionPdfUrl && checks[0]) questionPdfUrl = ttProb;
+  if (!answerPdfUrl && checks[1]) answerPdfUrl = ttAns;
+
+  const fallbacks = await Promise.all([
+    !questionPdfUrl ? searchEbsiKoreanPdf(year, type, 'mun') : Promise.resolve(''),
+    !answerPdfUrl ? searchEbsiKoreanPdf(year, type, 'hsj') : Promise.resolve('')
+  ]);
+  if (!questionPdfUrl && fallbacks[0]) questionPdfUrl = fallbacks[0];
+  if (!answerPdfUrl && fallbacks[1]) answerPdfUrl = fallbacks[1];
+
+  res.json({
+    ok: true,
+    year,
+    type,
+    questionPdfUrl,
+    answerPdfUrl,
+    ebsiUrl: 'https://www.ebsi.co.kr/ebs/xip/xipc/previousPaperList.ebs?targetCd=D300'
+  });
+});
+
 app.get('/api/pdf-proxy', async (req, res) => {
   const targetUrl = req.query.url;
   const isDownload = req.query.download === '1';
