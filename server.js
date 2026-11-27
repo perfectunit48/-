@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_0100';
+const CLIENT_BUILD_VERSION = '20261128_0200';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -1088,7 +1088,7 @@ JSON 형식만 출력:
 ${String(answerText || '').slice(0, 14000)}`;
 
   const parts = [{ text: prompt }];
-  const imgsList = Array.isArray(pageImagesBase64) ? pageImagesBase64.slice(0, 2) : [];
+  const imgsList = Array.isArray(pageImagesBase64) ? pageImagesBase64.slice(0, 4) : [];
   if (imgsList.length === 0 && typeof pageImageBase64 === 'string' && pageImageBase64.length > 100) {
     imgsList.push(pageImageBase64);
   }
@@ -1178,6 +1178,39 @@ app.post('/api/korean-mock-generate', async (req, res) => {
     sendEvent({ type: 'progress', pct: 10, msg: '17~27학년도 기출 난이도·출제 틀 분석 중...' });
   }
 
+  if (!global._korMockRecentSeeds) global._korMockRecentSeeds = [];
+  const pickFresh = (pool, count = 1) => {
+    const recent = new Set(global._korMockRecentSeeds);
+    const avail = pool.filter(x => !recent.has(x));
+    const src = avail.length >= count ? avail : pool;
+    const shuffled = [...src].sort(() => Math.random() - 0.5);
+    const chosen = shuffled.slice(0, count);
+    global._korMockRecentSeeds.push(...chosen);
+    if (global._korMockRecentSeeds.length > 35) {
+      global._korMockRecentSeeds = global._korMockRecentSeeds.slice(-35);
+    }
+    return chosen;
+  };
+  const [tTheory] = pickFresh(['독서의 인지적 과정과 스키마', '비판적 읽기와 논증 타당성 평가', '매체 환경 변화와 심층 독해 전략', '상호텍스트적 읽기와 의미 재구성', '독해 중 자기 점검과 추론 조정'], 1);
+  const [tHum] = pickFresh(['조선 후기 실학파의 인식론과 이용후생(가)/(나)', '고대 동양의 예악 사상과 근대 시민 윤리(가)/(나)', '현상학과 해석학의 의미 이해 이론(가)/(나)', '언어철학의 지시 이론과 화용론(가)/(나)', '미학에서의 숭고 개념과 현대 예술론(가)/(나)', '역사 서술의 객관성과 사료 해석(가)/(나)'], 1);
+  const [tSci] = pickFresh(['세포 내 자가포식과 리소좀 분해 메커니즘', '열역학 제2법칙과 비평형 통계역학의 엔트로피', '디지털 영상 압축과 이산 코사인 변환(DCT)', '항생제 내성 박테리아의 유전자 수평 전달', '인공신경망의 역전파와 경사 소실 문제', '대기 복사 평형과 구름 알베도 피드백', '양자 암호 키 분배와 광자 편광 상태'], 1);
+  const [tLaw] = pickFresh(['행정행위의 부관과 비례의 원칙', '계약 해제와 원상회복 의무 및 손해배상', '불완전 경쟁 시장의 가격 차별과 후생 변화', '중앙은행의 통화 정책과 유동성 함정', '저작권법상 공정이용 법리와 변형적 이용', '채권자취소권과 사해행위의 성립 요건'], 1);
+  const [wModNov] = pickFresh(['염상섭 계열의 도시 지식인 심리 소설(가상 창작/재구성)', '채만식·박태원 계열의 풍자·세태 소설', '황순원·오영수 계열의 서정적 단편 소설', '김승옥·이청준 계열의 1960년대 내면 의식 소설', '박완서·윤흥길 계열의 가족사·현대사 소설'], 1);
+  const [wGal] = pickFresh(['조선 전기 강호가도 시조/가사 + 현대 수필', '조선 후기 사설시조 + 고전 한문 수필', '고려 속요/경기체가 + 현대 비평 수필', '유배 가사 + 현대 산문 수필'], 1);
+  const [wClsNov] = pickFresh(['영웅 군담 소설(새로운 인물·전투 서사)', '가정·쟁총형 고전 소설(새로운 가문 서사)', '애정·전기 소설(새로운 만남과 시련 서사)', '판소리계 우화·풍자 소설(새로운 풍자 서사)'], 1);
+  const [wModPoem] = pickFresh(['생명파·자연 서정 현대시 2편', '모더니즘·도시 감각 현대시 2편', '민중·역사 성찰 현대시 2편', '전통 정서·존재 탐구 현대시 2편'], 1);
+
+  const uniquePromptSeed = `출제 고유 시드: ${Date.now()}-${Math.floor(Math.random()*100000)}
+이번 회차 배정 제재(반드시 이전 회차와 다른 새로운 지문·작품으로 창작/구성):
+- 독서 이론: ${tTheory}
+- 인문·사회(가/나): ${tHum}
+- 과학·기술: ${tSci}
+- 법·경제: ${tLaw}
+- 현대소설: ${wModNov}
+- 갈래복합: ${wGal}
+- 고전소설: ${wClsNov}
+- 현대시(가/나): ${wModPoem}`;
+
   const commonPolicy = `당신은 한국교육과정평가원(KICE) 수능 국어 영역 출제위원입니다.
 2017~2027학년도 수능·6월·9월 모의평가의 출제 기조, 실제 수능 지문 분량과 밀도, 선지 함정 패턴(인과 역전, 범위 확대/축소, 개념 뒤바꾸기, <보기> 적용)을 정밀하게 반영해 출제하세요.
 목표 난이도는 1등급 컷 원점수 80점대 중반~90점대 초반(변별력 있는 중상~상 난이도, [3점] 추론·적용 문항 포함)입니다.
@@ -1188,6 +1221,8 @@ app.post('/api/korean-mock-generate', async (req, res) => {
 [출제 자체 검토 기준]
 1. 모든 문항의 정답 선지는 지문·<보기>의 근거와 100% 논리적으로 일치해야 합니다.
 2. 나머지 4개 오답 선지는 지문 내용과 어긋나는 명확한 오답 근거를 갖추어야 하며 복수 정답이 없어야 합니다.
+[회차별 다양성 지침]
+${uniquePromptSeed}
 [추가 요청사항]
 ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
 
@@ -1227,8 +1262,8 @@ ${userPrompt || '평가원 기출 스타일에 맞춰 균형 있게 출제'}
   const callPart = async (partDesc) => {
     const prompt = `${commonPolicy}\n\n[이번에 출제할 파트]\n${partDesc}`;
     const configs = [
-      { temperature: 0.5, maxOutputTokens: 8192, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
-      { temperature: 0.5, maxOutputTokens: 8192, responseMimeType: 'application/json' },
+      { temperature: 0.78, maxOutputTokens: 8192, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+      { temperature: 0.78, maxOutputTokens: 8192, responseMimeType: 'application/json' },
       { temperature: 0.45, maxOutputTokens: 8192 }
     ];
     for (const genCfg of configs) {
