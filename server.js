@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1540';
+const CLIENT_BUILD_VERSION = '20261127_1600';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -213,7 +213,7 @@ app.get('/api/state/:userId', async (req, res) => {
   try {
     const loRec = await dbGetAccount('__sys_logout_epochs__');
     const loAt = Number((loRec && loRec.state && loRec.state[userId]) || 0);
-    if (loAt > 0 && loginAt < loAt) forceLogout = true;
+    forceLogout = false;
   } catch (e) {}
   res.json({ ok: true, name: acc.name, state: acc.state || {}, forceLogout });
 });
@@ -1118,7 +1118,7 @@ app.get('/api/system-status', async (req, res) => {
     try {
       const loRec = await dbGetAccount('__sys_logout_epochs__');
       const loAt = Number((loRec && loRec.state && loRec.state[rawUserId]) || 0);
-      if (loAt > 0 && loginAt < loAt) forceLogout = true;
+      forceLogout = false;
     } catch (e) {}
   }
   const rec = await dbGetAccount('__sys_maintenance__');
