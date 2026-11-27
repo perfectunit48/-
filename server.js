@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1520';
+const CLIENT_BUILD_VERSION = '20261127_1530';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -552,8 +552,8 @@ app.get('/api/korean-exam', async (req, res) => {
   const year = String(req.query.year || '2026').replace(/[^0-9]/g, '');
   const type = String(req.query.type || '수능').trim();
   const yNum = Number(year);
-  if (!yNum || yNum < 2016 || yNum > 2027) {
-    return res.status(400).json({ ok: false, error: '학년도는 2016~2027 사이여야 합니다.' });
+  if (!yNum || yNum < 2017 || yNum > 2027) {
+    return res.status(400).json({ ok: false, error: '학년도는 2017~2027 사이여야 합니다.' });
   }
   const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
   const execYear = yNum - 1;
