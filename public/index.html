@@ -611,8 +611,8 @@
       <div id="headerActionsBar" class="flex items-center gap-1 sm:gap-2 flex-nowrap overflow-x-auto no-scrollbar max-w-full">
         <div class="relative flex items-center bg-slate-100 hover:bg-slate-200/70 rounded-xl px-2 py-1 sm:px-3 sm:py-1.5 shrink-0 transition cursor-pointer">
           <i data-lucide="user" class="hidden sm:inline w-4 h-4 text-indigo-600 shrink-0 mr-1"></i>
-          <span id="studentSelectLabel" class="text-[11px] sm:text-sm font-bold text-slate-800 whitespace-nowrap pr-3.5 sm:pr-4 max-w-[56px] sm:max-w-[140px] truncate">학생 없음</span>
-          <i data-lucide="chevron-down" class="pointer-events-none w-3 h-3 text-slate-500 absolute right-1.5 sm:right-2"></i>
+          <span id="studentSelectLabel" class="text-[11px] sm:text-sm font-bold text-slate-800 whitespace-nowrap max-w-[76px] sm:max-w-[140px] truncate">학생 없음</span>
+          <svg class="pointer-events-none w-3.5 h-3.5 text-slate-500 shrink-0 ml-1" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
           <select id="studentSelect" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="학생 선택"></select>
         </div>
         <button id="openAddStudentBtn" class="inline-flex items-center justify-center p-1.5 sm:p-2 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition shrink-0" title="학생 추가" aria-label="학생 추가">
@@ -927,7 +927,8 @@
             </button>
           </div>
           <div class="relative w-full overflow-x-auto">
-            <canvas id="korScoreChartCanvas" width="760" height="260" class="w-full max-w-full rounded-xl border border-slate-100 bg-white "></canvas>
+            <canvas id="korScoreChartCanvas" width="760" height="260" class="w-full max-w-full rounded-xl border border-slate-100 bg-white cursor-crosshair"></canvas>
+            <div id="korChartTooltip" class="hidden pointer-events-none absolute z-20 bg-slate-900/95 text-white text-[11px] rounded-xl px-3 py-2 shadow-lg whitespace-nowrap leading-relaxed"></div>
             
           </div>
         </div>
@@ -2204,7 +2205,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261127_1610';
+    const CLIENT_BUILD_VERSION = '20261127_1925';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -2881,10 +2882,6 @@
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          ctx.fillStyle = color;
-          ctx.font = 'bold 11px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(String(val) + suffix, x, y - 9);
         });
       };
 
@@ -2892,6 +2889,17 @@
       drawSeries(sc => sc.common, '#4f46e5');
       drawSeries(sc => sc.total, '#059669');
       if (hasPct) drawSeries(sc => sc.pct, '#9333ea', '%');
+
+      korChartPoints = scores.map((sc, i) => ({
+        i,
+        x: getX(i),
+        title: String(sc.title || sc.date || `${i + 1}회`),
+        total: sc.total,
+        common: sc.common,
+        elective: sc.elective,
+        pct: sc.pct,
+        unit: sc.inputMode === 'count' ? '개' : '점'
+      }));
 
       ctx.fillStyle = '#334155';
       ctx.font = '600 11px sans-serif';
@@ -2901,6 +2909,45 @@
         const lbl = getChartLabel(sc);
         ctx.fillText(lbl, x, H - 18);
       });
+
+      if (!canvas.dataset.tooltipBound) {
+        canvas.dataset.tooltipBound = '1';
+        const showTipAt = (clientX, clientY) => {
+          const tip = document.getElementById('korChartTooltip');
+          if (!tip || !korChartPoints.length) return;
+          const rect = canvas.getBoundingClientRect();
+          const cx = clientX - rect.left;
+          let nearest = korChartPoints[0];
+          let minD = Math.abs(cx - nearest.x);
+          for (const pt of korChartPoints) {
+            const d = Math.abs(cx - pt.x);
+            if (d < minD) { minD = d; nearest = pt; }
+          }
+          if (minD > 60) { tip.classList.add('hidden'); return; }
+          const lines = [`<div class="font-bold text-emerald-300 mb-0.5">${escapeHtml(nearest.title)}</div>`];
+          if (nearest.total !== '' && nearest.total !== null && nearest.total !== undefined) lines.push(`<div>전체: <strong class="text-white">${escapeHtml(String(nearest.total))}${nearest.unit}</strong></div>`);
+          if (nearest.common !== '' && nearest.common !== null && nearest.common !== undefined) lines.push(`<div>공통: <strong class="text-indigo-300">${escapeHtml(String(nearest.common))}${nearest.unit}</strong></div>`);
+          if (nearest.elective !== '' && nearest.elective !== null && nearest.elective !== undefined) lines.push(`<div>선택: <strong class="text-amber-300">${escapeHtml(String(nearest.elective))}${nearest.unit}</strong></div>`);
+          if (nearest.pct !== '' && nearest.pct !== null && nearest.pct !== undefined) lines.push(`<div>백분위: <strong class="text-purple-300">${escapeHtml(String(nearest.pct))}%</strong></div>`);
+          tip.innerHTML = lines.join('');
+          tip.classList.remove('hidden');
+          const leftPos = Math.min(Math.max(8, nearest.x - 50), Math.max(8, rect.width - 150));
+          const topPos = Math.max(6, (clientY - rect.top) - 82);
+          tip.style.left = leftPos + 'px';
+          tip.style.top = topPos + 'px';
+        };
+        canvas.addEventListener('mousemove', (ev) => showTipAt(ev.clientX, ev.clientY));
+        canvas.addEventListener('mouseleave', () => {
+          const tip = document.getElementById('korChartTooltip');
+          if (tip) tip.classList.add('hidden');
+        });
+        canvas.addEventListener('touchstart', (ev) => {
+          if (ev.touches && ev.touches[0]) showTipAt(ev.touches[0].clientX, ev.touches[0].clientY);
+        }, { passive: true });
+        canvas.addEventListener('touchmove', (ev) => {
+          if (ev.touches && ev.touches[0]) showTipAt(ev.touches[0].clientX, ev.touches[0].clientY);
+        }, { passive: true });
+      }
     }
 
     function buildKoreanGrowthText(stu) {
@@ -3415,6 +3462,7 @@
     function updateSubjectExamMode() {
       const stu = (typeof getActiveStudent === 'function') ? getActiveStudent() : null;
       const isKor = Boolean(stu && String(stu.subject || '').includes('국어'));
+      const isJace = (typeof currentUserId !== 'undefined' && String(currentUserId || '').trim().toLowerCase() === 'jace48');
       const dEssBtn = document.getElementById('desktopEssayTabBtn');
       const mEssBtn = document.getElementById('mobileEssayTabBtn');
       if (dEssBtn) {
@@ -3424,6 +3472,15 @@
       if (mEssBtn) {
         mEssBtn.classList.toggle('hidden', isKor);
         mEssBtn.style.display = isKor ? 'none' : '';
+      }
+      const hideKorStudio = isKor && !isJace;
+      document.querySelectorAll('.tab-btn[data-tab="studio"], .mobile-tab-btn[data-tab="studio"]').forEach(btn => {
+        btn.classList.toggle('hidden', hideKorStudio);
+        btn.style.display = hideKorStudio ? 'none' : '';
+      });
+      const tabStudio = document.getElementById('tab-studio');
+      if (hideKorStudio && tabStudio && !tabStudio.classList.contains('hidden') && typeof switchTab === 'function') {
+        switchTab('history');
       }
       const mGrid = document.getElementById('mobileBottomNavGrid');
       if (mGrid) {
@@ -6418,12 +6475,12 @@
             return;
           }
           korGenBtn.disabled = true;
-          if (stEl) stEl.textContent = '17~27 기출 분석 및 45문항 출제 중 (약 15~25초 소요)...';
+          if (stEl) stEl.textContent = '17~27학년도 기출 기반 45문항 출제 중...';
           try {
             const r = await fetch('/api/korean-mock-generate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ title, elective, userPrompt })
+              body: JSON.stringify({ title, elective, userPrompt, userId: typeof currentUserId !== 'undefined' ? currentUserId : '' })
             });
             const d = await r.json().catch(() => ({}));
             if (r.ok && d.ok && Array.isArray(d.passages)) {
@@ -6760,16 +6817,21 @@
         });
       }
 
+      window._korAnsCache = window._korAnsCache || {};
       async function extractKoreanAnswersFromPdf(proxyUrl, year) {
         if (!proxyUrl || typeof pdfjsLib === 'undefined') return null;
+        const cKey = `${year}::${proxyUrl}`;
+        if (window._korAnsCache[cKey]) return window._korAnsCache[cKey];
         try {
           const pdf = await pdfjsLib.getDocument({ url: proxyUrl, disableRange: true, disableStream: true }).promise;
           currentKorExamContext.ansPdfDoc = pdf;
+          const scanLimit = pdf.numPages <= 2 ? pdf.numPages : Math.min(4, pdf.numPages);
           let fullText = '';
-          for (let p = 1; p <= pdf.numPages; p++) {
+          for (let p = 1; p <= scanLimit; p++) {
             const page = await pdf.getPage(p);
             const tc = await page.getTextContent();
             fullText += ' ' + tc.items.map(it => it.str).join(' ');
+            if (p === 1 && pdf.numPages <= 2) break;
           }
           currentKorExamContext.aText = fullText;
           const circled = { '①':'①','②':'②','③':'③','④':'④','⑤':'⑤','1':'①','2':'②','3':'③','4':'④','5':'⑤' };
@@ -6848,12 +6910,18 @@
               }
             }
 
-            return (Object.keys(commonMap).length > 0 || Object.keys(hwajakMap).length > 0 || Object.keys(eonmaeMap).length > 0)
+            const resObj = (Object.keys(commonMap).length > 0 || Object.keys(hwajakMap).length > 0 || Object.keys(eonmaeMap).length > 0)
               ? { commonMap, hwajakMap, eonmaeMap }
               : null;
+            if (resObj && Object.keys(commonMap).length >= 34 && Object.keys(hwajakMap).length >= 11 && Object.keys(eonmaeMap).length >= 11) {
+              window._korAnsCache[cKey] = resObj;
+            }
+            return resObj;
           } else {
             const commonMap = parseAnswerBlock(fullText.slice(0, 2500), 1, 45);
-            return Object.keys(commonMap).length >= 25 ? { commonMap, hwajakMap: {}, eonmaeMap: {} } : null;
+            const resObj = Object.keys(commonMap).length >= 25 ? { commonMap, hwajakMap: {}, eonmaeMap: {} } : null;
+            if (resObj && Object.keys(commonMap).length >= 45) window._korAnsCache[cKey] = resObj;
+            return resObj;
           }
         } catch (e) {
           return null;
