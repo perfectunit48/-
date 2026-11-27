@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261127_1610';
+const CLIENT_BUILD_VERSION = '20261127_1745';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -597,37 +597,39 @@ app.post('/api/korean-parse-answers', async (req, res) => {
   if (!apiKey) {
     return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY 미설정' });
   }
-  const { year, type, answerText, questionText } = req.body || {};
+  const { year, type, answerText, pageImageBase64 } = req.body || {};
   const yNum = Number(year || 2026);
   const isElective = yNum >= 2022;
   const typeLabel = type === '수능' ? '대학수학능력시험(수능)' : `${type || ''} 학력평가`;
 
   const prompt = isElective
-    ? `다음은 ${yNum}학년도 ${typeLabel} 국어 영역 자료입니다.
-공통과목(1~34번), 화법과 작문(35~45번), 언어와 매체(35~45번)의 공식 정답을 원문자(①,②,③,④,⑤)로 정리해 JSON만 출력하세요.
-반드시 아래 JSON 형식만 출력하고 다른 설명은 쓰지 마세요:
-{"common":{"1":"①",...,"34":"③"},"hwajak":{"35":"④",...,"45":"②"},"eonmae":{"35":"①",...,"45":"⑤"}}
+    ? `다음은 ${yNum}학년도 ${typeLabel} 국어 영역 공식 정답표/해설지 자료입니다.
+제공된 이미지 또는 텍스트에서 실제로 확인되는 공식 정답만 정확히 추출해 원문자(①,②,③,④,⑤) JSON으로 출력하세요.
+[절대 규칙]
+- 자료에 명시되지 않은 번호나 과목(예: 언어와 매체가 자료에 없는 경우)은 절대 추측하거나 임의의 번호(예: 전부 ①)로 채우지 말고 빈 객체 {}로 두세요.
+- 화법과 작문 답을 언어와 매체에 복사하지 마세요.
+JSON 형식만 출력:
+{"common":{"1":"①"},"hwajak":{"35":"④"},"eonmae":{"35":"②"}}
 
 [정답/해설지 텍스트]
-${String(answerText || '').slice(0, 12000)}
-
-[문제지 참고 텍스트]
-${String(questionText || '').slice(0, 4000)}`
-    : `다음은 ${yNum}학년도 ${typeLabel} 국어 영역 자료입니다.
-1~45번의 공식 정답을 원문자(①,②,③,④,⑤)로 정리해 JSON만 출력하세요.
-반드시 아래 JSON 형식만 출력하고 다른 설명은 쓰지 마세요:
-{"common":{"1":"①",...,"45":"⑤"}}
+${String(answerText || '').slice(0, 14000)}`
+    : `다음은 ${yNum}학년도 ${typeLabel} 국어 영역 공식 정답표/해설지 자료입니다.
+자료에서 실제로 확인되는 1~45번 공식 정답만 원문자(①,②,③,④,⑤) JSON으로 출력하세요. 확인되지 않는 문항은 비워두세요.
+JSON 형식만 출력:
+{"common":{"1":"①"}}
 
 [정답/해설지 텍스트]
-${String(answerText || '').slice(0, 12000)}
+${String(answerText || '').slice(0, 14000)}`;
 
-[문제지 참고 텍스트]
-${String(questionText || '').slice(0, 4000)}`;
+  const parts = [{ text: prompt }];
+  if (typeof pageImageBase64 === 'string' && pageImageBase64.length > 100) {
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data: pageImageBase64.replace(/^data:image\/\w+;base64,/, '') } });
+  }
 
   const result = await callGeminiWithFallback(
     apiKey,
-    { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.0, maxOutputTokens: 2048 } },
-    'chat'
+    { contents: [{ parts }], generationConfig: { temperature: 0.0, maxOutputTokens: 2048 } },
+    pageImageBase64 ? 'vision' : 'chat'
   );
   if (!result || !result.text) {
     return res.status(502).json({ ok: false, error: '정답 추출 실패' });
@@ -648,11 +650,21 @@ ${String(questionText || '').slice(0, 4000)}`;
       }
       return out;
     };
+    const sanity = (m) => {
+      const vals = Object.values(m);
+      if (vals.length >= 6 && new Set(vals).size <= 1) return {};
+      let run = 1;
+      for (let i = 1; i < vals.length; i++) {
+        run = (vals[i] === vals[i - 1]) ? run + 1 : 1;
+        if (run >= 7) return {};
+      }
+      return m;
+    };
     res.json({
       ok: true,
-      commonMap: norm(parsed.common),
-      hwajakMap: norm(parsed.hwajak),
-      eonmaeMap: norm(parsed.eonmae)
+      commonMap: sanity(norm(parsed.common)),
+      hwajakMap: sanity(norm(parsed.hwajak)),
+      eonmaeMap: sanity(norm(parsed.eonmae))
     });
   } catch (e) {
     res.status(502).json({ ok: false, error: '정답 JSON 파싱 실패' });
@@ -665,7 +677,7 @@ app.post('/api/korean-explain', async (req, res) => {
   if (!apiKey) {
     return res.status(503).json({ ok: false, error: '서버에 GEMINI_API_KEY가 설정되어 있지 않습니다.' });
   }
-  const { year, type, questionNo, choiceFocus, userQuestion, examText, answerText, pageImagesBase64 } = req.body || {};
+  const { year, type, questionNo, choiceFocus, userQuestion, examText, answerText, pageImagesBase64, chatHistory } = req.body || {};
   const qNo = Number(questionNo || 0);
   const typeLabel = type === '수능' ? '대학수학능력시험(수능)' : `${type || ''} 학력평가`;
   const imgs = Array.isArray(pageImagesBase64) ? pageImagesBase64.slice(0, 3) : [];
@@ -696,9 +708,22 @@ ${answerText ? `[정답/해설지 참고]\n${String(answerText).slice(0, 4000)}\
     }
   }
 
+  const contents = [{ role: 'user', parts }];
+  if (Array.isArray(chatHistory) && chatHistory.length > 0) {
+    for (const turn of chatHistory.slice(-10)) {
+      if (!turn || !turn.text) continue;
+      contents.push({
+        role: turn.role === 'model' ? 'model' : 'user',
+        parts: [{ text: String(turn.text).slice(0, 4000) }]
+      });
+    }
+    if (userQuestion) {
+      contents.push({ role: 'user', parts: [{ text: String(userQuestion).slice(0, 2000) }] });
+    }
+  }
   const result = await callGeminiWithFallback(
     apiKey,
-    { contents: [{ parts }], generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } },
+    { contents, generationConfig: { temperature: 0.2, maxOutputTokens: 2048 } },
     imgs.length > 0 ? 'vision' : 'chat'
   );
   if (!result || !result.text) {
@@ -1094,6 +1119,7 @@ app.delete('/api/notices/:id', async (req, res) => {
 const ONLINE_HEARTBEATS = {};
 
 app.post('/api/heartbeat', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   const { userId = '' } = req.body || {};
   if (userId) {
     const now = Date.now();
@@ -1101,6 +1127,9 @@ app.post('/api/heartbeat', async (req, res) => {
     try {
       const rec = await dbGetAccount('__sys_heartbeats__');
       const map = (rec && rec.state && typeof rec.state === 'object') ? { ...rec.state } : {};
+      for (const [k, v] of Object.entries(ONLINE_HEARTBEATS)) {
+        if (Number(v) > Number(map[k] || 0)) map[k] = Number(v);
+      }
       map[userId] = now;
       await dbSaveAccount('__sys_heartbeats__', { name: 'SYSTEM_HEARTBEATS', pw: '', state: map });
     } catch (e) {}
@@ -1115,6 +1144,7 @@ app.get('/api/system-status', async (req, res) => {
   const loginAt = Number(req.query.loginAt || 0);
   let forceLogout = false;
   if (rawUserId) {
+    ONLINE_HEARTBEATS[rawUserId] = Date.now();
     try {
       const loRec = await dbGetAccount('__sys_logout_epochs__');
       const loAt = Number((loRec && loRec.state && loRec.state[rawUserId]) || 0);
@@ -1166,6 +1196,7 @@ app.post('/api/report-error', async (req, res) => {
 });
 
 app.get('/api/admin/accounts', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   const userId = String(req.query.userId || '').trim().toLowerCase();
   if (userId !== 'jace48') return res.status(403).json({ ok: false });
   const rows = await dbListAllRows();
@@ -1175,8 +1206,8 @@ app.get('/api/admin/accounts', async (req, res) => {
   const accounts = rows
     .filter(r => !String(r.user_id || '').startsWith('__sys_') && String(r.user_id || '').toLowerCase() !== 'jace48')
     .map(r => {
-      const memSeen = ONLINE_HEARTBEATS[r.user_id] || 0;
-      const dbSeen = Number(persistedHb[r.user_id] || 0);
+      const memSeen = Math.max(ONLINE_HEARTBEATS[r.user_id] || 0, ONLINE_HEARTBEATS[String(r.user_id || '').toLowerCase()] || 0);
+      const dbSeen = Math.max(Number(persistedHb[r.user_id] || 0), Number(persistedHb[String(r.user_id || '').toLowerCase()] || 0));
       const updSeen = r.updated_at ? (Date.parse(r.updated_at) || 0) : 0;
       const lastSeenAt = Math.max(memSeen, dbSeen, updSeen);
       const isOnline = lastSeenAt > 0 && (now - lastSeenAt) < 120000;
