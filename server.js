@@ -976,7 +976,13 @@ app.get('/api/korean-exam', async (req, res) => {
   const cacheKey = `${year}_${type}`;
   if (KOREAN_EXAM_URL_CACHE[cacheKey]) {
     const cachedP = Object.assign({}, KOREAN_EXAM_URL_CACHE[cacheKey]);
-    if (typeof KOREAN_PARSED_ANSWERS_CACHE !== 'undefined' && KOREAN_PARSED_ANSWERS_CACHE[cacheKey]) cachedP.cachedAnswers = KOREAN_PARSED_ANSWERS_CACHE[cacheKey];
+    if (typeof KOREAN_PARSED_ANSWERS_CACHE !== 'undefined' && KOREAN_PARSED_ANSWERS_CACHE[cacheKey]) {
+      const ca = KOREAN_PARSED_ANSWERS_CACHE[cacheKey];
+      const okCache = yNum >= 2022
+        ? (Object.keys(ca.commonMap || {}).length >= 34 && Object.keys(ca.hwajakMap || {}).length >= 11 && Object.keys(ca.eonmaeMap || {}).length >= 11)
+        : (Object.keys(ca.commonMap || {}).length >= 45);
+      if (okCache) cachedP.cachedAnswers = ca;
+    }
     return res.json(cachedP);
   }
   const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
@@ -1044,7 +1050,12 @@ function saveParsedAnswersCache() {
 app.post('/api/korean-cache-answers', (req, res) => {
   const { year, type, commonMap, hwajakMap, eonmaeMap } = req.body || {};
   const key = year && type ? `${year}_${type}` : '';
-  if (key && commonMap && Object.keys(commonMap).length >= 25) {
+  const yN = Number(year || 2026);
+  const cLen = commonMap ? Object.keys(commonMap).length : 0;
+  const hLen = hwajakMap ? Object.keys(hwajakMap).length : 0;
+  const eLen = eonmaeMap ? Object.keys(eonmaeMap).length : 0;
+  const isComplete = yN >= 2022 ? (cLen >= 34 && hLen >= 11 && eLen >= 11) : (cLen >= 45);
+  if (key && isComplete) {
     KOREAN_PARSED_ANSWERS_CACHE[key] = {
       ok: true,
       commonMap,
@@ -1162,12 +1173,15 @@ ${String(answerText || '').slice(0, 14000)}`;
       : (Object.keys(outObj.commonMap).length < 45);
     if (stillMissing && yNum >= 2017 && yNum <= 2027) {
       try {
-        const qStr = `${yNum}학년도 ${type === '수능' ? '수능' : type + ' 모의평가'} 국어 정답표 홀수형 ${isElective ? '화법과 작문 언어와 매체' : '1번 45번'}`;
-        const [nv, dm] = await Promise.all([
+        const examKw = type === '수능' ? '수능' : `${type} 모의평가`;
+        const qStr = `${yNum}학년도 ${examKw} 국어 정답표 홀수형 ${isElective ? '화법과 작문 언어와 매체 35번 45번' : '1번 45번'}`;
+        const qHw = isElective ? `${yNum}학년도 ${examKw} 국어 화법과 작문 35번 45번 정답 홀수형` : qStr;
+        const [nv, dm, gn] = await Promise.all([
           fetchNaverSearchWithArticles(qStr),
-          fetchDaumSearchWithArticles(qStr)
+          fetchDaumSearchWithArticles(qHw),
+          fetchGoogleNewsRssWithArticles(qStr)
         ]);
-        const webTxt = [nv, dm].filter(Boolean).join('\n').slice(0, 18000);
+        const webTxt = [nv, dm, gn].filter(Boolean).join('\n').slice(0, 24000);
         if (webTxt.length > 80) {
           const webPrompt = isElective
             ? `아래 웹 검색 결과에서 ${yNum}학년도 ${typeLabel} 국어 영역 홀수형 정답(공통 1~34, 화법과 작문 35~45, 언어와 매체 35~45)을 원문자(①~⑤) JSON으로 추출하세요.\nJSON만 출력: {"common":{"1":"①"},"hwajak":{"35":"④"},"eonmae":{"35":"②"}}\n[검색 결과]\n${webTxt}`
@@ -1255,9 +1269,9 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 - 독서 지문은 실제 2027 수능 PDF와 동일한 분량과 밀도로 작성하세요([1~3] 950자+, [4~9] (가)/(나) 합산 2,700자+, [10~13]·[14~17] 각 1,900자+). 문단 내에 [A], [B] 구간 표지나 ㉠~㉤, ⓐ~ⓔ 표지를 실제 수능처럼 적절히 배치하세요.
 - 문학 지문도 실제 수능처럼 인물 대사·서술·시 연·고전 어휘 현대어 풀이(예: 즈믄 해=천 년), [중략 줄거리]가 살아있는 완성도 높은 분량으로 작성하세요.
 - box 필드(<보 기> 내용) 안에는 절대 "<보 기>"나 "<보기>" 제목 글자를 쓰지 마세요.
-- 독서 영역([4~17] 3개 지문 중 서로 다른 2개 지문에 각 1문항씩, 총 2문항)에는 반드시 평가원 표준 어휘 문항을 출제하세요(box는 반드시 빈 문자열 ""):
-  · 유형 1(다의어 문맥 의미): 지문 내 1개 단어에만 ⓐ를 표기하고, 발문은 "문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?", 선지 ①~⑤에는 **절대 ⓐ 기호를 넣지 말고** 서로 다른 5개 예문 속 해당 단어를 작은따옴표('...')로만 감싸 제시하세요(예: ① 이번 회의에서는 새로운 운영 방침을 '설정'하기로 했다.).
-  · 유형 2(어휘 바꿔 쓰기): 지문 내 5개 어휘에 ⓐ~ⓔ를 표기하고, 발문은 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?"(또는 "적절하지 않은 것은?"), 선지 ①~⑤는 "① ⓐ: 대체어" 형식으로 제시하세요.
+- 독서 어휘 문항은 실제 2026·2027 수능 PDF처럼 **[1~3] 독서 이론에는 절대 출제하지 말고**, [4~9] (가)/(나) 지문 마지막 문항(9번)에 1문항 + [10~13] 또는 [14~17] 지문 마지막 문항(13번 또는 17번)에 1문항, 총 2문항만 출제하세요(box는 반드시 빈 문자열 ""):
+  · 유형 1(다의어 문맥 의미): 지문 내 1개 단어에만 ⓐ를 표기하고, 발문은 "문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?", 선지 ①~⑤에는 **절대 ⓐ 기호를 넣지 말고** 서로 다른 5개 일상 예문 속 해당 단어만 작은따옴표('...')로 감싸 제시하세요(예: ① 우리들은 결국 불합리한 차별을 무너뜨렸다.).
+  · 유형 2(어휘 바꿔 쓰기): 지문 내 5개 어휘에 ⓐ~ⓔ를 표기하고, 발문은 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?"(또는 "적절하지 않은 것은?"), 선지 ①~⑤는 "① ⓐ : 대체어" 형식으로 제시하세요.
 - stem 안에 [학습 활동] 본문이나 비교표를 섞어 넣지 말고, 추가 자료는 box 필드에 넣으세요.
 - 모든 문항의 stem 앞에는 반드시 문항 번호("1. ", "2. " ... "45. ")를 붙이고, 지정된 범위의 모든 번호를 1문항도 빠짐없이 출제하세요.
 
@@ -1448,7 +1462,17 @@ ${existingSummary}
 
     updateJob(82, `5단계: 선택과목(${elective} 35~45번) 출제 및 최종 45문항 검수 중...`);
     await new Promise(r => setTimeout(r, 1000));
-    let p3 = await draftAndRefinePart(`선택과목 ${elective} 35~45번`, `선택과목 '${elective}' 35~45번(총 11문항): 실제 평가원 ${elective} 시험지 구성에 맞춰 지문·대화·자료·문법을 충실히 작성하고 35~45번을 모두 출제하세요.`, '35~45번');
+    const p3Spec = elective === '언어와 매체'
+      ? `선택과목 '언어와 매체' 35~45번(총 11문항):
+  - [35~36] 국어 문법/어문 규정 지문(1,200자+) + 2문항(36번은 <보 기> 자료표 포함 [3점]).
+  - 37번, 38번, 39번: 각각 독립 문법·중세국어 문항(<학습 활동> 또는 <보 기>/<자 료> 표 포함).
+  - [40~43] (가) 인터넷 방송/온라인 알림 + (나) 학생 블로그·카드뉴스(반드시 visual:{"type":"webpage",...} 또는 diagram 포함, 글자만 출제 금지) + 4문항.
+  - [44~45] (가) 누리 소통망 메신저 대화방(반드시 visual:{"type":"chat",...} 포함) + (나) 발표 자료 슬라이드/특집 기사 웹 화면(반드시 visual:{"type":"webpage"|"table"|"chart",...} 포함, 절대 글만 있는 지문 금지) + 2문항.`
+      : `선택과목 '화법과 작문' 35~45번(총 11문항):
+  - [35~37] 학생 발표(1,100자+, (㉠~㉢ 자료 제시)) + 36번 [자료 1]~[자료 3] visual(diagram/chart/table) 필수 포함 + 3문항.
+  - [38~42] (가) 학생들의 대화 + (나) 초고/보고서(합산 2,200자+) + 5문항.
+  - [43~45] 작문 상황 + [초고](1,300자+) + 45번 <보 기> 조사 결과 그래프·표(visual:{"type":"chart",...} 필수 포함) + 3문항.`;
+    let p3 = await draftAndRefinePart(`선택과목 ${elective} 35~45번`, p3Spec, '35~45번');
     p3 = await ensureRangeComplete(`선택과목 ${elective} 35~45번`, p3, 35, 45, `선택과목 '${elective}' 35~45번(총 11문항)을 빠짐없이 출제하세요.`);
 
     updateJob(96, '6단계: 1~45번(공통 34문항 + 선택 11문항) 누락 검증 및 조판 정리 중...');
