@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_0320';
+const CLIENT_BUILD_VERSION = '20261128_v69';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -1183,6 +1183,74 @@ app.post('/api/korean-cache-answers', (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/korean-cached-answers', async (req, res) => {
+  const year = String(req.query.year || '').trim();
+  const type = String(req.query.type || '').trim();
+  const key = year && type ? `${year}_${type}` : '';
+  const yN = Number(year || 2026);
+  const isOk = (ca) => {
+    if (!ca) return false;
+    const cLen = Object.keys(ca.commonMap || {}).length;
+    const hLen = Object.keys(ca.hwajakMap || {}).length;
+    const eLen = Object.keys(ca.eonmaeMap || {}).length;
+    return yN >= 2022 ? (cLen >= 34 && hLen >= 11 && eLen >= 11) : (cLen >= 45);
+  };
+  if (key && isOk(KOREAN_PARSED_ANSWERS_CACHE[key])) {
+    return res.json(KOREAN_PARSED_ANSWERS_CACHE[key]);
+  }
+  const preset = KOREAN_EXAM_PRESETS[key] || KOREAN_EXAM_URL_CACHE[key] || {};
+  const pdfUrl = preset.answerPdfUrl || preset.questionPdfUrl || '';
+  if (pdfUrl && typeof extractKoreanAnswersFromPdfOnServer === 'function') {
+    const ext = await extractKoreanAnswersFromPdfOnServer(yN, type, pdfUrl);
+    if (isOk(ext)) return res.json(ext);
+  }
+  return res.json({ ok: false, commonMap: {}, hwajakMap: {}, eonmaeMap: {} });
+});
+
+function getLocalKoreanPdfPath(year, type, kind) {
+  const safeY = String(year || '').replace(/[^0-9]/g, '');
+  const safeT = String(type || '').replace(/[^가-힣a-zA-Z0-9]/g, '');
+  const safeK = kind === 'a' ? 'a' : 'q';
+  if (!safeY || !safeT) return '';
+  const pubPath = path.join(__dirname, 'public', 'pdfs', `${safeY}_${safeT}_${safeK}.pdf`);
+  if (fs.existsSync(pubPath)) return pubPath;
+  const cacheDir = path.join(__dirname, 'data', 'korean_pdfs');
+  try { if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true }); } catch (e) {}
+  return path.join(cacheDir, `${safeY}_${safeT}_${safeK}.pdf`);
+}
+
+async function prewarmKoreanExamCache() {
+  try {
+    const years = [2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017];
+    const types = ['수능', '9월', '6월'];
+    for (const y of years) {
+      for (const t of types) {
+        const key = `${y}_${t}`;
+        const ca = KOREAN_PARSED_ANSWERS_CACHE[key];
+        const ok = ca && (y >= 2022
+          ? (Object.keys(ca.commonMap || {}).length >= 34 && Object.keys(ca.hwajakMap || {}).length >= 11 && Object.keys(ca.eonmaeMap || {}).length >= 11)
+          : (Object.keys(ca.commonMap || {}).length >= 45));
+        if (ok) continue;
+        const preset = KOREAN_EXAM_PRESETS[key] || {};
+        let qUrl = preset.questionPdfUrl || '';
+        let aUrl = preset.answerPdfUrl || '';
+        if (!qUrl || !aUrl) {
+          const hr = await searchHoraengKoreanPdf(y, t).catch(() => ({ mun: '', hsj: '' }));
+          if (!qUrl) qUrl = hr.mun || (await searchEbsiKoreanPdf(y, t, 'mun').catch(() => ''));
+          if (!aUrl) aUrl = hr.hsj || (await searchEbsiKoreanPdf(y, t, 'hsj').catch(() => ''));
+        }
+        if (qUrl || aUrl) {
+          KOREAN_EXAM_URL_CACHE[key] = { ok: true, year: String(y), type: t, questionPdfUrl: qUrl, answerPdfUrl: aUrl, ebsiUrl: 'https://www.ebsi.co.kr/ebs/xip/xipc/previousPaperList.ebs?targetCd=D300' };
+          const targetA = aUrl || qUrl;
+          if (targetA) await extractKoreanAnswersFromPdfOnServer(y, t, targetA).catch(() => null);
+        }
+        await new Promise(r => setTimeout(r, 2500));
+      }
+    }
+  } catch (e) {}
+}
+setTimeout(() => { prewarmKoreanExamCache(); }, 8000);
+
 app.post('/api/korean-parse-answers', async (req, res) => {
   const _reqKey = req.body && req.body.year && req.body.type ? `${req.body.year}_${req.body.type}` : '';
   if (_reqKey && KOREAN_PARSED_ANSWERS_CACHE[_reqKey]) {
@@ -1392,7 +1460,8 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 - box 필드(<보 기> 내용) 안에는 절대 "<보 기>"나 "<보기>" 제목 글자를 쓰지 마세요.
 - 독서 어휘 문항은 실제 2026·2027 수능 PDF처럼 **[1~3] 독서 이론에는 절대 출제하지 말고**, [4~9] (가)/(나) 지문 마지막 문항(9번)에 1문항 + [10~13] 또는 [14~17] 지문 마지막 문항(13번 또는 17번)에 1문항, 총 2문항만 출제하세요(box는 반드시 빈 문자열 ""):
   · 유형 1(다의어 문맥 의미): 지문 내 1개 단어에만 ⓐ를 표기하고, 발문은 반드시 **"문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?"**으로만 쓰세요(절대 "다음은 위 글을 읽은 학생이 어휘 학습을 위해 정리한 내용이다." 같은 불필요한 서두나 '매몰되어' 같은 단어 병기를 넣지 말 것!). 선지 ①~⑤에는 **절대 ⓐ 기호를 넣지 말고** 5개 선지 모두에서 의미를 비교할 핵심 서술어/단어에 반드시 <u>...</u> 밑줄을 쳐서 제시하세요(예: ① 우리 대표팀은 경기 초반의 열세를 딛고 역전승을 <u>거머쥐었다</u>.).
-  · 유형 2(어휘 바꿔 쓰기): 지문 내 5개 어휘에 ⓐ~ⓔ를 표기하고, 발문은 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?"(또는 "적절하지 않은 것은?"), 선지 ①~⑤는 "① ⓐ : 대체어" 형식으로 제시하세요.
+  · 유형 2(어휘 바꿔 쓰기, 13번 또는 17번에 반드시 1문항 출제): 지문 내 5개 어휘에 ⓐ~ⓔ를 표기하고, 발문은 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?"으로 하며, 선지 ①~⑤는 반드시 **"① ⓐ: 대체어"**처럼 기호와 바꿀 어휘만 짧게 제시하세요(절대 선지 안에 지문 문장이나 '->' 화살표를 넣지 마세요!).
+- <보 기> 안에 빈칸 추론(예: '특히 ㉠ ________.')을 넣을 때는 반드시 긴 밑줄 빈칸을 포함하고, 선지 ①~⑤는 빈칸 문맥에 자연스럽게 이어지는 완성된 문장형(또는 서술절)으로 끝맺으세요.
 - stem 안에 [학습 활동] 본문이나 비교표를 섞어 넣지 말고, 추가 자료는 box 필드에 넣으세요.
 - 모든 문항의 stem 앞에는 반드시 문항 번호("1. ", "2. " ... "45. ")를 붙이고, 지정된 범위의 모든 번호를 1문항도 빠짐없이 출제하세요.
 
@@ -1578,7 +1647,7 @@ ${existingSummary}
 
     updateJob(64, '4단계: 고전소설 · 현대시(가/나) 출제 및 <보기> 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    let p2b = await draftAndRefinePart('문학 27~34번', '공통과목 문학 27~34번(총 8문항): [27~30] 고전소설(1,700자+, 4문항), [31~34] 현대시 (가)/(나) 2편 전문(passage.header="[31~34] 다음 글을 읽고 물음에 답하시오.", passage.body에 (가), (나) 시 배치 — 절대 문항 <보 기> 안에 시를 넣지 말 것!) 및 4문항.', '27~34번');
+    let p2b = await draftAndRefinePart('문학 27~34번', '공통과목 문학 27~34번(총 8문항): [27~30] 고전소설(2,200~2,600자, 인물 대화·사건 전개·[중략 줄거리]·어휘 각주 포함, 4문항), [31~34] 현대시 (가)/(나) 2편 전문(passage.header="[31~34] 다음 글을 읽고 물음에 답하시오.", passage.body에 (가), (나) 시 배치 — 절대 문항 <보 기> 안에 시를 넣지 말 것!) 및 4문항.', '27~34번');
     p2b = await ensureRangeComplete('문학 27~34번', p2b, 27, 34, '공통과목 문학 27~34번(총 8문항): [27~30] 고전소설, [31~34] 현대시 (가)/(나).');
 
     updateJob(82, `5단계: 선택과목(${elective} 35~45번) 출제 및 최종 45문항 검수 중...`);
@@ -1624,7 +1693,16 @@ ${existingSummary}
           stem = stem
             .replace(/^(\d+\.\s*)다음은\s*위\s*글을\s*읽은\s*학생이\s*어휘\s*학습을\s*위해\s*정리한\s*내용이다\.\s*/i, '$1')
             .replace(/([ⓐ-ⓔ])\s*['"‘’“”][가-힣]+['"‘’“”]/g, '$1');
-          if (/가까운\s*의미|문맥적\s*의미/.test(stem) && !/바꿔\s*쓰기/.test(stem)) {
+          if (/바꿔\s*쓰기/.test(stem)) {
+            choices = choices.map(cs => {
+              const arrM = cs.match(/^\s*([①②③④⑤])\s*([ⓐ-ⓔ])\s*[:：]?[\s\S]*?(?:->|→)\s*(.+)$/);
+              if (arrM) {
+                const cleanRep = arrM[3].replace(/<\/?u>/gi, '').trim();
+                return `${arrM[1]} ${arrM[2]}: ${cleanRep}`;
+              }
+              return cs;
+            });
+          } else if (/가까운\s*의미|문맥적\s*의미/.test(stem)) {
             choices = choices.map(cs => {
               if (/<u>/i.test(cs)) return cs;
               if (/[ⓐ-ⓔ]\s*[가-힣]+/.test(cs)) return cs.replace(/[ⓐ-ⓔ]\s*([가-힣]+)/g, '<u>$1</u>');
@@ -1637,6 +1715,55 @@ ${existingSummary}
       return Object.assign({}, p, { questions: qs });
     }).filter(p => p.questions.length > 0 || (p.body && p.body.length > 50))
       .sort((a, b) => ((a.questions[0] && a.questions[0].no) || 99) - ((b.questions[0] && b.questions[0].no) || 99));
+
+    // Final global 1~45 completeness & choice/answer integrity audit
+    const auditMissing = () => {
+      const present = new Set();
+      passages.forEach(p => {
+        p.questions = (p.questions || []).filter(q =>
+          q && Number(q.no) >= 1 && Number(q.no) <= 45 &&
+          String(q.stem || '').trim().length >= 4 &&
+          Array.isArray(q.choices) && q.choices.length === 5 &&
+          String(q.answer || '').trim().length >= 1
+        );
+        p.questions.forEach(q => present.add(Number(q.no)));
+      });
+      const miss = [];
+      for (let n = 1; n <= 45; n++) {
+        if (!present.has(n)) miss.push(n);
+      }
+      return miss;
+    };
+    const missingGlobal = auditMissing();
+    if (missingGlobal.length > 0 && passages.length > 0) {
+      updateJob(98, `최종 검수: 누락·불완전 문항(${missingGlobal.join(', ')}번) 자동 복구 중...`);
+      const ctxSummary = passages.map(p => {
+        const qNos = (p.questions || []).map(q => q.no).join(',');
+        return `[${p.range || ''}] (보유 문항: ${qNos})\n${String(p.body || '').slice(0, 1200)}`;
+      }).join('\n\n').slice(0, 14000);
+      const repairPrompt = `${commonPolicy}\n\n[최종 45문항 무결성 복구]
+현재 전체 1~45번 중 다음 번호가 누락되었거나 선지(5개)·정답이 불완전합니다: [${missingGlobal.join(', ')}번]
+아래 지문들과 맥락에 맞게 해당 번호(${missingGlobal.join(', ')}) 문항만 5지선다·정답·해설을 완벽히 채워 JSON으로 출력하세요.
+[기존 지문]
+${ctxSummary}`;
+      const repaired = await callGeminiJson(repairPrompt);
+      if (repaired.length > 0) {
+        repaired.forEach(rp => {
+          const rqs = (rp.questions || []).filter(q => missingGlobal.includes(Number(q.no || 0)) && Array.isArray(q.choices) && q.choices.length === 5);
+          rqs.forEach(rq => {
+            const qn = Number(rq.no);
+            let targetP = passages.reduce((best, ep) => {
+              const eFirst = Number((ep.questions && ep.questions[0] && ep.questions[0].no) || 99);
+              const bFirst = Number((best.questions && best.questions[0] && best.questions[0].no) || 99);
+              return Math.abs(eFirst - qn) < Math.abs(bFirst - qn) ? ep : best;
+            }, passages[0]);
+            if (targetP) {
+              targetP.questions = [...(targetP.questions || []).filter(x => Number(x.no) !== qn), rq].sort((a, b) => a.no - b.no);
+            }
+          });
+        });
+      }
+    }
 
     // Normalize 3-point count to exactly 10 questions (total 100 points) matching 10-year KICE CSAT standard
     const flatQs = passages.flatMap(p => p.questions || []);
@@ -1812,23 +1939,58 @@ ${answerText ? `[정답/해설지 참고]\n${String(answerText).slice(0, 4000)}\
 app.get('/api/pdf-proxy', async (req, res) => {
   const targetUrl = req.query.url;
   const isDownload = req.query.download === '1';
+  const year = String(req.query.year || '').trim();
+  const type = String(req.query.type || '').trim();
+  const kind = String(req.query.kind || 'q').trim();
+  const useFallback = req.query.fallback === '1';
   const fileName = (req.query.name || 'essay_exam').replace(/[^a-zA-Z0-9가-힣._-]/g, '_') + '.pdf';
+
+  const localPath = (year && type) ? getLocalKoreanPdfPath(year, type, kind) : '';
+  if (localPath && fs.existsSync(localPath)) {
+    try {
+      const buf = fs.readFileSync(localPath);
+      if (buf && buf.length > 1000) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', isDownload ? `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}` : 'inline');
+        return res.send(buf);
+      }
+    } catch (e) {}
+  }
 
   if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
     return res.status(400).send('유효한 PDF URL이 필요합니다.');
   }
-  try {
-    const upstream = await fetchBinaryWithTlsBypass(targetUrl);
-    if (upstream.status < 200 || upstream.status >= 400) {
-      return res.status(upstream.status).send('PDF를 불러오지 못했습니다.');
-    }
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', isDownload ? `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}` : 'inline');
-    res.send(upstream.buffer);
-  } catch (err) {
-    console.error('[PDF Proxy]', targetUrl, err.message);
-    res.status(502).send('PDF 서버 연결에 실패했습니다.');
+
+  const candidateUrls = [targetUrl];
+  if (useFallback && year && type) {
+    try {
+      const hr = await searchHoraengKoreanPdf(year, type);
+      const mirror = kind === 'a' ? hr.hsj : hr.mun;
+      if (mirror && !candidateUrls.includes(mirror)) candidateUrls.unshift(mirror);
+      const yN = Number(year);
+      if (type === '수능' && yN <= 2020) {
+        const dg = `https://image.donga.com/education/exam/${year}_su/1_1.pdf`;
+        if (!candidateUrls.includes(dg)) candidateUrls.push(dg);
+      }
+    } catch (e) {}
   }
+
+  for (const u of candidateUrls) {
+    try {
+      const upstream = await fetchBinaryWithTlsBypass(u);
+      if (upstream.status >= 200 && upstream.status < 400 && upstream.buffer && upstream.buffer.length > 1000) {
+        if (localPath) {
+          try { fs.writeFileSync(localPath, upstream.buffer); } catch (e) {}
+        }
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', isDownload ? `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}` : 'inline');
+        return res.send(upstream.buffer);
+      }
+    } catch (err) {
+      console.error('[PDF Proxy]', u, err.message);
+    }
+  }
+  res.status(502).send('PDF 서버 연결에 실패했습니다.');
 });
 
 
