@@ -93,6 +93,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -137,7 +139,15 @@
       body { background: #f8fafc; }
       #appHeader { box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
       #appMain { padding: 12px 12px 84px 12px !important; }
-      #korGrowthSummary { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      #addKorScoreForm { padding: 10px !important; gap: 6px !important; }
+      #addKorScoreForm label { font-size: 10.5px !important; margin-bottom: 2px !important; }
+      #addKorScoreForm .h-6 { height: auto !important; margin-bottom: 2px !important; }
+      #addKorScoreForm input, #addKorScoreForm select, #addKorScoreForm button[type="submit"] {
+        min-height: 28px !important;
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        border-radius: 8px !important;
+      }
       .tab-panel > div, .tab-panel form { border-radius: 16px !important; }
       .tab-panel input, .tab-panel select, .tab-panel textarea, .tab-panel button[type="submit"] {
         min-height: 42px;
@@ -224,7 +234,7 @@
   </style>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2857484634759539" crossorigin="anonymous"></script>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col" style="word-break:keep-all;overflow-wrap:break-word;">
   <script>
     (function() {
       try {
@@ -1055,18 +1065,21 @@
 
         <!-- 성적 추이 그래프 & 이미지 저장 -->
         <div id="korScoreChartCard" class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between gap-2">
               <h3 class="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                <i data-lucide="line-chart" class="w-4 h-4 text-emerald-600"></i>
-                국어 성적 추이 그래프
+                <i data-lucide="line-chart" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+                <span>국어 성적 추이 그래프</span>
               </h3>
-              <p class="text-xs text-slate-500">입력된 항목(전체·공통·백분위·표준점수)만 점수 범위에 맞춰 자동 확대해 보여줍니다.</p>
+              <button type="button" onclick="openCustomReportModal()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition shrink-0">맞춤 성적표 제작 (PDF·인쇄)</button>
             </div>
-            <div class="flex items-center gap-2"><button type="button" onclick="openCustomReportModal()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 제작 (PDF·인쇄)</button><button id="saveKorChartBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i>
-              <span>그래프 이미지로 저장</span>
-            </button></div>
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-[11px] sm:text-xs text-slate-500 leading-snug">입력된 항목(전체·공통·백분위·표준점수)만 점수 범위에 맞춰 자동 확대해 보여줍니다.</p>
+              <button id="saveKorChartBtn" type="button" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[11px] sm:text-xs font-semibold transition whitespace-nowrap shrink-0">
+                <i data-lucide="download" class="w-3 h-3"></i>
+                <span>그래프 이미지로 저장</span>
+              </button>
+            </div>
           </div>
           <div class="relative w-full max-w-[680px] mx-auto overflow-x-auto">
             <canvas id="korScoreChartCanvas" width="680" height="260" class="block mx-auto max-w-full rounded-xl border border-slate-100 bg-white cursor-crosshair"></canvas>
@@ -1245,7 +1258,7 @@
             <h2 class="text-base sm:text-lg font-bold text-slate-900">나가야 할 진도 &amp; 커리큘럼</h2>
             <p class="text-xs sm:text-sm text-slate-500">체크박스를 클릭해 완료 여부를 관리하고 다음 수업 진도를 확인하세요.</p>
           </div>
-          <div class="text-right">
+          <div class="w-full md:w-auto text-left md:text-right">
             <span id="progressPercentLabel" class="text-lg font-bold text-indigo-600">0%</span>
             <p id="progressCountLabel" class="text-xs text-slate-500">0 / 0 완료</p>
           </div>
@@ -2462,7 +2475,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v94';
+    const CLIENT_BUILD_VERSION = '20261128_v98';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -2523,6 +2536,7 @@
       'user': '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
       'user-minus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/>',
       'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>',
+      'line-chart': '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
       'clipboard-check': '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
       'wand-2': '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/>',
       'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'
@@ -3390,43 +3404,52 @@
       const isLatestInd = Boolean(latest && latest.inputMode === 'count');
       if (isLatestInd) {
         const accPct = latest.totalQuestions > 0 ? Math.round((Number(latest.total || 0) / Number(latest.totalQuestions)) * 100) + '%' : '-';
-        kpiEl.className = 'grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4';
+        kpiEl.className = 'grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3';
         kpiEl.innerHTML = `
-          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">직전 대비 맞춘 문항 변화</p>
-            <p class="text-xl font-bold text-emerald-700 mt-1">${fmtDelta(latest.total, prev ? prev.total : null, '개')}</p>
+          <div class="bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-xs">
+            <p class="text-[11px] font-medium text-slate-500 whitespace-nowrap">직전 대비 맞춘 문항 변화</p>
+            <p class="text-base sm:text-lg font-bold text-emerald-700 mt-0.5">${fmtDelta(latest.total, prev ? prev.total : null, '개')}</p>
           </div>
-          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">최근 학습 총 문항 · 오답</p>
-            <p class="text-lg font-bold text-slate-900 mt-1">${latest.totalQuestions ? `${latest.totalQuestions}문항` : '-'} <span class="text-sm font-bold text-rose-600">${latest.wrongCount !== '' && latest.wrongCount !== undefined ? `(틀림 ${latest.wrongCount}개)` : ''}</span></p>
+          <div class="bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-xs">
+            <p class="text-[11px] font-medium text-slate-500 whitespace-nowrap">최근 학습 총 문항 · 오답</p>
+            <p class="text-sm sm:text-base font-bold text-slate-900 mt-0.5">${latest.totalQuestions ? `${latest.totalQuestions}문항` : '-'} <span class="text-xs font-bold text-rose-600">${latest.wrongCount !== '' && latest.wrongCount !== undefined ? `(틀림 ${latest.wrongCount}개)` : ''}</span></p>
           </div>
-          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">정답률 · 백분위</p>
-            <p class="text-lg font-bold text-indigo-700 mt-1">${accPct}${latest.pct ? ` · ${latest.pct}%` : ''}</p>
+          <div class="bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-xs">
+            <p class="text-[11px] font-medium text-slate-500 whitespace-nowrap">정답률 · 백분위</p>
+            <p class="text-sm sm:text-base font-bold text-indigo-700 mt-0.5">${accPct}${latest.pct ? ` · ${latest.pct}%` : ''}</p>
           </div>`;
       } else {
-        kpiEl.className = showElectiveCard ? 'grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4' : 'grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4';
+        kpiEl.className = showElectiveCard ? 'grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3' : 'grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3';
         kpiEl.innerHTML = `
-          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">직전 대비 원점수 변화 (전체)</p>
-            <p class="text-xl font-bold text-emerald-700 mt-1">${latest ? fmtDelta(latest.total, prev ? prev.total : null, u) : '-'}</p>
+          <div class="bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-xs">
+            <p class="text-[10.5px] sm:text-[11px] font-medium text-slate-500 leading-tight">직전 대비 원점수 변화 (전체)</p>
+            <p class="text-base sm:text-lg font-bold text-emerald-700 mt-0.5">${latest ? fmtDelta(latest.total, prev ? prev.total : null, u) : '-'}</p>
           </div>
-          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">직전 대비 원점수 변화 (공통)</p>
-            <p class="text-xl font-bold text-slate-900 mt-1">${latest && latest.common !== '' ? fmtDelta(latest.common, prev ? prev.common : null, u) : '-'}</p>
+          <div class="bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-xs">
+            <p class="text-[10.5px] sm:text-[11px] font-medium text-slate-500 leading-tight">직전 대비 원점수 변화 (공통)</p>
+            <p class="text-base sm:text-lg font-bold text-slate-900 mt-0.5">${latest && latest.common !== '' ? fmtDelta(latest.common, prev ? prev.common : null, u) : '-'}</p>
           </div>
-          ${showElectiveCard ? `<div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">직전 대비 원점수 변화 (선택)</p>
-            <p class="text-xl font-bold text-slate-900 mt-1">${fmtDelta(latest.elective, prev ? prev.elective : null, u)}</p>
+          ${showElectiveCard ? `<div class="bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-xs">
+            <p class="text-[10.5px] sm:text-[11px] font-medium text-slate-500 leading-tight">직전 대비 원점수 변화 (선택)</p>
+            <p class="text-base sm:text-lg font-bold text-slate-900 mt-0.5">${fmtDelta(latest.elective, prev ? prev.elective : null, u)}</p>
           </div>` : ''}
-          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">직전 대비 표준점수 · 백분위 변화율</p>
-            <p class="text-sm font-bold text-indigo-700 mt-1.5">${latest && (latest.std || latest.pct) ? `${latest.std ? '표점 ' + fmtRate(latest.std, prev ? prev.std : null, '') : ''} ${latest.pct ? '백분위 ' + fmtRate(latest.pct, prev ? prev.pct : null, '%') : ''}` : '-'}</p>
+          <div class="bg-white rounded-xl border border-slate-200 p-2.5 sm:p-3 shadow-xs">
+            <p class="text-[10.5px] sm:text-[11px] font-medium text-slate-500 leading-tight">직전 대비 표점 · 백분위</p>
+            <p class="text-xs sm:text-sm font-bold text-indigo-700 mt-1">${latest && (latest.std || latest.pct) ? `${latest.std ? '표점 ' + fmtRate(latest.std, prev ? prev.std : null, '') : ''} ${latest.pct ? '백분위 ' + fmtRate(latest.pct, prev ? prev.pct : null, '%') : ''}` : '-'}</p>
           </div>`;
       }
 
       drawKoreanScoreChart(scores);
-      sumEl.innerHTML = `<p>${escapeHtml(buildKoreanGrowthText(stu))}</p>`;
+      if (window.innerWidth < 768 && scores.length > 0) {
+        const lStr = (latest.strengths && latest.strengths.length) ? latest.strengths[0] : '핵심 파악';
+        const lWeak = (latest.weaknesses && latest.weaknesses.length) ? latest.weaknesses[0] : '오답 보완';
+        const diffTxt = prev
+          ? (() => { const d = Number(latest.total || 0) - Number(prev.total || 0); return d > 0 ? ` (직전 대비 +${d}${u})` : (d < 0 ? ` (직전 대비 ${d}${u})` : ' (직전과 동일)'); })()
+          : '';
+        sumEl.innerHTML = `<p>${escapeHtml(`${stu.name} 학생은 최근 '${latest.title}'에서 ${latest.total}${u}${diffTxt}을 기록했습니다. 강점은 '${lStr}'이며 '${lWeak}'을 집중 보완할 계획입니다.`)}</p>`;
+      } else {
+        sumEl.innerHTML = `<p>${escapeHtml(buildKoreanGrowthText(stu))}</p>`;
+      }
 
       if (scores.length === 0) {
         listEl.innerHTML = '<div class="text-center py-6 text-xs text-slate-400">저장된 국어 모의고사 성적이 없습니다. 위 입력 칸에서 첫 성적을 등록해 보세요.</div>';
@@ -6357,7 +6380,16 @@
           return `<div class="flex justify-start"><div class="max-w-[92%] rounded-2xl rounded-tl-sm bg-white border border-slate-200 px-4 py-3 text-xs sm:text-sm text-slate-800 space-y-2 shadow-xs">
             <div class="whitespace-pre-wrap leading-relaxed">${escapeHtml(m.text)}</div>
             <div class="pt-1.5 border-t border-slate-100 flex flex-wrap gap-1.5">
-              ${m.examPaper ? `<button type="button" class="studio-open-paper-btn px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-[11px] font-bold text-white" data-idx="${idx}">시험지 양식 보기 · PDF/복사</button>` : ''}
+              ${m.examPaper ? `<div class="w-full mb-1.5 rounded-xl border border-purple-200 bg-purple-50/70 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-extrabold shrink-0">PDF</span>
+                  <span class="text-xs font-bold text-slate-900 truncate">${escapeHtml((m.examPaper.title || '모의논술_시험지') + '.pdf')}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button type="button" class="studio-download-pdf-btn px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-[11px] font-bold text-white" data-idx="${idx}">PDF 파일 다운로드</button>
+                  <button type="button" class="studio-open-paper-btn px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-[11px] font-bold text-white" data-idx="${idx}">시험지 미리보기</button>
+                </div>
+              </div>` : ''}
               <button type="button" class="studio-copy-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-semibold text-slate-700" data-idx="${idx}">내용 복사</button>
               <button type="button" class="studio-to-prompt-btn px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-[11px] font-semibold text-indigo-700" data-idx="${idx}">첨삭 탭 제시문에 반영</button>
             </div>
@@ -6562,7 +6594,52 @@
         });
       }
 
+      async function downloadEssayPaperPdf(paperObj) {
+        if (!paperObj) return;
+        if (typeof window.html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+          openEssayPaperModal(paperObj);
+          showToast('시험지 창에서 인쇄 · PDF 저장을 눌러 저장해 주세요.', 'info');
+          return;
+        }
+        showToast('논술 시험지 PDF 파일을 생성 중입니다...', 'info');
+        const holder = document.createElement('div');
+        holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:794px;background:#fff;z-index:-1;';
+        holder.innerHTML = buildYonseiEssayPaperHtml(paperObj);
+        document.body.appendChild(holder);
+        try {
+          if (document.fonts && document.fonts.ready) await document.fonts.ready;
+          await new Promise(r => setTimeout(r, 150));
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+          const pages = Array.from(holder.querySelectorAll('.yonsei-page'));
+          const targets = pages.length ? pages : [holder];
+          for (let i = 0; i < targets.length; i++) {
+            const cvs = await window.html2canvas(targets[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+            const imgData = cvs.toDataURL('image/jpeg', 0.95);
+            const pdfW = 210;
+            const pdfH = Math.min(297, (cvs.height * pdfW) / cvs.width);
+            if (i > 0) pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+          }
+          const safeTitle = String(paperObj.title || '모의논술_시험지').replace(/[\\/:*?"<>|]/g, '_');
+          pdf.save(`${safeTitle}.pdf`);
+          showToast('모의논술 시험지 PDF가 다운로드되었습니다.', 'success');
+        } catch (err) {
+          openEssayPaperModal(paperObj);
+          showToast('직접 PDF 변환에 실패해 시험지 인쇄 창을 열었습니다.', 'warning');
+        } finally {
+          document.body.removeChild(holder);
+        }
+      }
+
       document.getElementById('studioChatMessages').addEventListener('click', async (e) => {
+        const dlPdfBtn = e.target.closest('.studio-download-pdf-btn');
+        if (dlPdfBtn) {
+          const activeId = state.activeStudioUnivId || 'yonsei';
+          const msg = (state.studioRooms && state.studioRooms[activeId] || [])[Number(dlPdfBtn.dataset.idx)];
+          if (msg && msg.examPaper) await downloadEssayPaperPdf(msg.examPaper);
+          return;
+        }
         const openPaperBtn = e.target.closest('.studio-open-paper-btn');
         if (openPaperBtn) {
           const activeId = state.activeStudioUnivId || 'yonsei';
@@ -6643,6 +6720,10 @@
 
       document.getElementById('studioChatForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (window._studioSending) {
+          showToast('이전 응답이 완료될 때까지 잠시 기다려 주세요.', 'warning');
+          return;
+        }
         if (!isJace48()) {
           showToast('jace48 계정에서만 사용할 수 있습니다.', 'warning');
           return;
@@ -6667,8 +6748,12 @@
         renderStudioUnivTabs();
         renderStudioChat();
 
+        window._studioSending = true;
         const sendBtn = document.getElementById('studioSendBtn');
+        const tmplBtn = document.getElementById('studioYonseiTemplateBtn');
         sendBtn.disabled = true;
+        inp.disabled = true;
+        if (tmplBtn) tmplBtn.disabled = true;
         let studioSec = 0;
         sendBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>응답 중 (0초)...</span>';
         safeIcons();
@@ -6712,12 +6797,16 @@
           replyText = '이 기능은 Render 서버 주소로 접속해 jace48로 로그인했을 때 AI API와 연동되어 작동합니다.';
         }
 
+        clearInterval(studioTimer);
+        window._studioSending = false;
         state.studioRooms[activeId].push({ role: 'model', text: replyText, examPaper: (typeof receivedExamPaper !== 'undefined' ? receivedExamPaper : null) });
         saveState();
         renderStudioUnivTabs();
         renderStudioChat();
         sendBtn.disabled = false;
-        sendBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i><span>생성 · 전송</span>';
+        inp.disabled = false;
+        if (tmplBtn) tmplBtn.disabled = false;
+        sendBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i><span>전송</span>';
         safeIcons();
       });
 
@@ -7918,6 +8007,11 @@
             showToast('모의고사 생성은 서버 배포 환경에서 동작합니다.', 'warning');
             return;
           }
+          if (window._korGenInFlight) {
+            showToast('모의고사 생성이 이미 진행 중입니다. 완료될 때까지 기다려 주세요.', 'warning');
+            return;
+          }
+          window._korGenInFlight = true;
           const mySeq = window._korMockSessionSeq || 0;
           korGenBtn.disabled = true;
           const pWrap = document.getElementById('korMockProgressWrap');
@@ -8002,7 +8096,8 @@
             if (stEl) stEl.textContent = '네트워크 오류가 발생했습니다.';
           } finally {
             if (typeof progTicker !== 'undefined') clearInterval(progTicker);
-            korGenBtn.disabled = false;
+            window._korGenInFlight = false;
+          korGenBtn.disabled = false;
           }
         });
       }
