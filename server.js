@@ -18,7 +18,50 @@ function loadDotEnv() {
 }
 loadDotEnv();
 
+const crypto = require('crypto');
 const app = express();
+app.set('trust proxy', 1);
+
+function getClientIp(req) {
+  return String(req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.ip || 'unknown').split(',')[0].trim();
+}
+
+// 보안 헤더 미들웨어 (Cloudflare & Render HTTPS 호환)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+const LOGIN_FAIL_MAP = new Map();
+function hashPasswordScrypt(pw) {
+  const raw = String(pw || '');
+  if (!raw || raw.startsWith('scrypt$')) return raw;
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(raw, salt, 32).toString('hex');
+  return `scrypt$${salt}$${derived}`;
+}
+function verifyPasswordSafe(stored, input) {
+  const s = String(stored || '');
+  const inp = String(input || '');
+  if (!s) return true;
+  if (s.startsWith('scrypt$')) {
+    const parts = s.split('$');
+    if (parts.length !== 3) return false;
+    const derived = crypto.scryptSync(inp, parts[1], 32);
+    const expected = Buffer.from(parts[2], 'hex');
+    return derived.length === expected.length && crypto.timingSafeEqual(derived, expected);
+  }
+  const a = Buffer.from(s, 'utf8');
+  const b = Buffer.from(inp, 'utf8');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'db.json');
 const EXAMS_DIR = path.join(__dirname, 'public', 'exams');
@@ -49,7 +92,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_v74';
+const CLIENT_BUILD_VERSION = '20261128_v79';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -172,9 +215,26 @@ app.post('/api/signup', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   const { userId, pw } = req.body || {};
+  const ip = getClientIp(req);
+  const rateKey = `${ip}::${String(userId || '').toLowerCase()}`;
+  const now = Date.now();
+  const rec = LOGIN_FAIL_MAP.get(rateKey);
+  if (rec && rec.count >= 10 && (now - rec.firstAt) < 15 * 60 * 1000) {
+    return res.status(429).json({ error: '로그인 시도 횟수를 초과했습니다. 15분 후 다시 시도해 주세요.' });
+  }
   const acc = await dbGetAccount(userId);
-  if (!acc) return res.status(404).json({ error: '등록되지 않은 아이디입니다.' });
-  if (acc.pw && acc.pw !== pw) return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
+  if (!acc) {
+    LOGIN_FAIL_MAP.set(rateKey, { count: (rec && (now - rec.firstAt) < 15 * 60 * 1000 ? rec.count : 0) + 1, firstAt: (rec && (now - rec.firstAt) < 15 * 60 * 1000 ? rec.firstAt : now) });
+    return res.status(404).json({ error: '등록되지 않은 아이디입니다.' });
+  }
+  if (acc.pw && !verifyPasswordSafe(acc.pw, pw)) {
+    LOGIN_FAIL_MAP.set(rateKey, { count: (rec && (now - rec.firstAt) < 15 * 60 * 1000 ? rec.count : 0) + 1, firstAt: (rec && (now - rec.firstAt) < 15 * 60 * 1000 ? rec.firstAt : now) });
+    return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
+  }
+  LOGIN_FAIL_MAP.delete(rateKey);
+  if (acc.pw && !String(acc.pw).startsWith('scrypt$')) {
+    dbSaveAccount(userId, { name: acc.name, pw: hashPasswordScrypt(pw), state: acc.state }).catch(() => {});
+  }
   await recordUserSeen(userId, true);
   res.json({ ok: true, name: acc.name, state: acc.state, loginAt: Date.now() });
 });
@@ -184,7 +244,7 @@ app.put('/api/state/:userId', async (req, res) => {
   const existing = await dbGetAccount(userId);
   const nextAcc = {
     name: (req.body && req.body.name) || (existing && existing.name) || userId,
-    pw: (req.body && req.body.pw) || (existing && existing.pw) || '',
+    pw: (req.body && req.body.pw) ? hashPasswordScrypt(req.body.pw) : ((existing && existing.pw) || ''),
     state: (req.body && req.body.state) || (existing && existing.state) || {}
   };
   await dbSaveAccount(userId, nextAcc);
@@ -675,7 +735,21 @@ const LEGENDSTUDY_POST_MAP = {
   '2024_수능': '1574',
   '2024_9월': '1525',
   '2024_6월': '1516',
-  '2023_9월': '1507'
+  '2023_9월': '1507',
+  '2022_수능': '1487',
+  '2022_9월': '1485',
+  '2021_9월': '1473',
+  '2021_6월': '1472',
+  '2020_9월': '1448',
+  '2020_6월': '1447',
+  '2019_수능': '1378',
+  '2019_9월': '1355',
+  '2019_6월': '1289',
+  '2018_수능': '1235',
+  '2018_9월': '1216',
+  '2018_6월': '1127',
+  '2017_수능': '1062',
+  '2017_9월': '1037'
 };
 
 async function searchHoraengKoreanPdf(year, type) {
@@ -711,9 +785,17 @@ async function searchHoraengKoreanPdf(year, type) {
 
 async function searchLegendstudyKoreanPdf(year, type) {
   const key = `${year}_${type}`;
-  const pid = LEGENDSTUDY_POST_MAP[key];
-  if (!pid) return { mun: '', hsj: '' };
-  const html = await fetchTextWithTimeout(`https://legendstudy.com/${pid}`, 8000);
+  let postUrl = LEGENDSTUDY_POST_MAP[key] ? `https://legendstudy.com/${LEGENDSTUDY_POST_MAP[key]}` : '';
+  if (!postUrl) {
+    const q = `${year}학년도 ${type === '수능' ? '수능' : type + ' 모의평가'} 국어`;
+    const sHtml = await fetchTextWithTimeout(`https://legendstudy.com/search/${encodeURIComponent(q)}`, 6000);
+    if (sHtml) {
+      const m = sHtml.match(/href=["'](https?:\/\/legendstudy\.com\/\d+)["']/i) || sHtml.match(/href=["'](\/\d+)["']/i);
+      if (m) postUrl = m[1].startsWith('http') ? m[1] : `https://legendstudy.com${m[1]}`;
+    }
+  }
+  if (!postUrl) return { mun: '', hsj: '' };
+  const html = await fetchTextWithTimeout(postUrl, 8000);
   if (!html) return { mun: '', hsj: '' };
   const links = [...html.matchAll(/<a[^>]+href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => ({
     url: m[1].replace(/&amp;/g, '&'),
@@ -975,8 +1057,8 @@ app.get('/api/korean-grade-cuts', async (req, res) => {
   const year = String(req.query.year || '2027').replace(/[^0-9]/g, '');
   const type = String(req.query.type || '수능').trim();
   const yNum = Number(year);
-  if (!yNum || yNum < 2023 || yNum > 2027) {
-    return res.json({ ok: false, year, type, error: '기관별 원점수 등급컷은 2023~2027학년도만 지원됩니다.', cuts: null });
+  if (!yNum || yNum < 2017 || yNum > 2027) {
+    return res.json({ ok: false, year, type, error: '원점수 등급컷은 2017~2027학년도만 지원됩니다.', cuts: null });
   }
   const key = `${year}_${type}`;
   const isMock = !(year === '2027' && type === '수능');
@@ -1475,17 +1557,42 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
     }
     return chosen;
   };
-  const [tTheory] = pickFresh(['독서의 인지적 과정과 스키마', '비판적 읽기와 논증 타당성 평가', '매체 환경 변화와 심층 독해 전략', '상호텍스트적 읽기와 의미 재구성', '독해 중 자기 점검과 추론 조정'], 1);
-  const [tHum] = pickFresh(['조선 후기 실학파의 인식론과 이용후생(가)/(나)', '고대 동양의 예악 사상과 근대 시민 윤리(가)/(나)', '현상학과 해석학의 의미 이해 이론(가)/(나)', '언어철학의 지시 이론과 화용론(가)/(나)', '미학에서의 숭고 개념과 현대 예술론(가)/(나)', '역사 서술의 객관성과 사료 해석(가)/(나)'], 1);
-  const [tSci] = pickFresh(['세포 내 자가포식과 리소좀 분해 메커니즘', '열역학 제2법칙과 비평형 통계역학의 엔트로피', '디지털 영상 압축과 이산 코사인 변환(DCT)', '항생제 내성 박테리아의 유전자 수평 전달', '인공신경망의 역전파와 경사 소실 문제', '대기 복사 평형과 구름 알베도 피드백', '양자 암호 키 분배와 광자 편광 상태'], 1);
-  const [tLaw] = pickFresh(['행정행위의 부관과 비례의 원칙', '계약 해제와 원상회복 의무 및 손해배상', '불완전 경쟁 시장의 가격 차별과 후생 변화', '중앙은행의 통화 정책과 유동성 함정', '저작권법상 공정이용 법리와 변형적 이용', '채권자취소권과 사해행위의 성립 요건'], 1);
+  const [tTheory] = pickFresh([
+    '독서의 인지적 과정과 스키마', '비판적 읽기와 논증 타당성 평가', '매체 환경 변화와 심층 독해 전략',
+    '상호텍스트적 읽기와 의미 재구성', '독해 중 자기 점검과 추론 조정', '통합적 읽기와 관점 비교 전략',
+    '어휘 추론과 문맥적 의미 구성', '질문 생성을 통한 능동적 독해'
+  ], 1);
+  const [tHum] = pickFresh([
+    '조선 후기 실학파의 인식론과 이용후생(가)/(나)', '고대 동양의 예악 사상과 근대 시민 윤리(가)/(나)',
+    '현상학과 해석학의 의미 이해 이론(가)/(나)', '언어철학의 지시 이론과 화용론(가)/(나)',
+    '미학에서의 숭고 개념과 현대 예술론(가)/(나)', '역사 서술의 객관성과 사료 해석(가)/(나)',
+    '근대 자연법 사상과 사회계약론(가)/(나)', '불교의 연기설과 중도 사상의 인식론(가)/(나)',
+    '과학철학의 반증주의와 패러다임 전환(가)/(나)', '유가와 도가의 자연관 및 수양론 비교(가)/(나)'
+  ], 1);
+  const [tSci] = pickFresh([
+    '능동 소음 제어(노이즈 캔슬링)와 파동 간섭 원리', '게코 도마뱀 발바닥과 반데르발스 힘 생체 모방',
+    '유전자 가위(CRISPR)의 표적 인식과 염기 편집', 'GPS 위성 원자시계와 상대성 이론 시간 보정',
+    '전고체 배터리 전해질과 이온 전도 메커니즘', 'MRI 핵자기 공명과 T1/T2 이완 시간 영상화',
+    '해수 담수화 역삼투압 막과 삼투 현상 제어', '초전도체의 마이스너 효과와 자기 부상 원리',
+    '항공기 날개 양력과 베르누이·받음각 원리', '블록체인 영지식 증명과 암호학적 검증',
+    '지진파 P파·S파 굴절과 지구 내부 층상 구조', '효소의 알로스테릭 조절과 대사 경로 피드백',
+    '광촉매 반응과 수질 정화 산화·환원 원리', '음성 인식 멜-스펙트로그램과 음향 모델링'
+  ], 1);
+  const [tLaw] = pickFresh([
+    '행정행위의 부관과 비례의 원칙', '계약 해제와 원상회복 의무 및 손해배상',
+    '중앙은행의 통화 정책과 유동성 함정', '저작권법상 공정이용 법리와 변형적 이용',
+    '채권자취소권과 사해행위의 성립 요건', '공정거래법상 시장 지배적 지위 남용 규제',
+    '형사소송상 위법수집증거 배제 법칙과 독수과실', '환경오염 외부효과와 피구세·배출권 거래제',
+    '정보 비대칭과 역선택·도덕적 해이 해결 기제', '행정소송상 처분성과 원고적격 판단 기준',
+    '환율 변동과 경상수지 J-커브 효과', '민법상 표현대리와 거래 안전 보호 법리'
+  ], 1);
   const [wModNov] = pickFresh(['염상섭 계열의 도시 지식인 심리 소설', '채만식·박태원 계열의 풍자·세태 소설', '황순원·오영수 계열의 서정적 단편 소설', '김승옥·이청준 계열의 1960년대 내면 의식 소설', '박완서·윤흥길 계열의 가족사·현대사 소설'], 1);
   const [wGal] = pickFresh(['조선 전기 강호가도 시조/가사 + 현대 수필', '조선 후기 사설시조 + 고전 한문 수필', '고려 속요/경기체가 + 현대 비평 수필', '유배 가사 + 현대 산문 수필'], 1);
   const [wClsNov] = pickFresh(['영웅 군담 소설(새로운 인물·전투 서사)', '가정·쟁총형 고전 소설(새로운 가문 서사)', '애정·전기 소설(새로운 만남과 시련 서사)', '판소리계 우화·풍자 소설(새로운 풍자 서사)'], 1);
   const [wModPoem] = pickFresh(['생명파·자연 서정 현대시 2편', '모더니즘·도시 감각 현대시 2편', '민중·역사 성찰 현대시 2편', '전통 정서·존재 탐구 현대시 2편'], 1);
 
   const uniquePromptSeed = `출제 고유 시드: ${Date.now()}-${Math.floor(Math.random()*100000)}
-이번 회차 배정 제재(이전 회차와 겹치지 않는 새로운 지문·작품):
+이번 회차 배정 제재(반드시 아래 새 제재로 집필하며, 진부한 반도체 EUV/FinFET 등 이전 소재를 반복하지 말고 같은 주제라도 완전히 새로운 사례·논지·문항으로 구성하세요):
 - 독서 이론: ${tTheory}
 - 인문·사회(가/나): ${tHum}
 - 과학·기술: ${tSci}
@@ -1501,7 +1608,10 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 
 [분량 · 배점(10개년 기출 기준) · 문학 출처 필수 조건]
 - 배점은 실제 수능 국어 10개년 기준과 동일하게 **총 100점 = 2점 35문항 + 3점 10문항**으로 엄격히 맞추세요(독서 4문항, 문학 4문항, 선택과목 2문항에 points:3 배정, 나머지 35문항은 points:2).
-- 문학 지문([18~21] 현대소설, [22~26] 갈래복합, [27~30] 고전소설, [31~34] 현대시 (가)/(나))의 각 작품 끝에는 실제 수능처럼 반드시 출처 표기 줄(예: "― 김승옥, 「무진기행」" 또는 "― 작자 미상, 「유충렬전」")을 넣으세요. 특히 [31~34] 현대시는 절대 32번 문항의 <보 기> 안에 시를 넣지 말고, 반드시 [31~34] 지문(passage.header/body)에 (가), (나) 두 편을 배치하세요.
+- 문학 지문([18~21] 현대소설, [22~26] 갈래복합, [27~30] 고전소설, [31~34] 현대시 (가)/(나))의 각 작품 끝에는 실제 수능처럼 반드시 "- 작가명, 「작품명」 -" 형식의 출처 표기 줄(예: "- 김승옥, 「무진기행」 -" 또는 "- 작자 미상, 「유충렬전」 -")을 넣으세요.
+- 문학 지문 본문에서 <보기> 감상 문제 등의 선지에 직접 인용('...')되는 핵심 시어·구절 4~8개는 독자가 지문에서 바로 찾을 수 있도록 반드시 <b>...</b>로 진하게 표시하세요(예: 빈 <b>버스</b>가 <b>곤두박질치듯</b> 달려 나가고).
+- [출제 금지 유형] 문학([18~34])에서 <보기>의 학생 감상 노트에 ⓐ~ⓔ를 달아 놓고 "ⓐ~ⓔ 중 맥락/적절성에 어긋나는 것은? ① ⓐ ② ⓑ ③ ⓒ ④ ⓓ ⑤ ⓔ" 형태로 고르게 하는 문제는 절대 출제하지 마세요. 문학 <보기> 문항은 반드시 실제 수능처럼 비평적 관점(외적 준거)을 <보기> 박스로 제시하고, ①~⑤가 모두 완전한 감상 문장으로 된 5지선다형으로 출제하세요.
+- 문항 발문·<보기>·선지에서 시어나 구절을 인용할 때 『발치』와 같은 겹낫표(『...』)는 절대 사용하지 말고, 반드시 작은따옴표('발치')만 사용하세요. 특히 [31~34] 현대시는 절대 32번 문항의 <보 기> 안에 시를 넣지 말고, 반드시 [31~34] 지문(passage.header/body)에 (가), (나) 두 편을 배치하세요.
 - 본문·발문 문자열에 <b>, <i> 같은 HTML 태그를 쓰지 마세요(어휘 문항 선지 ①~⑤의 비교 대상 단어에만 <u>단어</u> 밑줄을 허용하며, 그 외에는 ㉠~㉤ 또는 ⓐ~ⓔ 표기 사용).
 - 독서 지문은 실제 2026·2027 수능 PDF와 동일한 문단 수와 분량으로 작성하세요(2문단짜리 짧은 지문 절대 금지!):
   · [1~3] 독서 이론: **최소 3~4문단, 1,000~1,200자**

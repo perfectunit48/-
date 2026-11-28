@@ -158,7 +158,7 @@
         width: 210mm;
         max-width: 210mm;
         min-height: 297mm;
-        padding: 7mm 10mm 3.5mm 10mm;
+        padding: 7mm 10mm 9.5mm 10mm;
       }
       .kice-cols {
         grid-template-columns: 1fr 1fr;
@@ -185,7 +185,7 @@
         max-height: 296.5mm !important;
         overflow: hidden !important;
         margin: 0 !important;
-        padding: 7mm 10mm 3.5mm 10mm !important;
+        padding: 7mm 10mm 9.5mm 10mm !important;
         border: none !important;
         box-shadow: none !important;
         page-break-after: always !important;
@@ -2401,7 +2401,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v74';
+    const CLIENT_BUILD_VERSION = '20261128_v79';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -6936,8 +6936,10 @@
       let lastGeneratedKorMock = null;
       function buildKicePaperHtml(data) {
         const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const fmtInline = (v) => esc(v)
+        const fmtInline = (v) => esc(String(v || '').replace(/『([^』\n]{1,40})』/g, "'$1'"))
           .replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/gi, '<span style="text-decoration:underline;text-underline-offset:3px;">$1</span>')
+          .replace(/&lt;(?:b|strong)&gt;([\s\S]*?)&lt;\/(?:b|strong)&gt;/gi, '<strong style="font-weight:800;color:#000;">$1</strong>')
+          .replace(/\*\*([^*\n]{1,30})\*\*/g, '<strong style="font-weight:800;color:#000;">$1</strong>')
           .replace(/&lt;\/?(?:u|b|strong|em|i)&gt;/gi, '');
         const passages = Array.isArray(data.passages) ? data.passages : [];
         const serifFont = "'Noto Serif KR','Batang','바탕','Nanum Myeongjo',serif";
@@ -7198,7 +7200,7 @@
             ).join('') + `</div>`;
           }
 
-          return `<div style="margin-top:18px;break-inside:avoid;">
+          return `<div style="margin-top:26px;break-inside:avoid;">
             <div style="font-family:${serifFont};font-weight:500;font-size:11.4px;line-height:1.52;text-align:justify;word-break:normal;overflow-wrap:break-word;">${fmtInline(stemTxt)}${pts}</div>
             ${standaloneVisHtml}
             ${boxHtml}
@@ -7222,11 +7224,36 @@
             bodyStr = hdrStr;
             hdrStr = `${p.range || ''} 다음 글을 읽고 물음에 답하시오.`.trim();
           }
-          // Ensure clean line breaks before (가), (나), (다) and literary attributions ― ...
+          // Ensure clean line breaks before (가), (나), (다) and literary attributions (- 작가, 「작품」 -)
           bodyStr = bodyStr
             .replace(/(^|\n|\s+)(\([가나다라]\))\s+/g, '$1$2\n')
-            .replace(/\s+([―—]\s*[^\n]+「[^」]+」)/g, '\n$1\n');
-          const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:18px 0 6px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
+            .replace(/\s+([―—-]\s*[^\n,]{1,20},\s*「[^」]+」(?:\s*-)?)/g, '\n$1\n');
+          // Auto-bold key quoted phrases from <보기> appreciation choices in literary passages (18~34)
+          if (firstQ >= 18 && firstQ <= 34 && !/<b>|\*\*/i.test(bodyStr)) {
+            const stopKw = new Set(['화자','시인','서술자','주인공','작가','독자','인물','대상','현실','세계','자연','인간','사회','이것','그것','저것','자신']);
+            const bogiKws = [];
+            (Array.isArray(p.questions) ? p.questions : []).forEach(q => {
+              if (!q || (!q.box && !/<보기>/.test(String(q.stem || '')))) return;
+              (Array.isArray(q.choices) ? q.choices : []).forEach(ch => {
+                const ms = String(ch || '').matchAll(/['‘]([^'’]{2,16})['’]/g);
+                for (const m of ms) {
+                  const kw = m[1].trim();
+                  if (kw.length >= 2 && !stopKw.has(kw) && !bogiKws.includes(kw)) bogiKws.push(kw);
+                }
+              });
+            });
+            let boldCount = 0;
+            for (const kw of bogiKws) {
+              if (boldCount >= 8) break;
+              const escKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const re = new RegExp(`(?<![<\w가-힣])(${escKw})(?![^<]*>)`);
+              if (re.test(bodyStr)) {
+                bodyStr = bodyStr.replace(re, '<b>$1</b>');
+                boldCount++;
+              }
+            }
+          }
+          const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:22px 0 6px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
           const rawParas = bodyStr.split(/\n+/).map(s => s.trim()).filter(Boolean);
           const paras = [];
           rawParas.forEach(pr => {
@@ -7257,7 +7284,7 @@
               const isFirstP = pi === 0;
               const isLastP = (pi === paras.length - 1) && !hasPVis;
               const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:6px;' : 'padding-top:0;';
-              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:16px;' : 'padding-bottom:0;';
+              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:20px;' : 'padding-bottom:0;';
               const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.52;text-align:justify;`;
               let innerHtml = fmtParagraph(pr, true);
               if (pObj.cont) innerHtml = innerHtml.replace('text-indent:1em;', 'text-indent:0;');
@@ -7323,7 +7350,7 @@
         let curIsElec = false;
         let hasElecStarted = false;
 
-        const getColLimit = (isTopHeaderPage) => (isTopHeaderPage ? 955 : 990);
+        const getColLimit = (isTopHeaderPage) => (isTopHeaderPage ? 956 : 992);
 
         for (const u of units) {
           if (u.isElective && !hasElecStarted && (col1Units.length > 0 || col2Units.length > 0)) {
@@ -7379,7 +7406,7 @@
           let headerHtml = '';
           if (isFirst || pgObj.isElectiveStart) {
             const areaTitle = pgObj.isElectiveStart ? `국어 영역(${esc(data.elective)})` : '국어 영역';
-            headerHtml = `<div style="margin-bottom:10px;font-family:${sansFont};">
+            headerHtml = `<div style="margin-bottom:4px;font-family:${sansFont};">
               <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:3px;">
                 <span></span>
                 <span style="font-size:13.5px;font-weight:800;letter-spacing:-0.02em;">${esc((data.title || "2027학년도 대학수학능력시험 모의고사").trim())}${/문제지$/.test((data.title || "").trim()) ? "" : " 문제지"}</span>
@@ -7395,7 +7422,7 @@
             const areaTitle = pgObj.isElective ? `국어 영역(${esc(data.elective)})` : '국어 영역';
             const badgeHtml = `<span style="display:inline-block;border:1.2px solid #000;padding:1px 9px;font-size:12.5px;font-weight:800;">홀수형</span>`;
             const numHtml = `<span style="font-size:19px;font-weight:900;">${displayCornerNo}</span>`;
-            headerHtml = `<div style="margin-bottom:9px;font-family:${sansFont};">
+            headerHtml = `<div style="margin-bottom:4px;font-family:${sansFont};">
               <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding-bottom:5px;border-bottom:1.2px solid #000;">
                 <div>${isEven ? numHtml : badgeHtml}</div>
                 <div style="font-size:18px;font-weight:900;letter-spacing:${pgObj.isElective ? '0.08em' : '0.25em'};text-align:center;">${areaTitle}</div>
@@ -7407,22 +7434,33 @@
           const justifyColHtml = (colUnits, isTopHdr) => {
             const arr = colUnits || [];
             const colH = arr.reduce((s, u) => s + (u.h || 0), 0);
-            const maxH = isTopHdr ? 955 : 990;
+            const maxH = isTopHdr ? 956 : 992;
             const spare = maxH - colH;
             const targets = arr.filter((u, ui) => ui > 0 && u.isGapTarget);
-            const extra = (colH >= maxH * 0.65 && spare > 12 && targets.length > 0)
-              ? Math.min(26, Math.floor(spare / targets.length))
+            const extra = (colH >= maxH * 0.58 && spare > 8 && targets.length > 0)
+              ? Math.min(50, Math.floor(spare / targets.length))
+              : 0;
+            const pExtra = (targets.length === 0 && arr.length >= 3 && colH >= maxH * 0.72 && spare > 12)
+              ? Math.min(6, Math.floor(spare / (arr.length - 1)))
               : 0;
             return arr.map((u, ui) => {
-              if (extra > 0 && ui > 0 && u.isGapTarget) {
+              if (ui === 0) {
+                return u.html
+                  .replace(/margin-top:26px;/, 'margin-top:2px;')
+                  .replace(/margin:22px 0 6px 0;/, 'margin:2px 0 6px 0;');
+              }
+              if (extra > 0 && u.isGapTarget) {
                 return `<div style="margin-top:${extra}px;">${u.html}</div>`;
+              }
+              if (pExtra > 0 && !u.isGapTarget) {
+                return u.html.replace(/padding-top:0;/, `padding-top:${pExtra}px;`);
               }
               return u.html;
             }).join('');
           };
           const col1Html = justifyColHtml(pgObj.col1, isFirst || pgObj.isElectiveStart);
           const col2Html = justifyColHtml(pgObj.col2, isFirst || pgObj.isElectiveStart);
-          const footerHtml = `<div style="margin-top:4px;padding-top:2px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;">
+          const footerHtml = `<div style="margin-top:6px;padding-top:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;">
             <span style="font-family:${sansFont};font-size:9px;color:#64748b;">${isFirst ? esc(data.title) : ''}</span>
             <span style="display:inline-flex;align-items:center;justify-content:center;border:1px solid #000;padding:1px 9px;font-family:${sansFont};font-size:10px;font-weight:700;color:#000;">${pageNo} / ${totalPages}</span>
             <span style="text-align:right;font-family:${serifFont};font-size:8px;color:#1e40af;white-space:nowrap;">이 문제지에 관한 저작권은 https://student-manager-0rsy.onrender.com 에 있습니다.</span>
@@ -7564,7 +7602,7 @@
           if (!paperEl || !paperEl.innerHTML) return;
           const w = window.open('', '_blank');
           if (!w) return;
-          w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escapeHtml(lastGeneratedKorMock ? lastGeneratedKorMock.title : '국어 모의고사')}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800;900&family=Noto+Serif+KR:wght@400;500;600;700;900&display=swap" /><style>*{box-sizing:border-box;} html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Noto Serif KR','Batang','바탕','Nanum Myeongjo',serif;} .kice-page{width:210mm;height:296.5mm;min-height:296.5mm;max-height:296.5mm;overflow:hidden;margin:0 auto;padding:7mm 10mm 3.5mm 10mm;background:#fff;display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;break-after:page;} .kice-page:last-child{page-break-after:auto;break-after:auto;} .kice-cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:stretch;align-content:stretch;} .kice-col-left{min-width:0;padding-right:3.5mm;border-right:0.75pt solid #111;} .kice-col-right{min-width:0;padding-left:3.5mm;} @media print { @page { size: A4 portrait; margin: 0; } }</style></head><body class="bg-white">${paperEl.innerHTML}<script>(function(){var printed=false;function go(){if(printed)return;printed=true;window.print();}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(go,250);});}setTimeout(go,2200);})();<\/script>  <div id="essayPaperModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-6">
+          w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escapeHtml(lastGeneratedKorMock ? lastGeneratedKorMock.title : '국어 모의고사')}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800;900&family=Noto+Serif+KR:wght@400;500;600;700;900&display=swap" /><style>*{box-sizing:border-box;} html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Noto Serif KR','Batang','바탕','Nanum Myeongjo',serif;} .kice-page{width:210mm;height:296.5mm;min-height:296.5mm;max-height:296.5mm;overflow:hidden;margin:0 auto;padding:7mm 10mm 9.5mm 10mm;background:#fff;display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;break-after:page;} .kice-page:last-child{page-break-after:auto;break-after:auto;} .kice-cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:stretch;align-content:stretch;} .kice-col-left{min-width:0;padding-right:3.5mm;border-right:0.75pt solid #111;} .kice-col-right{min-width:0;padding-left:3.5mm;} @media print { @page { size: A4 portrait; margin: 0; } }</style></head><body class="bg-white">${paperEl.innerHTML}<script>(function(){var printed=false;function go(){if(printed)return;printed=true;window.print();}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(go,250);});}setTimeout(go,2200);})();<\/script>  <div id="essayPaperModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-6">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
       <div class="px-4 sm:px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50">
         <div>
@@ -8132,6 +8170,40 @@
         const hdrEl = boxEl ? boxEl.querySelector('h4') : null;
         if (!tbody) return;
 
+        const BUILTIN_GRADE_CUTS = {
+          '2027_9월': { g1: '화작90/언매86', g2: '화작82/언매79', g3: '화작75/언매71' },
+          '2027_6월': { g1: '화작95/언매95', g2: '화작90/언매90', g3: '화작82/언매82' },
+          '2026_수능': { g1: '화작90/언매85', g2: '화작82/언매78', g3: '화작73/언매69' },
+          '2026_9월': { g1: '화작92/언매86', g2: '화작86/언매81', g3: '화작78/언매73' },
+          '2026_6월': { g1: '화작97/언매92', g2: '화작90/언매85', g3: '화작81/언매77' },
+          '2025_수능': { g1: '화작94/언매91', g2: '화작88/언매85', g3: '화작79/언매76' },
+          '2025_9월': { g1: '화작100/언매97', g2: '화작96/언매93', g3: '화작88/언매86' },
+          '2025_6월': { g1: '화작85/언매83', g2: '화작78/언매76', g3: '화작70/언매68' },
+          '2024_수능': { g1: '화작87/언매84', g2: '화작79/언매76', g3: '화작71/언매68' },
+          '2024_9월': { g1: '화작90/언매86', g2: '화작82/언매79', g3: '화작75/언매72' },
+          '2024_6월': { g1: '화작97/언매93', g2: '화작90/언매86', g3: '화작82/언매77' },
+          '2023_수능': { g1: '화작96/언매91', g2: '화작91/언매87', g3: '화작86/언매82' },
+          '2023_9월': { g1: '화작92/언매87', g2: '화작85/언매81', g3: '화작78/언매75' },
+          '2023_6월': { g1: '화작85/언매82', g2: '화작78/언매75', g3: '화작70/언매67' },
+          '2022_수능': { g1: '화작84/언매83', g2: '화작78/언매77', g3: '화작71/언매70' },
+          '2022_9월': { g1: '화작100/언매96', g2: '화작96/언매93', g3: '화작90/언매86' },
+          '2022_6월': { g1: '화작90/언매85', g2: '화작81/언매78', g3: '화작73/언매69' },
+          '2021_수능': { g1: '88', g2: '82', g3: '74' },
+          '2021_9월': { g1: '90', g2: '84', g3: '77' },
+          '2021_6월': { g1: '92', g2: '85', g3: '75' },
+          '2020_수능': { g1: '91', g2: '85', g3: '77' },
+          '2020_9월': { g1: '90', g2: '83', g3: '76' },
+          '2020_6월': { g1: '87', g2: '80', g3: '72' },
+          '2019_수능': { g1: '84', g2: '78', g3: '70' },
+          '2019_9월': { g1: '97', g2: '92', g3: '85' },
+          '2019_6월': { g1: '91', g2: '84', g3: '75' },
+          '2018_수능': { g1: '94', g2: '89', g3: '82' },
+          '2018_9월': { g1: '93', g2: '88', g3: '81' },
+          '2018_6월': { g1: '89', g2: '80', g3: '72' },
+          '2017_수능': { g1: '92', g2: '86', g3: '79' },
+          '2017_9월': { g1: '90', g2: '83', g3: '75' },
+          '2017_6월': { g1: '90', g2: '83', g3: '75' }
+        };
         const isMock = (gd && typeof gd.isMock === 'boolean') ? gd.isMock : !(curYr === 2027 && curType === '수능');
         if (hdrEl) {
           hdrEl.textContent = isMock
@@ -8141,7 +8213,7 @@
         if (stEl) stEl.textContent = loading ? '등급컷 불러오는 중...' : (isMock ? '원점수 대표 컷' : '기관별 원점수 컷');
 
         if (isMock) {
-          const sc = (gd && gd.singleCut) || { g1: '-', g2: '-', g3: '-' };
+          const sc = (gd && gd.singleCut && gd.singleCut.g1 && gd.singleCut.g1 !== '-') ? gd.singleCut : (BUILTIN_GRADE_CUTS[`${curYr}_${curType}`] || { g1: '-', g2: '-', g3: '-' });
           tbody.innerHTML = `<tr class="hover:bg-slate-50/70">
             <td class="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">대표 원점수 등급컷</td>
             <td class="py-2.5 px-3 text-center font-bold text-emerald-700">${escapeHtml(sc.g1 || '-')}</td>
