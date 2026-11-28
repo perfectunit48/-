@@ -133,6 +133,20 @@
     .safe-bottom {
       padding-bottom: env(safe-area-inset-bottom, 0px);
     }
+    @media (max-width: 767px) {
+      body { background: #f8fafc; }
+      #appHeader { box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
+      #appMain { padding: 12px 12px 84px 12px !important; }
+      .tab-panel > div, .tab-panel form { border-radius: 16px !important; }
+      .tab-panel input, .tab-panel select, .tab-panel textarea, .tab-panel button[type="submit"] {
+        min-height: 42px;
+      }
+      #mobileBottomNav {
+        box-shadow: 0 -2px 12px rgba(15,23,42,0.06);
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    }
     @media (max-width: 640px) {
       input, textarea, select {
         font-size: 16px !important;
@@ -683,7 +697,7 @@
 
   <!-- Top Header -->
   <header id="appHeader" class="hidden bg-white border-b border-slate-200 sticky top-0 z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="w-full px-3 sm:px-5 lg:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 min-w-0">
 <svg viewBox="0 0 40 40" class="w-9 h-9 rounded-xl shadow-sm shrink-0" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -787,6 +801,10 @@
         <button class="tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="progress">
           <i data-lucide="list-checks" class="w-4 h-4 shrink-0"></i>
           <span>진도 관리</span>
+        </button>
+        <button class="tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="homework">
+          <i data-lucide="clipboard-check" class="w-4 h-4 shrink-0"></i>
+          <span>과제 관리</span>
         </button>
         <button class="tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="attendance">
           <i data-lucide="calendar-check" class="w-4 h-4 shrink-0"></i>
@@ -1026,6 +1044,16 @@
       </div>
       </div>
       <div id="koreanScorePanel" class="hidden space-y-6">
+        <!-- 최상단 좌측: 모의고사 / 개별 성적 기록 모드 전환 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="korFilterMockToggle" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 text-white shadow-xs transition">
+            <span>누적 모의고사 성적 기록</span>
+          </button>
+          <button id="korFilterIndToggle" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">
+            <span>누적 개별 성적 기록</span>
+          </button>
+        </div>
+
         <!-- 성적 변화 KPI 카드 -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" id="korScoreKpiGrid"></div>
 
@@ -1187,16 +1215,7 @@
         <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="text-base font-bold text-slate-900">누적 성적 기록</h3>
-            <div class="flex flex-wrap items-center gap-2">
-              <button id="korFilterMockToggle" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white transition">
-                <span>누적 모의고사 성적 기록</span>
-                <span class="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px]">ON</span>
-              </button>
-              <button id="korFilterIndToggle" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 transition">
-                <span>누적 개별 성적 기록</span>
-                <span class="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px]">OFF</span>
-              </button>
-            </div>
+
           </div>
           <div id="korScoreHistoryList" class="space-y-3"></div>
         </div>
@@ -1232,7 +1251,7 @@
           </div>
           <div class="text-right">
             <span id="progressPercentLabel" class="text-lg font-bold text-indigo-600">0%</span>
-            <p id="progressCountLabel" class="text-xs text-slate-500">0 / 0 완료</p><p id="progressHwCountLabel" class="text-[11px] font-semibold text-emerald-600 mt-0.5">과제 완료 0 / 0</p>
+            <p id="progressCountLabel" class="text-xs text-slate-500">0 / 0 완료</p>
           </div>
         </div>
         <div class="w-full bg-slate-100 rounded-full h-2.5 mb-5 overflow-hidden">
@@ -1241,21 +1260,56 @@
 
         <!-- Add Progress Form -->
         <form id="addProgressForm" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 mb-5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-          <input id="progressTitleInput" type="text" required placeholder="진도 주제 (예: 4단원 - 비교·대조 논술문 구조화)" class="sm:col-span-4 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-          <input id="progressDateInput" type="date" class="sm:col-span-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-          <select id="progressHwStatusInput" class="sm:col-span-2 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" title="과제 제출 상태">
-            <option value="">과제: 없음</option>
-            <option value="완료">과제: 완료</option>
-            <option value="부분완료">과제: 부분완료</option>
-            <option value="미완료">과제: 미완료</option>
-          </select>
-          <input id="progressNoteInput" type="text" placeholder="준비물/과제 메모" class="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input id="progressTitleInput" type="text" required placeholder="진도 주제 (예: 4단원 - 비교·대조 논술문 구조화)" class="sm:col-span-5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input id="progressDateInput" type="date" class="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input id="progressNoteInput" type="text" placeholder="수업 메모 / 준비물" class="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
           <button type="submit" class="sm:col-span-1 inline-flex items-center justify-center px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
             추가
           </button>
         </form>
 
         <div id="progressList" class="space-y-2.5"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3-B: Dedicated Homework Management -->
+    <section id="tab-homework" class="tab-panel hidden space-y-5 animate-fade-in">
+      <div class="grid grid-cols-3 gap-2.5 sm:gap-4" id="homeworkSummaryGrid"></div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">과제 제출 · 피드백 관리</h2>
+            <p class="text-xs sm:text-sm text-slate-500">숙제 부여, 마감일·제출 상태, 선생님 한 줄 피드백을 관리하면 학부모 문자·성적표에 자동 반영됩니다.</p>
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" class="hw-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white" data-filter="all">전체</button>
+            <button type="button" class="hw-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-filter="미완료">미완료</button>
+            <button type="button" class="hw-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-filter="부분완료">부분완료</button>
+            <button type="button" class="hw-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-filter="완료">완료</button>
+          </div>
+        </div>
+
+        <form id="addHomeworkForm" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <input id="hwTitleInput" type="text" required placeholder="과제 내용 (예: 기출 2회 독서 오답노트)" class="sm:col-span-4 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input id="hwDueDateInput" type="date" class="sm:col-span-2 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" title="마감일" />
+          <select id="hwCategoryInput" class="sm:col-span-2 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="필수">구분: 필수</option>
+            <option value="복습">구분: 복습</option>
+            <option value="심화">구분: 심화</option>
+          </select>
+          <select id="hwStatusInput" class="sm:col-span-2 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="미완료">상태: 미완료</option>
+            <option value="부분완료">상태: 부분완료</option>
+            <option value="완료">상태: 완료</option>
+          </select>
+          <button type="submit" class="sm:col-span-2 inline-flex items-center justify-center px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition">
+            과제 등록
+          </button>
+          <input id="hwNoteInput" type="text" placeholder="세부 지시사항 또는 피드백 메모 (선택)" class="sm:col-span-12 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+        </form>
+
+        <div id="homeworkList" class="space-y-2.5"></div>
       </div>
     </section>
 
@@ -1942,35 +1996,36 @@
 
   <!-- Mobile Bottom Navigation Bar -->
   <nav id="mobileBottomNav" class="hidden md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 safe-bottom" aria-label="모바일 하단 메뉴">
-    <div id="mobileBottomNavGrid" class="grid grid-cols-6 h-16">
-      <button id="mobileEssayTabBtn" class="mobile-tab-btn active flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-500" data-tab="essay">
-        <span class="mobile-tab-pill px-3 py-1 rounded-full transition"><i data-lucide="file-edit" class="w-4 h-4"></i></span>
+    <div id="mobileBottomNavGrid" class="flex items-center justify-around overflow-x-auto no-scrollbar h-16 px-1">
+      <button id="mobileEssayTabBtn" class="mobile-tab-btn active flex-1 min-w-[50px] flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold text-slate-500" data-tab="essay">
+        <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="file-edit" class="w-4 h-4"></i></span>
         <span>첨삭</span>
       </button>
-      <button class="mobile-tab-btn flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-500" data-tab="history">
-        <span class="mobile-tab-pill px-3 py-1 rounded-full transition"><i data-lucide="bar-chart-3" class="w-4 h-4"></i></span>
-        <span id="mobileHistoryTabLabel">글데이터</span>
+      <button class="mobile-tab-btn flex-1 min-w-[50px] flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold text-slate-500" data-tab="history">
+        <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="bar-chart-3" class="w-4 h-4"></i></span>
+        <span id="mobileHistoryTabLabel">성적</span>
       </button>
-      <button class="mobile-tab-btn flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-500" data-tab="progress">
-        <span class="mobile-tab-pill px-3 py-1 rounded-full transition"><i data-lucide="list-checks" class="w-4 h-4"></i></span>
+      <button class="mobile-tab-btn flex-1 min-w-[46px] flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold text-slate-500" data-tab="progress">
+        <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="list-checks" class="w-4 h-4"></i></span>
         <span>진도</span>
       </button>
-      <button class="mobile-tab-btn flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-500" data-tab="attendance">
-        <span class="mobile-tab-pill px-3 py-1 rounded-full transition"><i data-lucide="calendar-check" class="w-4 h-4"></i></span>
+      <button class="mobile-tab-btn flex-1 min-w-[46px] flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold text-slate-500" data-tab="homework">
+        <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="clipboard-check" class="w-4 h-4"></i></span>
+        <span>과제</span>
+      </button>
+      <button class="mobile-tab-btn flex-1 min-w-[46px] flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold text-slate-500" data-tab="attendance">
+        <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="calendar-check" class="w-4 h-4"></i></span>
         <span>출결</span>
       </button>
-      <button class="mobile-tab-btn flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-500" data-tab="sms">
+      <button class="mobile-tab-btn flex-1 min-w-[48px] flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold text-slate-500" data-tab="sms">
         <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="message-square" class="w-4 h-4"></i></span>
-        <span>카톡문자</span>
+        <span>문자</span>
       </button>
-      <button class="mobile-tab-btn flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-500" data-tab="exams">
+      <button class="mobile-tab-btn flex-1 min-w-[46px] flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold text-slate-500" data-tab="exams">
         <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="book-marked" class="w-4 h-4"></i></span>
         <span id="mobileExamsTabLabel">기출</span>
       </button>
-      <button id="studioMobileTabBtn" class="hidden mobile-tab-btn flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-purple-600" data-tab="studio">
-        <span class="mobile-tab-pill px-2.5 py-1 rounded-full transition"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
-        <span>자료제작</span>
-      </button>
+      <button id="studioMobileTabBtn" class="hidden" style="display:none!important;" data-tab="studio"></button>
     </div>
   </nav>
 
@@ -2411,7 +2466,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v89';
+    const CLIENT_BUILD_VERSION = '20261128_v91';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -3030,10 +3085,13 @@
       korChartPoints = [];
       const canvas = document.getElementById('korScoreChartCanvas');
       if (!canvas) return;
-      const dpr = Math.max(2, window.devicePixelRatio || 2);
+      const isMob = window.innerWidth < 768;
+      const dpr = Math.min(3, Math.max(2, window.devicePixelRatio || 2));
       const parentW = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
-      const cssW = Math.max(300, Math.min(680, parentW || (window.innerWidth < 640 ? window.innerWidth - 56 : 680)));
-      const cssH = cssW < 480 ? 235 : 280;
+      const cssW = isMob
+        ? Math.max(280, parentW || (window.innerWidth - 44))
+        : Math.max(300, Math.min(680, parentW || 680));
+      const cssH = isMob ? 235 : 280;
       canvas.width = Math.round(cssW * dpr);
       canvas.height = Math.round(cssH * dpr);
       canvas.style.width = cssW + 'px';
@@ -3063,9 +3121,10 @@
       ctx.font = '600 11px sans-serif';
       const firstLblW = scores.length ? ctx.measureText(getChartLabel(scores[0])).width : 0;
       const lastLblW = scores.length ? ctx.measureText(getChartLabel(scores[scores.length - 1])).width : 0;
-      const padL = Math.max(54, Math.ceil(firstLblW / 2) + 18);
-      const padR = Math.max(78, Math.ceil(lastLblW / 2) + 18);
-      const padT = 46, padB = 50;
+      const padL = isMob ? 36 : Math.max(54, Math.ceil(firstLblW / 2) + 18);
+      const padR = isMob ? 16 : Math.max(78, Math.ceil(lastLblW / 2) + 18);
+      const padT = isMob ? 50 : 46;
+      const padB = isMob ? 36 : 50;
       const plotW = W - padL - padR;
       const plotH = H - padT - padB;
       const isCount = scores.every(x => x.inputMode === 'count');
@@ -3117,14 +3176,20 @@
         ...(hasStd ? [{ label: '표준점수', color: '#0284c7' }] : [])
       ];
       let lx = padL;
+      let ly = 14;
       ctx.textAlign = 'left';
+      ctx.font = isMob ? 'bold 10.5px sans-serif' : 'bold 11px sans-serif';
       legends.forEach(lg => {
+        const itemW = Math.max(isMob ? 58 : 68, ctx.measureText(lg.label).width + 22);
+        if (lx + itemW > W - 8 && lx > padL) {
+          lx = padL;
+          ly += 16;
+        }
         ctx.fillStyle = lg.color;
-        ctx.fillRect(lx, 12, 14, 4);
+        ctx.fillRect(lx, ly - 4, 12, 4);
         ctx.fillStyle = '#1e293b';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillText(lg.label, lx + 17, 18);
-        lx += Math.max(68, ctx.measureText(lg.label).width + 24);
+        ctx.fillText(lg.label, lx + 15, ly + 2);
+        lx += itemW;
       });
 
       const n = scores.length;
@@ -3533,15 +3598,7 @@
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-sm font-semibold ${item.done ? 'line-through text-slate-400' : 'text-slate-900'}">${escapeHtml(item.title)}</span>
                 ${item.id === firstPendingId ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-600 text-white">다음 진도</span>' : ''}
-                ${(() => {
-                  const hs = item.hwStatus || '';
-                  const cls = hs === '완료' ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                    : hs === '부분완료' ? 'bg-amber-100 text-amber-800 border-amber-200'
-                    : hs === '미완료' ? 'bg-rose-100 text-rose-700 border-rose-200'
-                    : 'bg-slate-100 text-slate-500 border-slate-200';
-                  const lbl = hs ? ('과제 ' + hs) : '과제 체크';
-                  return `<button type="button" class="hw-cycle-btn px-2 py-0.5 rounded-full text-[11px] font-bold border ${cls} hover:opacity-80 transition" data-id="${item.id}" title="클릭하여 과제 상태 전환">${lbl}</button>`;
-                })()}
+
               </div>
               <div class="text-xs text-slate-500 mt-0.5 flex flex-wrap gap-3">
                 ${item.targetDate ? `<span>목표일: ${escapeHtml(item.targetDate)}</span>` : ''}
@@ -3554,6 +3611,68 @@
           </button>
         </div>
       `).join('');
+      safeIcons();
+    }
+
+
+    let currentHwFilter = 'all';
+    function renderHomeworkTab() {
+      const stu = getActiveStudent();
+      const sumGrid = document.getElementById('homeworkSummaryGrid');
+      const listEl = document.getElementById('homeworkList');
+      if (!stu) {
+        if (sumGrid) sumGrid.innerHTML = `
+          <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm"><p class="text-[11px] text-slate-500">전체 과제</p><p class="text-xl font-bold text-slate-400 mt-1">0건</p></div>
+          <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm"><p class="text-[11px] text-slate-500">제출 완료율</p><p class="text-xl font-bold text-slate-400 mt-1">0%</p></div>
+          <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm"><p class="text-[11px] text-slate-500">미완료</p><p class="text-xl font-bold text-slate-400 mt-1">0건</p></div>`;
+        if (listEl) listEl.innerHTML = '<div class="text-center py-8 text-sm text-slate-400">먼저 학생을 등록해 주세요.</div>';
+        return;
+      }
+      if (!Array.isArray(stu.homeworks)) stu.homeworks = [];
+      const items = stu.homeworks;
+      const doneCnt = items.filter(h => h.status === '완료').length;
+      const pendingCnt = items.filter(h => h.status !== '완료').length;
+      const pct = items.length ? Math.round((doneCnt / items.length) * 100) : 0;
+      if (sumGrid) {
+        sumGrid.innerHTML = `
+          <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm"><p class="text-[11px] font-medium text-slate-500">전체 과제</p><p class="text-xl font-extrabold text-slate-900 mt-1">${items.length}건</p></div>
+          <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm"><p class="text-[11px] font-medium text-slate-500">제출 완료율</p><p class="text-xl font-extrabold text-emerald-600 mt-1">${pct}%</p></div>
+          <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm"><p class="text-[11px] font-medium text-slate-500">미완료 · 진행중</p><p class="text-xl font-extrabold text-rose-600 mt-1">${pendingCnt}건</p></div>`;
+      }
+      const filtered = currentHwFilter === 'all' ? items : items.filter(h => h.status === currentHwFilter);
+      if (!listEl) return;
+      if (!filtered.length) {
+        listEl.innerHTML = '<div class="text-center py-8 text-sm text-slate-400">해당 조건의 과제가 없습니다. 위 입력창에서 과제를 등록해 보세요.</div>';
+        return;
+      }
+      const todayStr = new Date().toISOString().slice(0, 10);
+      listEl.innerHTML = [...filtered].reverse().map(h => {
+        const stCls = h.status === '완료' ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+          : h.status === '부분완료' ? 'bg-amber-100 text-amber-800 border-amber-200'
+          : 'bg-rose-100 text-rose-800 border-rose-200';
+        const isLate = h.dueDate && h.status !== '완료' && h.dueDate < todayStr;
+        return `
+          <div class="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <div class="space-y-1 flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold">${escapeHtml(h.category || '필수')}</span>
+                  <button type="button" class="hw-status-cycle px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${stCls} transition" data-id="${h.id}" title="클릭하여 상태 변경">${escapeHtml(h.status || '미완료')}</button>
+                  ${isLate ? '<span class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold">기한 지연</span>' : ''}
+                  ${h.dueDate ? `<span class="text-[11px] text-slate-500">마감 ${escapeHtml(h.dueDate)}</span>` : ''}
+                </div>
+                <div class="text-sm font-bold ${h.status === '완료' ? 'line-through text-slate-400' : 'text-slate-900'}">${escapeHtml(h.title)}</div>
+                ${h.note ? `<div class="text-xs text-slate-600">${escapeHtml(h.note)}</div>` : ''}
+              </div>
+              <button type="button" class="delete-hw-btn p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0" data-id="${h.id}" title="삭제">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <div class="flex items-center gap-2 pt-1 border-t border-slate-100">
+              <input type="text" class="hw-feedback-input flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500" data-id="${h.id}" value="${escapeHtml(h.feedback || '')}" placeholder="선생님 피드백 한 줄 입력 후 Enter..." />
+            </div>
+          </div>`;
+      }).join('');
       safeIcons();
     }
 
@@ -3781,10 +3900,12 @@
       const attStr = latestAtt ? `${latestAtt.date} ${latestAtt.status}` : '출석';
       const growthStr = stu ? (isKorStu ? buildKoreanGrowthText(stu) : buildNarrativeGrowthText(stu)) : '꾸준한 학습을 통해 실력을 높여가고 있습니다.';
 
-      const hwItems = progress.filter(p => p.hwStatus);
+      const hwList = stu && Array.isArray(stu.homeworks) ? stu.homeworks : [];
+      const hwItems = hwList.length ? hwList : progress.filter(p => p.hwStatus);
       const latestHw = hwItems.length ? hwItems[hwItems.length - 1] : null;
+      const hwSt = latestHw ? (latestHw.status || latestHw.hwStatus || '미완료') : '';
       const hwStr = latestHw
-        ? `최근 과제 '${latestHw.title}' → ${latestHw.hwStatus}${latestHw.note ? ' (' + latestHw.note + ')' : ''}`
+        ? `최근 과제 '${latestHw.title}' → ${hwSt}${latestHw.feedback ? ' (' + latestHw.feedback + ')' : (latestHw.note ? ' (' + latestHw.note + ')' : '')}`
         : '과제 특이사항 없음';
 
       let outMsg = (formatStr || DEFAULT_CUSTOM_SMS_FORMAT)
@@ -3843,6 +3964,10 @@
       const _stu = (typeof getActiveStudent === 'function') ? getActiveStudent() : null;
       const _isKor = Boolean(_stu && String(_stu.subject || '').includes('국어'));
       const _isJace = (typeof currentUserId !== 'undefined' && String(currentUserId || '').trim().toLowerCase() === 'jace48');
+      if (tabName === 'studio' && window.innerWidth < 768) {
+        if (typeof showToast === 'function') showToast('자료 제작 기능은 PC 또는 태블릿에서 이용해 주세요.', 'warning');
+        tabName = _isKor ? 'history' : 'essay';
+      }
       if (tabName === 'studio' && _isKor && !_isJace) {
         tabName = 'history';
       }
@@ -3854,6 +3979,7 @@
       });
       if (tabName === 'history') renderHistoryTab();
       if (tabName === 'progress') renderProgressTab();
+      if (tabName === 'homework' && typeof renderHomeworkTab === 'function') renderHomeworkTab();
       if (tabName === 'attendance') renderAttendanceTab();
       if (tabName === 'sms') renderSmsTab('feedback');
     }
@@ -4386,6 +4512,79 @@
           renderStudentSelector();
           renderProgressTab();
           showToast('진도 항목을 삭제했습니다.');
+        }
+      });
+
+
+      document.querySelectorAll('.hw-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentHwFilter = btn.dataset.filter;
+          document.querySelectorAll('.hw-filter-btn').forEach(b => {
+            const act = b.dataset.filter === currentHwFilter;
+            b.className = `hw-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${act ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
+          });
+          renderHomeworkTab();
+        });
+      });
+
+      document.getElementById('addHomeworkForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = document.getElementById('hwTitleInput').value.trim();
+        if (!title) return;
+        const stu = getActiveStudent();
+        if (!stu) { showToast('먼저 학생을 추가해 주세요.', 'warning'); return; }
+        if (!Array.isArray(stu.homeworks)) stu.homeworks = [];
+        stu.homeworks.push({
+          id: 'hw-' + Date.now(),
+          title,
+          dueDate: document.getElementById('hwDueDateInput').value,
+          category: document.getElementById('hwCategoryInput').value,
+          status: document.getElementById('hwStatusInput').value,
+          note: document.getElementById('hwNoteInput').value.trim(),
+          feedback: ''
+        });
+        document.getElementById('hwTitleInput').value = '';
+        document.getElementById('hwNoteInput').value = '';
+        saveState();
+        renderHomeworkTab();
+        showToast('과제를 등록했습니다.', 'success');
+      });
+
+      document.getElementById('homeworkList')?.addEventListener('click', (e) => {
+        const cyc = e.target.closest('.hw-status-cycle');
+        if (cyc) {
+          const stu = getActiveStudent();
+          if (!stu || !Array.isArray(stu.homeworks)) return;
+          const item = stu.homeworks.find(h => h.id === cyc.dataset.id);
+          if (item) {
+            const ord = ['미완료', '부분완료', '완료'];
+            item.status = ord[(ord.indexOf(item.status || '미완료') + 1) % ord.length];
+            saveState();
+            renderHomeworkTab();
+          }
+          return;
+        }
+        const del = e.target.closest('.delete-hw-btn');
+        if (del) {
+          const stu = getActiveStudent();
+          if (!stu || !Array.isArray(stu.homeworks)) return;
+          stu.homeworks = stu.homeworks.filter(h => h.id !== del.dataset.id);
+          saveState();
+          renderHomeworkTab();
+          showToast('과제를 삭제했습니다.');
+        }
+      });
+
+      document.getElementById('homeworkList')?.addEventListener('change', (e) => {
+        if (e.target.classList.contains('hw-feedback-input')) {
+          const stu = getActiveStudent();
+          if (!stu || !Array.isArray(stu.homeworks)) return;
+          const item = stu.homeworks.find(h => h.id === e.target.dataset.id);
+          if (item) {
+            item.feedback = e.target.value.trim();
+            saveState();
+            showToast('과제 피드백을 저장했습니다.', 'success');
+          }
         }
       });
 
@@ -7869,8 +8068,8 @@
       };
       const msb = document.getElementById('korModeScoreBtn');
       const mcb = document.getElementById('korModeCountBtn');
-      if (msb) msb.addEventListener('click', () => setKorInputMode('score'));
-      if (mcb) mcb.addEventListener('click', () => setKorInputMode('count'));
+      if (msb) msb.addEventListener('click', () => { korShowMockRecords = true; korShowIndRecords = false; setKorInputMode('score'); if (typeof updateKorFilterBtns === 'function') updateKorFilterBtns(); renderKoreanScoreTab(); });
+      if (mcb) mcb.addEventListener('click', () => { korShowMockRecords = false; korShowIndRecords = true; setKorInputMode('count'); if (typeof updateKorFilterBtns === 'function') updateKorFilterBtns(); renderKoreanScoreTab(); });
 
       const saveChartBtn = document.getElementById('saveKorChartBtn');
       if (saveChartBtn) {
@@ -8053,21 +8252,25 @@
       const updateKorFilterBtns = () => {
         if (fMockBtn) {
           fMockBtn.className = korShowMockRecords
-            ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white transition'
-            : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 transition';
-          const badge = fMockBtn.querySelector('span:last-child');
-          if (badge) { badge.textContent = korShowMockRecords ? 'ON' : 'OFF'; badge.className = korShowMockRecords ? 'px-1.5 py-0.5 rounded-md bg-white/20 text-[10px]' : 'px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px]'; }
+            ? 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 text-white shadow-xs transition'
+            : 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition';
         }
         if (fIndBtn) {
           fIndBtn.className = korShowIndRecords
-            ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white transition'
-            : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 transition';
-          const badge = fIndBtn.querySelector('span:last-child');
-          if (badge) { badge.textContent = korShowIndRecords ? 'ON' : 'OFF'; badge.className = korShowIndRecords ? 'px-1.5 py-0.5 rounded-md bg-white/20 text-[10px]' : 'px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px]'; }
+            ? 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow-xs transition'
+            : 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition';
         }
       };
-      if (fMockBtn) fMockBtn.addEventListener('click', () => { korShowMockRecords = true; korShowIndRecords = false; updateKorFilterBtns(); renderKoreanScoreTab(); });
-      if (fIndBtn) fIndBtn.addEventListener('click', () => { korShowMockRecords = false; korShowIndRecords = true; updateKorFilterBtns(); renderKoreanScoreTab(); });
+      if (fMockBtn) fMockBtn.addEventListener('click', () => {
+        korShowMockRecords = true; korShowIndRecords = false;
+        setKorInputMode('score');
+        updateKorFilterBtns(); renderKoreanScoreTab();
+      });
+      if (fIndBtn) fIndBtn.addEventListener('click', () => {
+        korShowMockRecords = false; korShowIndRecords = true;
+        setKorInputMode('count');
+        updateKorFilterBtns(); renderKoreanScoreTab();
+      });
 
       const korScoreForm = document.getElementById('addKorScoreForm');
       if (korScoreForm) {
@@ -9284,7 +9487,11 @@
 
         if (showProg) {
           const prog = Array.isArray(stu.progress) ? stu.progress : [];
-          const recentP = prog.slice(0, 5).map(p => `<li style="margin-bottom:3px;"><strong>${escR(p.targetDate || p.date || '')}</strong> · ${escR(p.title || p.topic || '')} <span style="color:#4f46e5;">(${p.done ? '완료' : '진행중'}${p.hwStatus ? ' / 과제 ' + escR(p.hwStatus) : ''})</span></li>`).join('');
+          const hws = Array.isArray(stu.homeworks) ? stu.homeworks : [];
+          const recentP = [
+            ...prog.slice(0, 4).map(p => `<li style="margin-bottom:3px;">[진도] <strong>${escR(p.targetDate || p.date || '')}</strong> · ${escR(p.title || p.topic || '')} <span style="color:#4f46e5;">(${p.done ? '완료' : '진행중'})</span></li>`),
+            ...hws.slice(-4).reverse().map(h => `<li style="margin-bottom:3px;">[과제] <strong>${escR(h.dueDate || '')}</strong> · ${escR(h.title || '')} <span style="color:#059669;">(${escR(h.status || '미완료')})</span></li>`)
+          ].join('');
           sections.progress = `
             <div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;font-size:11.5px;">
               <div style="font-weight:800;color:#0f172a;margin-bottom:5px;">최근 진도 · 과제 현황</div>
