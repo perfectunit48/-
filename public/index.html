@@ -1043,7 +1043,7 @@
       <!-- Essay List -->
       <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div class="flex items-center gap-2"><h3 class="text-base font-bold text-slate-900">여태껏 누적된 학생 글 데이터</h3><button type="button" onclick="openCustomReportModal()" class="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 (PDF·인쇄)</button></div>
+          <div class="flex items-center gap-2"><h3 class="text-base font-bold text-slate-900">여태껏 누적된 학생 글 데이터</h3><button id="essayCustomReportBtn" type="button" onclick="openCustomReportModal()" class="hidden items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 제작</button></div>
           <input id="historySearchInput" type="text" placeholder="제목 또는 강점/약점 키워드 검색..." class="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
         <div id="essayHistoryList" class="space-y-3"></div>
@@ -1060,8 +1060,8 @@
               <span>누적 개별 성적 기록</span>
             </button>
           </div>
-          <button type="button" onclick="openCustomReportModal()" class="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition">
-            <span>맞춤 성적표 제작 (PDF·인쇄)</span>
+          <button id="korCustomReportBtn" type="button" onclick="openCustomReportModal()" class="hidden items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition">
+            <span>맞춤 성적표 제작</span>
           </button>
         </div>
 
@@ -2479,7 +2479,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v103';
+    const CLIENT_BUILD_VERSION = '20261128_v106';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -3332,6 +3332,10 @@
 
     function buildKoreanGrowthText(stu) {
       const scores = getSortedKoreanScores(stu);
+      const korCrBtn = document.getElementById('korCustomReportBtn');
+      if (korCrBtn) {
+        korCrBtn.classList.toggle('md:inline-flex', scores.length > 0);
+      }
       if (scores.length === 0) {
         return '아직 입력된 국어 모의고사 성적 데이터가 없습니다. 공통·선택 점수(또는 맞힌 개수)와 영역별 정답 수를 입력하면 성적 변화와 성장 흐름이 자동 요약됩니다.';
       }
@@ -3376,6 +3380,8 @@
       if (!kpiEl || !sumEl || !listEl) return;
 
       if (!stu) {
+        const korCrBtn0 = document.getElementById('korCustomReportBtn');
+        if (korCrBtn0) korCrBtn0.classList.remove('md:inline-flex');
         kpiEl.innerHTML = '';
         sumEl.innerHTML = '<p>먼저 학생을 등록해 주세요.</p>';
         listEl.innerHTML = '';
@@ -3495,7 +3501,9 @@
     function renderHistoryTab() {
       if (typeof renderKoreanScoreTab === 'function') renderKoreanScoreTab();
       const stu = getActiveStudent();
+      const essCrBtn = document.getElementById('essayCustomReportBtn');
       if (!stu) {
+        if (essCrBtn) essCrBtn.classList.remove('md:inline-flex');
         document.getElementById('historyKpiGrid').innerHTML = `
           <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">누적 작성 글</p><p class="text-2xl font-bold text-slate-400 mt-1">0편</p></div>
           <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">최근 글 작성일</p><p class="text-lg sm:text-xl font-bold text-slate-400 mt-1.5">-</p></div>
@@ -3506,6 +3514,7 @@
         return;
       }
       const essays = stu.essays || [];
+      if (essCrBtn) essCrBtn.classList.toggle('md:inline-flex', essays.length > 0);
       const latestDate = essays.length ? essays[essays.length - 1].date : '-';
       const doneProg = (stu.progress || []).filter(p => p.done).length;
       const totalProg = (stu.progress || []).length;
@@ -7411,12 +7420,25 @@
       let lastGeneratedKorMock = null;
       function buildKicePaperHtml(data) {
         const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const fmtInline = (v) => esc(String(v || '').replace(/『([^』\n]{1,40})』/g, "'$1'"))
-          .replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/gi, '<span style="text-decoration:underline;text-underline-offset:3px;">$1</span>')
-          .replace(/&lt;(?:b|strong)&gt;([\s\S]*?)&lt;\/(?:b|strong)&gt;/gi, '<strong style="font-weight:800;color:#000;">$1</strong>')
-          .replace(/\*\*([^*\n]{1,30})\*\*/g, '<strong style="font-weight:800;color:#000;">$1</strong>')
-          .replace(/&lt;\/?(?:u|b|strong|em|i)&gt;/gi, '');
-        const passages = Array.isArray(data.passages) ? data.passages : [];
+        const fmtInline = (v, isPassage = false) => {
+          const base = esc(String(v || '').replace(/『([^』\n]{1,40})』/g, "'$1'"))
+            .replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/gi, '<span style="text-decoration:underline;text-underline-offset:3px;">$1</span>');
+          if (isPassage) {
+            return base
+              .replace(/&lt;(?:b|strong)&gt;([\s\S]*?)&lt;\/(?:b|strong)&gt;/gi, '<span style="font-weight:600;color:#111;">$1</span>')
+              .replace(/\*\*([^*\n]{1,30})\*\*/g, '<span style="font-weight:600;color:#111;">$1</span>')
+              .replace(/&lt;\/?(?:u|b|strong|em|i)&gt;/gi, '');
+          }
+          return base
+            .replace(/&lt;(?:b|strong)&gt;([\s\S]*?)&lt;\/(?:b|strong)&gt;/gi, (_, w) => /^['‘].*['’]$/.test(w.trim()) ? w : `'${w}'`)
+            .replace(/\*\*([^*\n]{1,30})\*\*/g, (_, w) => /^['‘].*['’]$/.test(w.trim()) ? w : `'${w}'`)
+            .replace(/&lt;\/?(?:u|b|strong|em|i)&gt;/gi, '');
+        };
+        const passages = (Array.isArray(data.passages) ? [...data.passages] : []).sort((a, b) => {
+          const aq = (a && a.questions && a.questions[0] && Number(a.questions[0].no)) || Number((String(a && (a.range || a.header) || '').match(/(\d+)/) || [])[1] || 99);
+          const bq = (b && b.questions && b.questions[0] && Number(b.questions[0].no)) || Number((String(b && (b.range || b.header) || '').match(/(\d+)/) || [])[1] || 99);
+          return aq - bq;
+        });
         const serifFont = "'Noto Serif KR','Batang','바탕','Nanum Myeongjo',serif";
         const sansFont = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif";
 
@@ -7435,8 +7457,8 @@
           }
           const brM = t.match(/^(\[[A-D]\])\s+([\s\S]+)$/);
           if (brM && isPassageBody) {
-            const bInl = autoUnderlineMarkers(fmtInline(brM[2]));
-            return `<div style="display:flex;align-items:stretch;margin:4px 0;">
+            const bInl = autoUnderlineMarkers(fmtInline(brM[2], true));
+            return `<div style="display:flex;align-items:stretch;padding:4px 0;margin:0;">
               <div style="display:flex;align-items:center;font-family:${sansFont};font-weight:800;font-size:11px;padding-right:3px;shrink:0;">${esc(brM[1])}</div>
               <div style="width:6px;border-top:1px solid #111;border-bottom:1px solid #111;border-left:1px solid #111;flex-shrink:0;margin-right:4px;"></div>
               <p style="flex:1;text-indent:1em;margin:0;padding:2px 0;text-align:justify;word-break:normal;overflow-wrap:break-word;">${bInl}</p>
@@ -7450,10 +7472,10 @@
           }
           const isVerseLine = t.length <= 48 && !/[.!?]$/.test(t) && !/^\([가나다라]\)/.test(t);
           if (isVerseLine) {
-            const inl = isPassageBody ? autoUnderlineMarkers(fmtInline(t)) : fmtInline(t);
+            const inl = isPassageBody ? autoUnderlineMarkers(fmtInline(t, isPassageBody)) : fmtInline(t);
           return `<p style="text-indent:0;margin:0;padding:0 0 2px 0;text-align:left;word-break:normal;overflow-wrap:break-word;">${inl}</p>`;
           }
-          const inl2 = isPassageBody ? autoUnderlineMarkers(fmtInline(t)) : fmtInline(t);
+          const inl2 = isPassageBody ? autoUnderlineMarkers(fmtInline(t, isPassageBody)) : fmtInline(t);
           return `<p style="text-indent:1em;margin:0;padding:0 0 5px 0;text-align:justify;word-break:normal;overflow-wrap:break-word;">${inl2}</p>`;
         };
 
@@ -7687,9 +7709,13 @@
               choicesArr.map(c => `<div>${fmtInline(c)}</div>`).join('') +
               `</div>`;
           } else {
-            chHtml = `<div style="margin-top:4px;">` + choicesArr.map(c =>
-              `<div style="font-family:${serifFont};padding-left:1.35em;text-indent:-1.35em;line-height:1.52;margin-top:1.5px;font-size:11.4px;text-align:justify;">${fmtInline(c)}</div>`
-            ).join('') + `</div>`;
+            chHtml = `<div style="margin-top:4px;">` + choicesArr.map(c => {
+              const cm = String(c || '').trim().match(/^([①②③④⑤])\s*([\s\S]*)$/);
+              if (cm) {
+                return `<div style="display:flex;align-items:flex-start;gap:4px;font-family:${serifFont};line-height:1.54;margin-top:2px;font-size:11.4px;"><span style="width:1.15em;flex-shrink:0;">${cm[1]}</span><span style="flex:1;text-align:justify;word-break:normal;overflow-wrap:break-word;">${fmtInline(cm[2])}</span></div>`;
+              }
+              return `<div style="font-family:${serifFont};padding-left:1.35em;text-indent:-1.35em;line-height:1.54;margin-top:2px;font-size:11.4px;text-align:justify;">${fmtInline(c)}</div>`;
+            }).join('') + `</div>`;
           }
 
           return `<div style="margin-top:28px;break-inside:avoid;">
@@ -7788,7 +7814,7 @@
               const isLastP = (pi === mergedParas.length - 1) && !hasPVis;
               const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:6px;' : 'padding-top:0;';
               const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:24px;' : 'padding-bottom:0;';
-              const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.78;text-align:justify;`;
+              const boxStyle = `display:flow-root;border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.78;text-align:justify;`;
               const lblHtml = pObj.label ? fmtParagraph(pObj.label, true) : '';
               let innerHtml = fmtParagraph(pr, true);
               if (pObj.cont) innerHtml = innerHtml.replace('text-indent:1em;', 'text-indent:0;');
