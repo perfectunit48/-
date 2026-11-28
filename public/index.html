@@ -7022,8 +7022,8 @@
             ).join('') + `</div>`;
           }
 
-          return `<div style="margin-top:11px;break-inside:avoid;">
-            <div style="font-family:${serifFont};font-weight:500;font-size:12.3px;line-height:1.62;text-align:justify;word-break:keep-all;">${fmtInline(stemTxt)}${pts}</div>
+          return `<div style="margin-top:8px;break-inside:avoid;">
+            <div style="font-family:${serifFont};font-weight:500;font-size:11.8px;line-height:1.56;text-align:justify;word-break:keep-all;">${fmtInline(stemTxt)}${pts}</div>
             ${boxHtml}
             ${chHtml}
           </div>`;
@@ -7057,7 +7057,7 @@
               const isLastP = pi === paras.length - 1;
               const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:7px;' : 'padding-top:0;';
               const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:7px;margin-bottom:6px;' : 'padding-bottom:0;';
-              const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:9px;padding-right:9px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:12.1px;line-height:1.65;text-align:justify;`;
+              const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:9px;padding-right:9px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.6px;line-height:1.58;text-align:justify;`;
               units.push({
                 isElective,
                 html: (isFirstP ? hdrHtml : '') + `<div style="${boxStyle}">${fmtParagraph(pr)}</div>`
@@ -7117,7 +7117,7 @@
         let curIsElec = false;
         let hasElecStarted = false;
 
-        const getColLimit = (isTopHeaderPage) => (isTopHeaderPage ? 780 : 835);
+        const getColLimit = (isTopHeaderPage) => (isTopHeaderPage ? 890 : 940);
 
         for (const u of units) {
           if (u.isElective && !hasElecStarted && (col1Units.length > 0 || col2Units.length > 0)) {
@@ -7783,18 +7783,16 @@
             const page = await pdf.getPage(p);
             const tc = await page.getTextContent();
             pageTexts[p] = tc.items.map(it => it.str).join(' ');
-            if (p === 1 && pdf.numPages <= 2) break;
           }
-          let fullText = pageTexts.filter(Boolean).join(' ');
-          // For elective era multi-page answer PDFs, scan ALL pages so back-half 화법과 작문 / 언어와 매체 tables are never missed!
-          if (Number(year) >= 2022 && pdf.numPages > 3) {
-            for (let p = 4; p <= pdf.numPages; p++) {
+          if (pdf.numPages > 3) {
+            const startTail = Number(year) >= 2022 ? 4 : Math.max(4, pdf.numPages - 2);
+            for (let p = startTail; p <= pdf.numPages; p++) {
               const page = await pdf.getPage(p);
               const tc = await page.getTextContent();
               pageTexts[p] = tc.items.map(it => it.str).join(' ');
             }
-            fullText = pageTexts.filter(Boolean).join(' ');
           }
+          let fullText = pageTexts.filter(Boolean).join(' ');
           currentKorExamContext.aText = fullText;
           currentKorExamContext.aPageTexts = pageTexts;
           const circled = { '①':'①','②':'②','③':'③','④':'④','⑤':'⑤','1':'①','2':'②','3':'③','4':'④','5':'⑤' };
@@ -7859,17 +7857,15 @@
               Object.assign(commonMap, parseAnswerBlock(sliceC, 1, 34));
             }
             if (Object.keys(hwajakMap).length < 11) {
-              const hwMatch = fullText.match(/(?:■\s*)?(?:\[선택\s*:\s*)?화법과\s*작문\]?/);
-              if (hwMatch) {
-                const sliceH = fullText.slice(hwMatch.index, hwMatch.index + 1400);
+              for (const hm of fullText.matchAll(/(?:■\s*)?(?:\[선택\s*:?\s*)?화법과\s*작문\]?/g)) {
+                const sliceH = fullText.slice(hm.index, hm.index + 1600);
                 const parsedH = parseAnswerBlock(sliceH, 35, 45);
                 if (Object.keys(parsedH).length > Object.keys(hwajakMap).length) hwajakMap = parsedH;
               }
             }
             if (Object.keys(eonmaeMap).length < 11) {
-              const emMatch = fullText.match(/(?:■\s*)?(?:\[선택\s*:\s*)?언어와\s*매체\]?/);
-              if (emMatch) {
-                const sliceE = fullText.slice(emMatch.index, emMatch.index + 1400);
+              for (const em of fullText.matchAll(/(?:■\s*)?(?:\[선택\s*:?\s*)?언어와\s*매체\]?/g)) {
+                const sliceE = fullText.slice(em.index, em.index + 1600);
                 const parsedE = parseAnswerBlock(sliceE, 35, 45);
                 if (Object.keys(parsedE).length > Object.keys(eonmaeMap).length) eonmaeMap = parsedE;
               }
@@ -8428,10 +8424,10 @@
                     type,
                     answerText: (() => {
                       const full = currentKorExamContext.aText || '';
-                      const hwM = full.match(/(?:\[선택\s*:?\s*)?화법과\s*작문\]?[\s\S]{0,600}(?:35|①)/);
-                      const emM = full.match(/(?:\[선택\s*:?\s*)?언어와\s*매체\]?[\s\S]{0,600}(?:35|①)/);
-                      const hwIdx = hwM ? hwM.index : full.lastIndexOf('화법과');
-                      const emIdx = emM ? emM.index : full.lastIndexOf('언어와');
+                      const hwMatches = [...full.matchAll(/(?:\[선택\s*:?\s*)?화법과\s*작문\]?[\s\S]{0,600}(?:35|①)/g)];
+                      const emMatches = [...full.matchAll(/(?:\[선택\s*:?\s*)?언어와\s*매체\]?[\s\S]{0,600}(?:35|①)/g)];
+                      const hwIdx = hwMatches.length ? hwMatches[hwMatches.length - 1].index : full.lastIndexOf('화법과');
+                      const emIdx = emMatches.length ? emMatches[emMatches.length - 1].index : full.lastIndexOf('언어와');
                       const hwSlice = hwIdx >= 0 ? full.slice(hwIdx, hwIdx + 2200) : '';
                       const emSlice = emIdx >= 0 ? full.slice(emIdx, emIdx + 2200) : '';
                       return [full.slice(0, 3500), hwSlice, emSlice].filter(Boolean).join('\n');
