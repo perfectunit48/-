@@ -156,8 +156,10 @@
       .kice-page {
         width: 210mm;
         max-width: 210mm;
+        height: 297mm;
         min-height: 297mm;
         padding: 11mm 12mm;
+        overflow: hidden;
       }
       .kice-cols {
         column-count: 2;
@@ -1410,12 +1412,18 @@
       </div>
       <div id="koreanExamPanel" class="hidden space-y-6">
         <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-5">
-          <div>
-            <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <i data-lucide="book-open-check" class="w-5 h-5 text-emerald-600"></i>
-              국어 기출 열람 (2017~2027학년도)
-            </h2>
-            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">학년도(2017~2027)와 시험 구분(6월 학력평가 · 9월 학력평가 · 수능)을 선택하면 문제지 PDF 미리보기와 1~45번 정답을 바로 확인할 수 있습니다.</p>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="book-open-check" class="w-5 h-5 text-emerald-600"></i>
+                국어 기출 열람 (2017~2027학년도)
+              </h2>
+              <p class="text-xs sm:text-sm text-slate-500 mt-0.5">학년도(2017~2027학년도)와 시험 구분(6월 학력평가 · 9월 학력평가 · 수능)을 선택하면 문제지 PDF 미리보기와 1~45번 정답을 바로 확인할 수 있습니다.</p>
+            </div>
+            <div class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700 shrink-0">
+              <i data-lucide="file-check-2" class="w-4 h-4"></i>
+              <span>평가원 · 수능 공식 기출</span>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
@@ -6813,6 +6821,9 @@
       let lastGeneratedKorMock = null;
       function buildKicePaperHtml(data) {
         const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const fmtInline = (v) => esc(v)
+          .replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/gi, '<span style="text-decoration:underline;text-underline-offset:3px;">$1</span>')
+          .replace(/&lt;\/?(?:u|b|strong|em|i)&gt;/gi, '');
         const passages = Array.isArray(data.passages) ? data.passages : [];
         const serifFont = "'Noto Serif KR','Batang','바탕','Nanum Myeongjo',serif";
         const sansFont = "'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif";
@@ -6821,12 +6832,15 @@
           const t = String(p || '').trim();
           if (!t) return '';
           if (/^\([가나다라]\)$/.test(t)) {
-            return `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:7px 0 3px 0;">${esc(t)}</div>`;
+            return `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:7px 0 3px 0;">${fmtInline(t)}</div>`;
           }
           if (/^\[중략/.test(t) || /^\[앞부분/.test(t)) {
-            return `<p style="text-indent:0;margin:4px 0;text-align:justify;word-break:keep-all;">${esc(t)}</p>`;
+            return `<p style="text-indent:0;margin:4px 0;text-align:justify;word-break:keep-all;">${fmtInline(t)}</p>`;
           }
-          return `<p style="text-indent:1em;margin:0 0 3px 0;text-align:justify;word-break:keep-all;">${esc(t)}</p>`;
+          if (/^[―\-–—]\s*[^\n]+「[^」]+」/.test(t) || /^\s*[―\-–—]\s*작자\s*미상/.test(t)) {
+            return `<p style="text-indent:0;margin:4px 0 5px 0;text-align:right;font-size:11.2px;font-weight:600;">${fmtInline(t)}</p>`;
+          }
+          return `<p style="text-indent:1em;margin:0 0 3px 0;text-align:justify;word-break:keep-all;">${fmtInline(t)}</p>`;
         };
 
         const fmtBody = (raw) => String(raw || '')
@@ -6926,26 +6940,42 @@
             </div>`;
           }
 
+          if (vis.type === 'chart' && vis.chartType === 'pie' && Array.isArray(vis.labels) && Array.isArray(vis.series) && vis.series.length) {
+            const labels = vis.labels;
+            const vals = (vis.series[0] && Array.isArray(vis.series[0].values)) ? vis.series[0].values.map(n => Math.max(0, Number(n) || 0)) : [];
+            const sum = Math.max(1, vals.reduce((a, b) => a + b, 0));
+            const shades = ['#1e293b', '#475569', '#94a3b8', '#cbd5e1', '#e2e8f0'];
+            let acc = 0;
+            const slices = vals.map((v, i) => {
+              const startA = (acc / sum) * 2 * Math.PI - Math.PI / 2;
+              acc += v;
+              const endA = (acc / sum) * 2 * Math.PI - Math.PI / 2;
+              const x1 = 55 + 42 * Math.cos(startA), y1 = 55 + 42 * Math.sin(startA);
+              const x2 = 55 + 42 * Math.cos(endA), y2 = 55 + 42 * Math.sin(endA);
+              const large = (v / sum) > 0.5 ? 1 : 0;
+              return `<path d="M55,55 L${x1.toFixed(1)},${y1.toFixed(1)} A42,42 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${shades[i % shades.length]}" stroke="#fff" stroke-width="1"/>`;
+            }).join('');
+            const leg = labels.map((lb, i) => `<div style="display:flex;align-items:center;gap:4px;font-size:9.5px;"><span style="display:inline-block;width:8px;height:8px;background:${shades[i % shades.length]};border:0.5px solid #111;"></span><span>${esc(lb)} (${vals[i] || 0}${vis.unit ? esc(vis.unit) : ''})</span></div>`).join('');
+            return `<div style="margin:7px 0;border:1px solid #111;padding:6px 8px;background:#fff;break-inside:avoid;">
+              ${titleHtml}
+              <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                <svg viewBox="0 0 110 110" style="width:96px;height:96px;flex-shrink:0;">${slices}</svg>
+                <div style="font-family:${sansFont};space-y:2px;">${leg}</div>
+              </div>
+              ${capHtml}
+            </div>`;
+          }
+
           if (vis.type === 'diagram' && Array.isArray(vis.nodes) && vis.nodes.length) {
             const nodes = vis.nodes.slice(0, 4);
-            const W = 280, H = 76;
-            const bw = Math.min(74, (W - 20) / nodes.length - 10);
-            const gap = (W - nodes.length * bw) / (nodes.length + 1);
-            let svgInner = '';
-            nodes.forEach((nd, i) => {
-              const x = gap + i * (bw + gap);
-              const y = 20;
-              svgInner += `<rect x="${x.toFixed(1)}" y="${y}" width="${bw.toFixed(1)}" height="34" rx="4" fill="#f8fafc" stroke="#111" stroke-width="1.1"/>
-                <text x="${(x+bw/2).toFixed(1)}" y="${y+20}" text-anchor="middle" font-size="9" font-weight="700" fill="#111">${esc(String(nd.label || nd.id || '').slice(0, 12))}</text>`;
-              if (i < nodes.length - 1) {
-                const x1 = x + bw, x2 = x + bw + gap;
-                svgInner += `<line x1="${x1.toFixed(1)}" y1="${y+17}" x2="${(x2-3).toFixed(1)}" y2="${y+17}" stroke="#111" stroke-width="1.1"/>
-                  <polygon points="${x2.toFixed(1)},${y+17} ${(x2-4).toFixed(1)},${y+14} ${(x2-4).toFixed(1)},${y+20}" fill="#111"/>`;
-              }
-            });
-            return `<div style="margin:7px 0;border:1px solid #111;padding:6px 7px;background:#fff;break-inside:avoid;">
+            const flowHtml = nodes.map((nd, i) => {
+              const box = `<div style="flex:1;min-width:0;border:1px solid #111;border-radius:4px;background:#f8fafc;padding:5px 4px;text-align:center;font-family:${sansFont};font-size:9.5px;font-weight:700;line-height:1.3;word-break:keep-all;overflow-wrap:break-word;display:flex;align-items:center;justify-content:center;min-height:38px;">${esc(String(nd.label || nd.id || ''))}</div>`;
+              const arrow = i < nodes.length - 1 ? `<div style="flex-shrink:0;font-size:11px;font-weight:900;color:#111;padding:0 2px;">→</div>` : '';
+              return box + arrow;
+            }).join('');
+            return `<div style="margin:7px 0;border:1px solid #111;padding:7px 8px;background:#fff;break-inside:avoid;">
               ${titleHtml}
-              <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:290px;height:auto;display:block;margin:0 auto;">${svgInner}</svg>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:2px;">${flowHtml}</div>
               ${capHtml}
             </div>`;
           }
@@ -6974,20 +7004,20 @@
           let chHtml = '';
           if (choicesArr.length === 5 && maxChoiceLen <= 11 && choicesArr.every(c => !/\n/.test(c))) {
             chHtml = `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 6px;margin-top:4px;font-family:${serifFont};font-size:12px;line-height:1.58;">` +
-              choicesArr.map(c => `<div style="white-space:nowrap;">${esc(c)}</div>`).join('') +
+              choicesArr.map(c => `<div style="white-space:nowrap;">${fmtInline(c)}</div>`).join('') +
               `</div>`;
           } else if (choicesArr.length === 5 && maxChoiceLen <= 18 && choicesArr.every(c => !/\n/.test(c))) {
             chHtml = `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px;margin-top:4px;font-family:${serifFont};font-size:12px;line-height:1.58;">` +
-              choicesArr.map(c => `<div>${esc(c)}</div>`).join('') +
+              choicesArr.map(c => `<div>${fmtInline(c)}</div>`).join('') +
               `</div>`;
           } else {
             chHtml = `<div style="margin-top:4px;">` + choicesArr.map(c =>
-              `<div style="font-family:${serifFont};padding-left:1.35em;text-indent:-1.35em;line-height:1.6;margin-top:2px;font-size:12px;text-align:justify;">${esc(c)}</div>`
+              `<div style="font-family:${serifFont};padding-left:1.35em;text-indent:-1.35em;line-height:1.6;margin-top:2px;font-size:12px;text-align:justify;">${fmtInline(c)}</div>`
             ).join('') + `</div>`;
           }
 
           return `<div style="margin-top:11px;break-inside:avoid;">
-            <div style="font-family:${serifFont};font-weight:500;font-size:12.3px;line-height:1.62;text-align:justify;word-break:keep-all;">${esc(stemTxt)}${pts}</div>
+            <div style="font-family:${serifFont};font-weight:500;font-size:12.3px;line-height:1.62;text-align:justify;word-break:keep-all;">${fmtInline(stemTxt)}${pts}</div>
             ${boxHtml}
             ${chHtml}
           </div>`;
@@ -7002,16 +7032,17 @@
           const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12.4px;margin:10px 0 5px 0;line-height:1.45;break-after:avoid;">${esc((p.header || p.range || '').replace(/~/g, '～'))}</div>`;
           const paras = String(p.body || '').split(/\n+/).map(s => s.trim()).filter(Boolean);
           if (paras.length > 0) {
-            units.push({
-              isElective,
-              html: hdrHtml + `<div style="font-family:${serifFont};font-size:12.1px;line-height:1.65;text-align:justify;">${fmtParagraph(paras[0])}</div>`
-            });
-            for (let i = 1; i < paras.length; i++) {
+            paras.forEach((pr, pi) => {
+              const isFirstP = pi === 0;
+              const isLastP = pi === paras.length - 1;
+              const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:7px;' : 'padding-top:0;';
+              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:7px;margin-bottom:6px;' : 'padding-bottom:0;';
+              const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:9px;padding-right:9px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:12.1px;line-height:1.65;text-align:justify;`;
               units.push({
                 isElective,
-                html: `<div style="font-family:${serifFont};font-size:12.1px;line-height:1.65;text-align:justify;">${fmtParagraph(paras[i])}</div>`
+                html: (isFirstP ? hdrHtml : '') + `<div style="${boxStyle}">${fmtParagraph(pr)}</div>`
               });
-            }
+            });
           } else {
             units.push({ isElective, html: hdrHtml });
           }
@@ -7123,7 +7154,7 @@
             headerHtml = `<div style="margin-bottom:10px;font-family:${sansFont};">
               <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:3px;">
                 <span></span>
-                <span style="font-size:13.5px;font-weight:800;letter-spacing:-0.02em;">2027학년도 대학수학능력시험 모의고사 문제지</span>
+                <span style="font-size:13.5px;font-weight:800;letter-spacing:-0.02em;">${esc((data.title || "2027학년도 대학수학능력시험 모의고사").trim())}${/문제지$/.test((data.title || "").trim()) ? "" : " 문제지"}</span>
                 <span style="text-align:right;font-size:21px;font-weight:900;line-height:1;">${displayCornerNo}</span>
               </div>
               <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding-bottom:7px;border-bottom:1.5px solid #000;">
@@ -7850,7 +7881,7 @@
         const hdrEl = boxEl ? boxEl.querySelector('h4') : null;
         if (!tbody) return;
 
-        const isMock = (gd && typeof gd.isMock === 'boolean') ? gd.isMock : (curType === '6월' || curType === '9월');
+        const isMock = (gd && typeof gd.isMock === 'boolean') ? gd.isMock : !(curYr === 2027 && curType === '수능');
         if (hdrEl) {
           hdrEl.textContent = isMock
             ? '대표 원점수 1 · 2 · 3등급 컷 (평가원·주요기관 기준)'
@@ -8337,7 +8368,7 @@
             if (needsAiFallback) {
               renderKoreanAnswerGrid(parsed, aUrl, ebsiUrl, year);
               const stEl = document.getElementById('korAnswerStatusBadge');
-              if (stEl) stEl.textContent = '화법과 작문 · 언어와 매체 정답 보완 중...';
+              if (stEl) stEl.textContent = isElectiveEra ? '화법과 작문 · 언어와 매체 정답 확인 중...' : '1~45번 공식 정답 확인 중...';
               try {
                 let ansImgs = [];
                 if (currentKorExamContext.ansPdfDoc) {
@@ -8390,6 +8421,36 @@
                     parsed.commonMap = Object.assign({}, ad.commonMap || {}, parsed.commonMap || {});
                     parsed.hwajakMap = Object.assign({}, ad.hwajakMap || {}, parsed.hwajakMap || {});
                     parsed.eonmaeMap = Object.assign({}, ad.eonmaeMap || {}, parsed.eonmaeMap || {});
+                  }
+                }
+                const c2 = parsed && parsed.commonMap ? Object.keys(parsed.commonMap).length : 0;
+                const h2 = parsed && parsed.hwajakMap ? Object.keys(parsed.hwajakMap).length : 0;
+                const e2 = parsed && parsed.eonmaeMap ? Object.keys(parsed.eonmaeMap).length : 0;
+                const stillNeed2 = isElectiveEra ? (c2 < 34 || h2 < 11 || e2 < 11) : (c2 < 45);
+                if (stillNeed2 && currentKorExamContext.ansPdfDoc) {
+                  const nP2 = currentKorExamContext.ansPdfDoc.numPages;
+                  const tailPages = [];
+                  for (let pi = Math.max(1, nP2 - 3); pi <= nP2; pi++) tailPages.push(pi);
+                  const tailImgs = await renderPdfPagesAsJpegBase64(currentKorExamContext.ansPdfDoc, tailPages);
+                  const ar2 = await fetch('/api/korean-parse-answers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      year,
+                      type,
+                      answerText: (currentKorExamContext.aText || '').slice(-10000),
+                      pageImageBase64: tailImgs[0] || '',
+                      pageImagesBase64: tailImgs
+                    })
+                  });
+                  if (ar2.ok) {
+                    const ad2 = await ar2.json();
+                    if (ad2 && ad2.ok) {
+                      parsed = parsed || { commonMap: {}, hwajakMap: {}, eonmaeMap: {} };
+                      parsed.commonMap = Object.assign({}, ad2.commonMap || {}, parsed.commonMap || {});
+                      parsed.hwajakMap = Object.assign({}, ad2.hwajakMap || {}, parsed.hwajakMap || {});
+                      parsed.eonmaeMap = Object.assign({}, ad2.eonmaeMap || {}, parsed.eonmaeMap || {});
+                    }
                   }
                 }
               } catch (e) {}

@@ -649,37 +649,48 @@ async function checkUrlExists(url) {
     const t = setTimeout(() => c.abort(), 3500);
     const r = await fetch(url, { method: 'HEAD', signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
     clearTimeout(t);
-    return r.ok;
-  } catch (e) {
+    if (r.ok) return true;
+  } catch (e) {}
+  try {
+    const c2 = new AbortController();
+    const t2 = setTimeout(() => c2.abort(), 4000);
+    const r2 = await fetch(url, { method: 'GET', signal: c2.signal, headers: { 'User-Agent': 'Mozilla/5.0', 'Range': 'bytes=0-31' } });
+    clearTimeout(t2);
+    return r2.ok || r2.status === 206;
+  } catch (e2) {
     return false;
   }
 }
 
 async function searchEbsiKoreanPdf(year, type, kind) {
   const examLabel = type === '수능' ? '대학수학능력시험' : (type === '9월' ? '9월 모의평가' : '6월 모의평가');
-  const q = kind === 'mun'
+  const execYear = Number(year) - 1;
+  const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
+  const prefix = `${execYear}${mm}`;
+  const q1 = kind === 'mun'
     ? `site:wdown.ebsi.co.kr "${year}학년도" "${examLabel}" 국어 문제`
     : `site:wdown.ebsi.co.kr "${year}학년도" "${examLabel}" 국어 정답`;
-  try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 6000);
-    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
-      signal: c.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-    });
-    clearTimeout(t);
-    if (!r.ok) return '';
-    const html = await r.text();
-    const matches = [...html.matchAll(/https?:\/\/wdown\.ebsi\.co\.kr\/[^"'\s<>]+\.pdf/gi)].map(m => m[0]);
-    const execYear = Number(year) - 1;
-    const mm = type === '수능' ? '11' : (type === '9월' ? '09' : '06');
-    const prefix = `${execYear}${mm}`;
-    const filtered = matches.filter(u => u.includes('/go3/') && u.includes('kor') && (kind === 'mun' ? (u.includes('mun') || u.includes('paper')) : (u.includes('hsj') || u.includes('answer'))));
-    const exact = filtered.find(u => u.includes(prefix));
-    return exact || filtered[0] || '';
-  } catch (e) {
-    return '';
-  }
+  const q2 = kind === 'mun'
+    ? `"wdown.ebsi.co.kr" "${prefix}" 국어 문제 pdf`
+    : `"wdown.ebsi.co.kr" "${prefix}" 국어 정답 해설 pdf`;
+  const urlsToTry = [
+    `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q1)}`,
+    `https://search.naver.com/search.naver?where=nexearch&query=${encodeURIComponent(q2)}`,
+    `https://search.daum.net/search?w=tot&q=${encodeURIComponent(q2)}`
+  ];
+  const pages = await Promise.all(urlsToTry.map(u => fetchTextWithTimeout(u, 4500)));
+  const combined = pages.join(' ');
+  const matches = [...combined.matchAll(/https?:\/\/(?:wdown\.ebsi\.co\.kr|cdn\.kice\.re\.kr|cdn\.teamturing\.com)\/[^"'\s<>\\]+\.pdf/gi)]
+    .map(m => m[0].replace(/&amp;/g, '&'));
+  const filtered = matches.filter(u => {
+    const low = u.toLowerCase();
+    if (low.includes('teamturing.com')) {
+      return low.includes(`/03/${execYear}/03-${mm}`) && (kind === 'mun' ? low.includes('-p-') : (low.includes('-s-') || low.includes('-a-')));
+    }
+    return (low.includes('kor') || low.includes('suneung')) && (kind === 'mun' ? (low.includes('mun') || low.includes('paper') || low.includes('suneung_1.pdf')) : (low.includes('hsj') || low.includes('answer') || low.includes('suneung_1a.pdf')));
+  });
+  const exact = filtered.find(u => u.includes(prefix) || u.includes(`${execYear}/03-${mm}`));
+  return exact || filtered[0] || '';
 }
 
 
@@ -693,36 +704,20 @@ const VERIFIED_GRADE_CUTS = {
     jongro: { g1: '화작95/언매91', g2: '화작89/언매84', g3: '화작81/언매77' },
     etoos: { g1: '화작94~95/언매90~91', g2: '화작88/언매84', g3: '화작80~81/언매76~77' }
   },
-  '2027_9월': {
-    single: { g1: '화작89/언매84', g2: '화작82/언매77', g3: '화작73/언매68' }
-  },
-  '2027_6월': {
-    single: { g1: '화작96/언매95', g2: '화작90/언매89', g3: '화작82/언매81' }
-  },
-  '2025_9월': {
-    single: { g1: '화작98/언매95', g2: '화작93/언매91', g3: '화작88/언매85' }
-  },
-  '2026_수능': {
-    jongro: { g1: '화작90/언매85', g2: '화작83/언매78', g3: '화작73/언매69' }
-  },
-  '2026_6월': {
-    single: { g1: '화작96/언매93', g2: '-', g3: '-' }
-  },
-  '2025_수능': {
-    ebsi: { g1: '화작91', g2: '화작85', g3: '화작79' },
-    megastudy: { g1: '화작91~92', g2: '화작83~84', g3: '-' },
-    mimac: { g1: '화작92', g2: '화작84~85', g3: '-' },
-    jongro: { g1: '화작95/언매92', g2: '화작88/언매86', g3: '화작79/언매77' }
-  },
-  '2026_9월': {
-    single: { g1: '화작92/언매86', g2: '화작87/언매81', g3: '화작78/언매73' }
-  },
-  '2024_수능': {
-    jongro: { g1: '88', g2: '81', g3: '72' }
-  },
-  '2023_수능': {
-    ebsi: { g1: '화작96', g2: '화작92', g3: '화작86' }
-  }
+  '2027_9월': { single: { g1: '화작90~91/언매86~87', g2: '화작81~84/언매79', g3: '화작73~77/언매71~72' } },
+  '2027_6월': { single: { g1: '화작95/언매95', g2: '화작90/언매89~91', g3: '화작82~83/언매81~84' } },
+  '2026_수능': { single: { g1: '화작89~90/언매85', g2: '화작81~83/언매78', g3: '화작71~74/언매69' } },
+  '2026_9월': { single: { g1: '화작91~92/언매86~87', g2: '화작85~87/언매81~82', g3: '화작76~79/언매73~74' } },
+  '2026_6월': { single: { g1: '화작97/언매91~92', g2: '화작89~91/언매85~86', g3: '화작80~83/언매76~78' } },
+  '2025_수능': { single: { g1: '화작93~95/언매90~92', g2: '화작86~89/언매83~86', g3: '화작76~81/언매73~78' } },
+  '2025_9월': { single: { g1: '화작100/언매97~98', g2: '화작96~97/언매93~94', g3: '화작88~89/언매86~87' } },
+  '2025_6월': { single: { g1: '화작83~87/언매82~85', g2: '화작75~81/언매74~78', g3: '화작67~73/언매66~70' } },
+  '2024_수능': { single: { g1: '화작86~88/언매83~85', g2: '화작77~81/언매75~78', g3: '화작69~73/언매67~70' } },
+  '2024_9월': { single: { g1: '화작89~92/언매85~88', g2: '화작80~85/언매77~81', g3: '화작72~78/언매70~75' } },
+  '2024_6월': { single: { g1: '화작97~98/언매93~94', g2: '화작90~91/언매85~87', g3: '화작80~84/언매76~79' } },
+  '2023_수능': { single: { g1: '화작95~96/언매91', g2: '화작91/언매86~87', g3: '화작85~86/언매81~82' } },
+  '2023_9월': { single: { g1: '화작91~94/언매87~88', g2: '화작83~87/언매81~82', g3: '화작75~81/언매74~76' } },
+  '2023_6월': { single: { g1: '화작83~88/언매81~84', g2: '화작74~81/언매72~77', g3: '화작66~73/언매65~69' } }
 };
 
 function stripHtmlText(html) {
@@ -883,7 +878,7 @@ app.get('/api/korean-grade-cuts', async (req, res) => {
     return res.json({ ok: false, year, type, error: '기관별 원점수 등급컷은 2023~2027학년도만 지원됩니다.', cuts: null });
   }
   const key = `${year}_${type}`;
-  const isMock = (type === '6월' || type === '9월');
+  const isMock = !(year === '2027' && type === '수능');
   if (GRADE_CUTS_CACHE[key]) {
     return res.json(Object.assign({ ok: true, year, type, isMock, cached: true }, GRADE_CUTS_CACHE[key]));
   }
@@ -987,15 +982,23 @@ app.get('/api/korean-exam', async (req, res) => {
   let questionPdfUrl = preset.questionPdfUrl || '';
   let answerPdfUrl = preset.answerPdfUrl || '';
 
-  const ttProb = `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-p-01.pdf`;
-  const ttAns = `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-s-01.pdf`;
+  const ttProbCands = [
+    `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-p-01.pdf`,
+    `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-p-02.pdf`
+  ];
+  const ttAnsCands = [
+    `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-s-01.pdf`,
+    `https://cdn.teamturing.com/cms/webflow/sat_pdf/03/${execYear}/03-${mm}-01-a-01.pdf`
+  ];
 
-  const checks = await Promise.all([
-    !questionPdfUrl ? checkUrlExists(ttProb) : Promise.resolve(false),
-    !answerPdfUrl ? checkUrlExists(ttAns) : Promise.resolve(false)
+  const [pChk0, pChk1, aChk0, aChk1] = await Promise.all([
+    !questionPdfUrl ? checkUrlExists(ttProbCands[0]) : Promise.resolve(false),
+    !questionPdfUrl ? checkUrlExists(ttProbCands[1]) : Promise.resolve(false),
+    !answerPdfUrl ? checkUrlExists(ttAnsCands[0]) : Promise.resolve(false),
+    !answerPdfUrl ? checkUrlExists(ttAnsCands[1]) : Promise.resolve(false)
   ]);
-  if (!questionPdfUrl && checks[0]) questionPdfUrl = ttProb;
-  if (!answerPdfUrl && checks[1]) answerPdfUrl = ttAns;
+  if (!questionPdfUrl) questionPdfUrl = pChk0 ? ttProbCands[0] : (pChk1 ? ttProbCands[1] : '');
+  if (!answerPdfUrl) answerPdfUrl = aChk0 ? ttAnsCands[0] : (aChk1 ? ttAnsCands[1] : '');
 
   const fallbacks = await Promise.all([
     !questionPdfUrl ? searchEbsiKoreanPdf(year, type, 'mun') : Promise.resolve(''),
@@ -1150,6 +1153,38 @@ ${String(answerText || '').slice(0, 14000)}`;
       hwajakMap: sanity(norm(parsed.hwajak)),
       eonmaeMap: sanity(norm(parsed.eonmae))
     };
+    const stillMissing = isElective
+      ? (Object.keys(outObj.commonMap).length < 34 || Object.keys(outObj.hwajakMap).length < 11 || Object.keys(outObj.eonmaeMap).length < 11)
+      : (Object.keys(outObj.commonMap).length < 45);
+    if (stillMissing && yNum >= 2017 && yNum <= 2027) {
+      try {
+        const qStr = `${yNum}학년도 ${type === '수능' ? '수능' : type + ' 모의평가'} 국어 정답표 홀수형 ${isElective ? '화법과 작문 언어와 매체' : '1번 45번'}`;
+        const [nv, dm] = await Promise.all([
+          fetchNaverSearchWithArticles(qStr),
+          fetchDaumSearchWithArticles(qStr)
+        ]);
+        const webTxt = [nv, dm].filter(Boolean).join('\n').slice(0, 18000);
+        if (webTxt.length > 80) {
+          const webPrompt = isElective
+            ? `아래 웹 검색 결과에서 ${yNum}학년도 ${typeLabel} 국어 영역 홀수형 정답(공통 1~34, 화법과 작문 35~45, 언어와 매체 35~45)을 원문자(①~⑤) JSON으로 추출하세요.\nJSON만 출력: {"common":{"1":"①"},"hwajak":{"35":"④"},"eonmae":{"35":"②"}}\n[검색 결과]\n${webTxt}`
+            : `아래 웹 검색 결과에서 ${yNum}학년도 ${typeLabel} 국어 영역 홀수형 1~45번 정답을 원문자(①~⑤) JSON으로 추출하세요.\nJSON만 출력: {"common":{"1":"①"}}\n[검색 결과]\n${webTxt}`;
+          const wRes = await callGeminiWithFallback(
+            apiKey,
+            { contents: [{ parts: [{ text: webPrompt }] }], generationConfig: { temperature: 0.0, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } } },
+            'chat'
+          );
+          const wm = wRes && wRes.text && wRes.text.match(/\{[\s\S]*\}/);
+          if (wm) {
+            const wp = JSON.parse(wm[0]);
+            outObj.commonMap = Object.assign({}, sanity(norm(wp.common)), outObj.commonMap);
+            if (isElective) {
+              outObj.hwajakMap = Object.assign({}, sanity(norm(wp.hwajak)), outObj.hwajakMap);
+              outObj.eonmaeMap = Object.assign({}, sanity(norm(wp.eonmae)), outObj.eonmaeMap);
+            }
+          }
+        }
+      } catch (we) {}
+    }
     if (_reqKey && Object.keys(outObj.commonMap).length >= 25) {
       KOREAN_PARSED_ANSWERS_CACHE[_reqKey] = outObj;
       saveParsedAnswersCache();
@@ -1209,7 +1244,10 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 2017~2027학년도 수능(특히 최신 2027학년도 수능 국어)의 출제 기조, 실제 수능 지문 분량과 논리 밀도, 선지 함정 패턴(인과 역전, 조건 누락, 범위 확대/축소, 개념 뒤바꾸기, <보 기> 외적 준거 적용), 시각 자료(도표·그래프·매체 화면) 활용 방식을 극한으로 정밀하게 반영해 출제하세요.
 목표 난이도는 1등급 컷 원점수 84~91점(변별력 있는 중상~상 난이도, [3점] 고난도 추론·적용 문항 다수 포함)입니다.
 
-[분량 · 최신 2027 평가원 문항 틀 필수 조건]
+[분량 · 배점(10개년 기출 기준) · 문학 출처 필수 조건]
+- 배점은 실제 수능 국어 10개년 기준과 동일하게 **총 100점 = 2점 35문항 + 3점 10문항**으로 엄격히 맞추세요(독서 4문항, 문학 4문항, 선택과목 2문항에 points:3 배정, 나머지 35문항은 points:2).
+- 문학 지문([18~21] 현대소설, [22~27] 갈래복합, [28~31] 고전소설, [32~34] 현대시)의 각 작품 끝에는 실제 수능처럼 반드시 출처 표기 줄(예: "― 김승옥, 「무진기행」" 또는 "― 작자 미상, 「유충렬전」")을 넣으세요.
+- 본문·발문·선지 문자열에 <u>, </u>, <b> 같은 HTML 태그를 절대 쓰지 마세요(밑줄 어휘는 ㉠~㉤ 또는 ⓐ~ⓔ 표기 사용).
 - 독서 지문은 실제 2027 수능 PDF와 동일한 분량과 밀도로 작성하세요([1~3] 950자+, [4~9] (가)/(나) 합산 2,700자+, [10~13]·[14~17] 각 1,900자+). 문단 내에 [A], [B] 구간 표지나 ㉠~㉤, ⓐ~ⓔ 표지를 실제 수능처럼 적절히 배치하세요.
 - 문학 지문도 실제 수능처럼 인물 대사·서술·시 연·고전 어휘 현대어 풀이(예: 즈믄 해=천 년), [중략 줄거리]가 살아있는 완성도 높은 분량으로 작성하세요.
 - box 필드(<보 기> 내용) 안에는 절대 "<보 기>"나 "<보기>" 제목 글자를 쓰지 마세요.
@@ -1421,6 +1459,35 @@ ${existingSummary}
       return Object.assign({}, p, { questions: qs });
     }).filter(p => p.questions.length > 0 || (p.body && p.body.length > 50))
       .sort((a, b) => ((a.questions[0] && a.questions[0].no) || 99) - ((b.questions[0] && b.questions[0].no) || 99));
+
+    // Normalize 3-point count to exactly 10 questions (total 100 points) matching 10-year KICE CSAT standard
+    const flatQs = passages.flatMap(p => p.questions || []);
+    if (flatQs.length === 45) {
+      const targetThree = new Set([6, 8, 12, 16, 21, 26, 31, 34, 39, 44]);
+      let threeList = flatQs.filter(q => Number(q.points) === 3);
+      if (threeList.length > 10) {
+        let excess = threeList.length - 10;
+        for (const q of threeList) {
+          if (excess <= 0) break;
+          if (!targetThree.has(q.no)) { q.points = 2; excess--; }
+        }
+        threeList = flatQs.filter(q => Number(q.points) === 3);
+        while (threeList.length > 10) { threeList.pop().points = 2; }
+      } else if (threeList.length < 10) {
+        for (const q of flatQs) {
+          if (threeList.length >= 10) break;
+          if (Number(q.points) !== 3 && (targetThree.has(q.no) || (q.box && q.box.length > 20))) {
+            q.points = 3;
+            threeList.push(q);
+          }
+        }
+        for (const q of flatQs) {
+          if (threeList.length >= 10) break;
+          if (Number(q.points) !== 3) { q.points = 3; threeList.push(q); }
+        }
+      }
+      flatQs.forEach(q => { if (Number(q.points) !== 3) q.points = 2; });
+    }
 
     if (passages.length === 0) {
       const detail = [...new Set(partErrors)].slice(0, 3).join(' / ');
