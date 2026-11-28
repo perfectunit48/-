@@ -2401,7 +2401,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v73';
+    const CLIENT_BUILD_VERSION = '20261128_v74';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -7198,7 +7198,7 @@
             ).join('') + `</div>`;
           }
 
-          return `<div style="margin-top:11px;break-inside:avoid;">
+          return `<div style="margin-top:18px;break-inside:avoid;">
             <div style="font-family:${serifFont};font-weight:500;font-size:11.4px;line-height:1.52;text-align:justify;word-break:normal;overflow-wrap:break-word;">${fmtInline(stemTxt)}${pts}</div>
             ${standaloneVisHtml}
             ${boxHtml}
@@ -7226,17 +7226,17 @@
           bodyStr = bodyStr
             .replace(/(^|\n|\s+)(\([가나다라]\))\s+/g, '$1$2\n')
             .replace(/\s+([―—]\s*[^\n]+「[^」]+」)/g, '\n$1\n');
-          const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:13px 0 5px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
+          const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:18px 0 6px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
           const rawParas = bodyStr.split(/\n+/).map(s => s.trim()).filter(Boolean);
           const paras = [];
           rawParas.forEach(pr => {
-            if (pr.length > 160 && !/^\([가나다라]\)/.test(pr) && !/^[―—]/.test(pr)) {
+            if (pr.length > 340 && !/^\([가나다라]\)/.test(pr) && !/^[―—]/.test(pr)) {
               const sents = pr.match(/[^.!?]+[.!?]+(?:\s|$)/g);
-              if (sents && sents.length >= 2) {
+              if (sents && sents.length >= 3) {
                 let buf = '';
                 let isFirstChunk = true;
                 sents.forEach((s) => {
-                  if (buf && (buf.length + s.length) > 155) {
+                  if (buf && (buf.length + s.length) > 250) {
                     paras.push({ text: buf.trim(), cont: !isFirstChunk });
                     isFirstChunk = false;
                     buf = s;
@@ -7257,7 +7257,7 @@
               const isFirstP = pi === 0;
               const isLastP = (pi === paras.length - 1) && !hasPVis;
               const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:6px;' : 'padding-top:0;';
-              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:10px;' : 'padding-bottom:0;';
+              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:16px;' : 'padding-bottom:0;';
               const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.52;text-align:justify;`;
               let innerHtml = fmtParagraph(pr, true);
               if (pObj.cont) innerHtml = innerHtml.replace('text-indent:1em;', 'text-indent:0;');
