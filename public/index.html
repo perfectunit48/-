@@ -158,7 +158,7 @@
         width: 210mm;
         max-width: 210mm;
         min-height: 297mm;
-        padding: 9mm 11mm;
+        padding: 7.5mm 10.5mm;
       }
       .kice-cols {
         grid-template-columns: 1fr 1fr;
@@ -181,7 +181,7 @@
         max-width: 210mm !important;
         min-height: 295mm !important;
         margin: 0 !important;
-        padding: 9mm 11mm !important;
+        padding: 7.5mm 10.5mm !important;
         border: none !important;
         box-shadow: none !important;
         page-break-after: always !important;
@@ -6840,15 +6840,15 @@
           const t = String(p || '').trim();
           if (!t) return '';
           if (/^\([가나다라]\)$/.test(t)) {
-            return `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:0;padding:6px 0 3px 0;">${fmtInline(t)}</div>`;
+            return `<div style="font-family:${sansFont};font-weight:800;font-size:12px;letter-spacing:0.04em;margin:0;padding:6px 0 3px 0;">${fmtInline(t)}</div>`;
           }
           if (/^\[중략/.test(t) || /^\[앞부분/.test(t)) {
-            return `<p style="text-indent:0;margin:0;padding:4px 0;text-align:justify;word-break:keep-all;">${fmtInline(t)}</p>`;
+            return `<p style="text-indent:0;margin:0;padding:4px 0;text-align:justify;word-break:normal;overflow-wrap:break-word;">${fmtInline(t)}</p>`;
           }
           if (/^[―\-–—]\s*[^\n]+「[^」]+」/.test(t) || /^\s*[―\-–—]\s*작자\s*미상/.test(t)) {
             return `<p style="text-indent:0;margin:0;padding:4px 0 3px 0;text-align:right;font-size:11.2px;font-weight:600;">${fmtInline(t)}</p>`;
           }
-          return `<p style="text-indent:1em;margin:0;padding:0 0 3px 0;text-align:justify;word-break:keep-all;">${fmtInline(t)}</p>`;
+          return `<p style="text-indent:1em;margin:0;padding:0 0 3px 0;text-align:justify;word-break:normal;overflow-wrap:break-word;">${fmtInline(t)}</p>`;
         };
 
         const fmtBody = (raw) => String(raw || '')
@@ -6994,18 +6994,28 @@
           if (no > 0 && !new RegExp('^' + no + '\\s*[\\.\\)]').test(stemTxt)) {
             stemTxt = `${no}. ${stemTxt}`;
           }
+          const isVocabNear = /문맥상\s*[ⓐ-ⓔ]/.test(stemTxt) && /가까운\s*의미/.test(stemTxt);
+          if (isVocabNear) {
+            stemTxt = stemTxt.replace(/([ⓐ-ⓔ])\s*['"‘’“”][가-힣]+['"‘’“”]/g, '$1');
+          }
           const pts = Number(q.points) === 3 ? ' <span style="font-weight:700;">[3점]</span>' : '';
           const cleanBox = String(q.box || '').replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '').trim();
           const visHtml = q.visual ? renderKiceVisual(q.visual) : '';
           const boxHtml = (cleanBox || visHtml)
-            ? `<div style="position:relative;border:1px solid #111;padding:10px 10px 7px 10px;margin:7px 0 5px 0;font-family:${serifFont};font-size:11.3px;line-height:1.54;background:#fff;">
+            ? `<div style="position:relative;border:1px solid #111;padding:10px 10px 7px 10px;margin:7px 0 5px 0;font-family:${serifFont};font-size:11.3px;line-height:1.54;background:#fff;text-align:left;word-break:normal;overflow-wrap:break-word;">
                  <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#fff;padding:0 9px;font-family:${serifFont};font-weight:700;font-size:11px;letter-spacing:0.28em;white-space:nowrap;">&lt;보 기&gt;</div>
                  ${cleanBox ? `<div>${fmtBody(cleanBox)}</div>` : ''}
                  ${visHtml}
                </div>`
             : '';
 
-          const choicesArr = Array.isArray(q.choices) ? q.choices : [];
+          const choicesArr = (Array.isArray(q.choices) ? q.choices : []).map(c => {
+            let cs = String(c || '');
+            if (isVocabNear && !/<u>/i.test(cs)) {
+              cs = cs.replace(/[ⓐ-ⓔ]\s*([가-힣]+)/g, '<u>$1</u>');
+            }
+            return cs;
+          });
           const maxChoiceLen = Math.max(0, ...choicesArr.map(c => String(c || '').trim().length));
           let chHtml = '';
           if (choicesArr.length === 5 && maxChoiceLen <= 11 && choicesArr.every(c => !/\n/.test(c))) {
@@ -7047,14 +7057,15 @@
           }
           // Ensure clean line breaks before (가), (나), (다) and literary attributions ― ...
           bodyStr = bodyStr
-            .replace(/\s+(\([가나다라]\))\s+/g, '\n$1\n')
+            .replace(/(^|\n|\s+)(\([가나다라]\))\s+/g, '$1$2\n')
             .replace(/\s+([―—]\s*[^\n]+「[^」]+」)/g, '\n$1\n');
           const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:7px 0 4px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
           const paras = bodyStr.split(/\n+/).map(s => s.trim()).filter(Boolean);
+          const hasPVis = Boolean(p.visual && typeof p.visual === 'object' && p.visual.type);
           if (paras.length > 0) {
             paras.forEach((pr, pi) => {
               const isFirstP = pi === 0;
-              const isLastP = pi === paras.length - 1;
+              const isLastP = (pi === paras.length - 1) && !hasPVis;
               const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:6px;' : 'padding-top:0;';
               const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:5px;' : 'padding-bottom:0;';
               const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.52;text-align:justify;`;
@@ -7066,8 +7077,11 @@
           } else {
             units.push({ isElective, html: hdrHtml });
           }
-          if (p.visual) {
-            units.push({ isElective, html: renderKiceVisual(p.visual) });
+          if (hasPVis) {
+            const visBoxStyle = paras.length > 0
+              ? 'border-left:1px solid #111;border-right:1px solid #111;border-bottom:1px solid #111;padding:2px 8px 6px 8px;margin-bottom:5px;background:#fff;'
+              : '';
+            units.push({ isElective, html: `<div style="${visBoxStyle}">${renderKiceVisual(p.visual)}</div>` });
           }
           const qs = Array.isArray(p.questions) ? p.questions : [];
           qs.forEach((q, qIdx) => {
@@ -7097,7 +7111,7 @@
 
         // Measure exact rendered heights in an offscreen 89.5mm column to guarantee identical A4 pagination on screen and PDF
         const measurer = document.createElement('div');
-        measurer.style.cssText = 'position:fixed;left:-99999px;top:0;width:90.5mm;visibility:hidden;pointer-events:none;box-sizing:border-box;';
+        measurer.style.cssText = 'position:fixed;left:-99999px;top:0;width:91.5mm;visibility:hidden;pointer-events:none;box-sizing:border-box;';
         document.body.appendChild(measurer);
         units.forEach(u => {
           const d = document.createElement('div');
@@ -7117,7 +7131,7 @@
         let curIsElec = false;
         let hasElecStarted = false;
 
-        const getColLimit = (isTopHeaderPage) => (isTopHeaderPage ? 935 : 975);
+        const getColLimit = (isTopHeaderPage) => (isTopHeaderPage ? 955 : 990);
 
         for (const u of units) {
           if (u.isElective && !hasElecStarted && (col1Units.length > 0 || col2Units.length > 0)) {
@@ -7342,7 +7356,7 @@
           if (!paperEl || !paperEl.innerHTML) return;
           const w = window.open('', '_blank');
           if (!w) return;
-          w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escapeHtml(lastGeneratedKorMock ? lastGeneratedKorMock.title : '국어 모의고사')}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800;900&family=Noto+Serif+KR:wght@400;500;600;700;900&display=swap" /><style>*{box-sizing:border-box;} html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Noto Serif KR','Batang','바탕','Nanum Myeongjo',serif;} .kice-page{width:210mm;min-height:295mm;margin:0 auto;padding:9mm 11mm;background:#fff;display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;break-after:page;} .kice-page:last-child{page-break-after:auto;break-after:auto;} .kice-cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:stretch;} .kice-col-left{min-width:0;padding-right:3.5mm;border-right:0.75pt solid #111;} .kice-col-right{min-width:0;padding-left:3.5mm;} @media print { @page { size: A4 portrait; margin: 0; } }</style></head><body class="bg-white">${paperEl.innerHTML}<script>(function(){var printed=false;function go(){if(printed)return;printed=true;window.print();}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(go,250);});}setTimeout(go,2200);})();<\/script>  <div id="essayPaperModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-6">
+          w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escapeHtml(lastGeneratedKorMock ? lastGeneratedKorMock.title : '국어 모의고사')}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800;900&family=Noto+Serif+KR:wght@400;500;600;700;900&display=swap" /><style>*{box-sizing:border-box;} html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:'Noto Serif KR','Batang','바탕','Nanum Myeongjo',serif;} .kice-page{width:210mm;min-height:295mm;margin:0 auto;padding:7.5mm 10.5mm;background:#fff;display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;break-after:page;} .kice-page:last-child{page-break-after:auto;break-after:auto;} .kice-cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:stretch;} .kice-col-left{min-width:0;padding-right:3.5mm;border-right:0.75pt solid #111;} .kice-col-right{min-width:0;padding-left:3.5mm;} @media print { @page { size: A4 portrait; margin: 0; } }</style></head><body class="bg-white">${paperEl.innerHTML}<script>(function(){var printed=false;function go(){if(printed)return;printed=true;window.print();}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(go,250);});}setTimeout(go,2200);})();<\/script>  <div id="essayPaperModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-6">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
       <div class="px-4 sm:px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50">
         <div>

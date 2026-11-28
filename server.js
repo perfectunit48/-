@@ -640,11 +640,56 @@ const KOREAN_EXAM_PRESETS = {
     questionPdfUrl: '',
     answerPdfUrl: 'https://wdown.ebsi.co.kr/W61001/01exam/20240604/go3/kor_main_hsj_2C42VZKT_2.pdf'
   },
+  '2024_수능': {
+    questionPdfUrl: '',
+    answerPdfUrl: 'https://image.donga.com/education/exam/2024su/an1_1.pdf'
+  },
+  '2020_수능': {
+    questionPdfUrl: 'https://image.donga.com/education/exam/2020_su/1_1.pdf',
+    answerPdfUrl: 'https://image.donga.com/education/exam/2020_su/1_1.pdf'
+  },
   '2019_수능': {
     questionPdfUrl: 'https://image.donga.com/education/exam/2019_su/1_1.pdf',
     answerPdfUrl: 'https://image.donga.com/education/exam/2019_su/1_1.pdf'
+  },
+  '2018_수능': {
+    questionPdfUrl: 'https://image.donga.com/education/exam/2018_su/1_1.pdf',
+    answerPdfUrl: 'https://image.donga.com/education/exam/2018_su/1_1.pdf'
   }
 };
+
+const HORAENG_POST_MAP = {
+  '2027_수능': '469',
+  '2026_수능': '446',
+  '2025_수능': '420',
+  '2024_수능': '350',
+  '2024_9월': '267',
+  '2024_6월': '263',
+  '2023_수능': '254',
+  '2023_9월': '252'
+};
+
+async function searchHoraengKoreanPdf(year, type) {
+  const key = `${year}_${type}`;
+  let postUrl = HORAENG_POST_MAP[key] ? `https://horaeng.com/${HORAENG_POST_MAP[key]}` : '';
+  if (!postUrl) {
+    const q = `${year}학년도 ${type === '수능' ? '수능' : type + ' 모의평가'}`;
+    const searchHtml = await fetchTextWithTimeout(`https://horaeng.com/?s=${encodeURIComponent(q)}`, 4500);
+    if (searchHtml) {
+      const m = searchHtml.match(/href="(https:\/\/horaeng\.com\/\d+)"/i);
+      if (m) postUrl = m[1];
+    }
+  }
+  if (!postUrl) return { mun: '', hsj: '' };
+  const html = await fetchTextWithTimeout(postUrl, 5000);
+  if (!html) return { mun: '', hsj: '' };
+  const korIdx = html.search(/<h[234][^>]*>\s*국어\s*<\/h[234]>|id="국어"/i);
+  const slice = korIdx >= 0 ? html.slice(korIdx, korIdx + 3500) : html.slice(0, 6000);
+  const pdfs = [...slice.matchAll(/href="(https?:\/\/[^"]+\.pdf)"/gi)].map(m => m[1].replace(/&amp;/g, '&'));
+  let mun = pdfs.find(u => /문제|mun|paper/i.test(decodeURIComponent(u))) || pdfs[0] || '';
+  let hsj = pdfs.find(u => /해설|정답|hsj|answer/i.test(decodeURIComponent(u))) || pdfs[1] || '';
+  return { mun, hsj };
+}
 
 async function checkUrlExists(url) {
   if (!url) return false;
@@ -1010,12 +1055,35 @@ app.get('/api/korean-exam', async (req, res) => {
   if (!questionPdfUrl) questionPdfUrl = pChk0 ? ttProbCands[0] : (pChk1 ? ttProbCands[1] : '');
   if (!answerPdfUrl) answerPdfUrl = aChk0 ? ttAnsCands[0] : (aChk1 ? ttAnsCands[1] : '');
 
-  const fallbacks = await Promise.all([
-    !questionPdfUrl ? searchEbsiKoreanPdf(year, type, 'mun') : Promise.resolve(''),
-    !answerPdfUrl ? searchEbsiKoreanPdf(year, type, 'hsj') : Promise.resolve('')
-  ]);
-  if (!questionPdfUrl && fallbacks[0]) questionPdfUrl = fallbacks[0];
-  if (!answerPdfUrl && fallbacks[1]) answerPdfUrl = fallbacks[1];
+  if (!questionPdfUrl || !answerPdfUrl) {
+    const [hr, ebsiMun, ebsiHsj, dongaOk] = await Promise.all([
+      searchHoraengKoreanPdf(year, type),
+      !questionPdfUrl ? searchEbsiKoreanPdf(year, type, 'mun') : Promise.resolve(''),
+      !answerPdfUrl ? searchEbsiKoreanPdf(year, type, 'hsj') : Promise.resolve(''),
+      (!questionPdfUrl && type === '수능' && yNum <= 2020)
+        ? checkUrlExists(`https://image.donga.com/education/exam/${year}_su/1_1.pdf`)
+        : Promise.resolve(false)
+    ]);
+    if (!questionPdfUrl) questionPdfUrl = hr.mun || ebsiMun || (dongaOk ? `https://image.donga.com/education/exam/${year}_su/1_1.pdf` : '');
+    if (!answerPdfUrl) answerPdfUrl = hr.hsj || ebsiHsj || (dongaOk ? `https://image.donga.com/education/exam/${year}_su/1_1.pdf` : '');
+  }
+
+  let cachedAns = (typeof KOREAN_PARSED_ANSWERS_CACHE !== 'undefined' && KOREAN_PARSED_ANSWERS_CACHE[cacheKey]) || null;
+  const isAnsComplete = (ca) => {
+    if (!ca) return false;
+    const cLen = Object.keys(ca.commonMap || {}).length;
+    const hLen = Object.keys(ca.hwajakMap || {}).length;
+    const eLen = Object.keys(ca.eonmaeMap || {}).length;
+    return yNum >= 2022 ? (cLen >= 34 && hLen >= 11 && eLen >= 11) : (cLen >= 45);
+  };
+  if (!isAnsComplete(cachedAns)) {
+    cachedAns = null;
+    const targetPdfForAns = answerPdfUrl || questionPdfUrl;
+    if (targetPdfForAns && typeof extractKoreanAnswersFromPdfOnServer === 'function') {
+      const extracted = await extractKoreanAnswersFromPdfOnServer(yNum, type, targetPdfForAns);
+      if (isAnsComplete(extracted)) cachedAns = extracted;
+    }
+  }
 
   const payload = {
     ok: true,
@@ -1023,7 +1091,7 @@ app.get('/api/korean-exam', async (req, res) => {
     type,
     questionPdfUrl,
     answerPdfUrl,
-    cachedAnswers: (typeof KOREAN_PARSED_ANSWERS_CACHE !== 'undefined' && KOREAN_PARSED_ANSWERS_CACHE[cacheKey]) || null,
+    cachedAnswers: cachedAns,
     ebsiUrl: 'https://www.ebsi.co.kr/ebs/xip/xipc/previousPaperList.ebs?targetCd=D300'
   };
   if (questionPdfUrl && answerPdfUrl) {
@@ -1047,6 +1115,54 @@ function saveParsedAnswersCache() {
     writeDb(db);
   } catch (e) {}
 }
+async function extractKoreanAnswersFromPdfOnServer(yNum, type, pdfUrl) {
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  const key = `${yNum}_${type}`;
+  if (!apiKey || !pdfUrl) return null;
+  if (KOREAN_PARSED_ANSWERS_CACHE[key]) {
+    const c = KOREAN_PARSED_ANSWERS_CACHE[key];
+    const ok = yNum >= 2022
+      ? (Object.keys(c.commonMap || {}).length >= 34 && Object.keys(c.hwajakMap || {}).length >= 11 && Object.keys(c.eonmaeMap || {}).length >= 11)
+      : (Object.keys(c.commonMap || {}).length >= 45);
+    if (ok) return c;
+  }
+  try {
+    const up = await fetchBinaryWithTlsBypass(pdfUrl);
+    if (!up || up.status < 200 || up.status >= 400 || !up.buffer || up.buffer.length > 9 * 1024 * 1024) return null;
+    const pdfB64 = up.buffer.toString('base64');
+    const isElective = yNum >= 2022;
+    const typeLabel = type === '수능' ? '대학수학능력시험(수능)' : `${type || ''} 모의평가`;
+    const prompt = isElective
+      ? `첨부된 ${yNum}학년도 ${typeLabel} 국어 영역 PDF에서 **홀수형 기준**으로 1~34번 공통과목, 35~45번 화법과 작문, 35~45번 언어와 매체 정답을 모두 추출해 원문자(①,②,③,④,⑤) JSON만 출력하세요. 없는 과목은 {}로 두세요.
+{"common":{"1":"①"},"hwajak":{"35":"④"},"eonmae":{"35":"②"}}`
+      : `첨부된 ${yNum}학년도 ${typeLabel} 국어 영역 PDF에서 **홀수형 기준** 1~45번 공식 정답을 모두 추출해 원문자(①,②,③,④,⑤) JSON만 출력하세요.
+{"common":{"1":"①"}}`;
+    const r = await callGeminiWithFallback(apiKey, {
+      contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: 'application/pdf', data: pdfB64 } }] }],
+      generationConfig: { temperature: 0, maxOutputTokens: 2048, responseMimeType: 'application/json' }
+    }, 'chat');
+    if (r && r.text) {
+      const m = r.text.match(/\{[\s\S]*\}/);
+      if (m) {
+        const parsed = JSON.parse(m[0]);
+        const cMap = parsed.common || {};
+        const hMap = parsed.hwajak || {};
+        const eMap = parsed.eonmae || {};
+        const ok = isElective
+          ? (Object.keys(cMap).length >= 34 && Object.keys(hMap).length >= 11 && Object.keys(eMap).length >= 11)
+          : (Object.keys(cMap).length >= 45);
+        if (ok) {
+          const out = { ok: true, commonMap: cMap, hwajakMap: hMap, eonmaeMap: eMap };
+          KOREAN_PARSED_ANSWERS_CACHE[key] = out;
+          saveParsedAnswersCache();
+          return out;
+        }
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
 app.post('/api/korean-cache-answers', (req, res) => {
   const { year, type, commonMap, hwajakMap, eonmaeMap } = req.body || {};
   const key = year && type ? `${year}_${type}` : '';
@@ -1264,13 +1380,18 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 
 [분량 · 배점(10개년 기출 기준) · 문학 출처 필수 조건]
 - 배점은 실제 수능 국어 10개년 기준과 동일하게 **총 100점 = 2점 35문항 + 3점 10문항**으로 엄격히 맞추세요(독서 4문항, 문학 4문항, 선택과목 2문항에 points:3 배정, 나머지 35문항은 points:2).
-- 문학 지문([18~21] 현대소설, [22~27] 갈래복합, [28~31] 고전소설, [32~34] 현대시)의 각 작품 끝에는 실제 수능처럼 반드시 출처 표기 줄(예: "― 김승옥, 「무진기행」" 또는 "― 작자 미상, 「유충렬전」")을 넣으세요.
-- 본문·발문·선지 문자열에 <u>, </u>, <b> 같은 HTML 태그를 절대 쓰지 마세요(밑줄 어휘는 ㉠~㉤ 또는 ⓐ~ⓔ 표기 사용).
-- 독서 지문은 실제 2027 수능 PDF와 동일한 분량과 밀도로 작성하세요([1~3] 950자+, [4~9] (가)/(나) 합산 2,700자+, [10~13]·[14~17] 각 1,900자+). 문단 내에 [A], [B] 구간 표지나 ㉠~㉤, ⓐ~ⓔ 표지를 실제 수능처럼 적절히 배치하세요.
+- 문학 지문([18~21] 현대소설, [22~26] 갈래복합, [27~30] 고전소설, [31~34] 현대시 (가)/(나))의 각 작품 끝에는 실제 수능처럼 반드시 출처 표기 줄(예: "― 김승옥, 「무진기행」" 또는 "― 작자 미상, 「유충렬전」")을 넣으세요. 특히 [31~34] 현대시는 절대 32번 문항의 <보 기> 안에 시를 넣지 말고, 반드시 [31~34] 지문(passage.header/body)에 (가), (나) 두 편을 배치하세요.
+- 본문·발문 문자열에 <b>, <i> 같은 HTML 태그를 쓰지 마세요(어휘 문항 선지 ①~⑤의 비교 대상 단어에만 <u>단어</u> 밑줄을 허용하며, 그 외에는 ㉠~㉤ 또는 ⓐ~ⓔ 표기 사용).
+- 독서 지문은 실제 2026·2027 수능 PDF와 동일한 문단 수와 분량으로 작성하세요(2문단짜리 짧은 지문 절대 금지!):
+  · [1~3] 독서 이론: **최소 3~4문단, 1,000~1,200자**
+  · [4~9] 인문·사회 (가)/(나): **(가) 3~4문단(1,300~1,500자) + (나) 3~4문단(1,300~1,500자) = 총 6~8문단, 2,600~3,000자**
+  · [10~13] 과학·기술: **4~5문단, 1,750~2,100자**
+  · [14~17] 법·경제: **4~5문단, 1,750~2,100자**
+  문단 내에 [A], [B] 구간 표지나 ㉠~㉤, ⓐ~ⓔ 표지를 실제 수능처럼 적절히 배치하세요.
 - 문학 지문도 실제 수능처럼 인물 대사·서술·시 연·고전 어휘 현대어 풀이(예: 즈믄 해=천 년), [중략 줄거리]가 살아있는 완성도 높은 분량으로 작성하세요.
 - box 필드(<보 기> 내용) 안에는 절대 "<보 기>"나 "<보기>" 제목 글자를 쓰지 마세요.
 - 독서 어휘 문항은 실제 2026·2027 수능 PDF처럼 **[1~3] 독서 이론에는 절대 출제하지 말고**, [4~9] (가)/(나) 지문 마지막 문항(9번)에 1문항 + [10~13] 또는 [14~17] 지문 마지막 문항(13번 또는 17번)에 1문항, 총 2문항만 출제하세요(box는 반드시 빈 문자열 ""):
-  · 유형 1(다의어 문맥 의미): 지문 내 1개 단어에만 ⓐ를 표기하고, 발문은 "문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?", 선지 ①~⑤에는 **절대 ⓐ 기호를 넣지 말고** 서로 다른 5개 일상 예문 속 해당 단어만 작은따옴표('...')로 감싸 제시하세요(예: ① 우리들은 결국 불합리한 차별을 무너뜨렸다.).
+  · 유형 1(다의어 문맥 의미): 지문 내 1개 단어에만 ⓐ를 표기하고, 발문은 반드시 **"문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?"**(발문에 '매몰되어' 같은 단어를 따옴표로 병기하지 말 것!), 선지 ①~⑤에는 **절대 ⓐ 기호를 넣지 말고** 각 예문에서 의미를 비교할 동사/형용사 단어에만 <u>...</u> 밑줄을 쳐서 제시하세요(예: ① 우리 대표팀은 강호들을 꺾고 우승을 <u>거머쥐었다</u>.).
   · 유형 2(어휘 바꿔 쓰기): 지문 내 5개 어휘에 ⓐ~ⓔ를 표기하고, 발문은 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?"(또는 "적절하지 않은 것은?"), 선지 ①~⑤는 "① ⓐ : 대체어" 형식으로 제시하세요.
 - stem 안에 [학습 활동] 본문이나 비교표를 섞어 넣지 말고, 추가 자료는 box 필드에 넣으세요.
 - 모든 문항의 stem 앞에는 반드시 문항 번호("1. ", "2. " ... "45. ")를 붙이고, 지정된 범위의 모든 번호를 1문항도 빠짐없이 출제하세요.
@@ -1442,23 +1563,23 @@ ${existingSummary}
 
   try {
     updateJob(8, '1단계: 독서 이론 · 인문·사회(가/나) 지문 심층 출제 및 검토 중...');
-    let p1a = await draftAndRefinePart('독서 1~9번', '공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론(900자+, 3문항), [4~9] 인문·사회 주제 통합 (가)/(나)(합산 2,600자+, 6문항, [3점] 포함).', '1~9번');
+    let p1a = await draftAndRefinePart('독서 1~9번', '공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론(3~4문단, 1,000~1,200자, 3문항), [4~9] 인문·사회 주제 통합 (가)/(나)((가) 3~4문단 + (나) 3~4문단 합산 2,600~3,000자, 6문항, 9번은 어휘 문항, [3점] 포함).', '1~9번');
     p1a = await ensureRangeComplete('독서 1~9번', p1a, 1, 9, '공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론, [4~9] 인문·사회 (가)/(나).');
 
     updateJob(26, '2단계: 과학·기술 · 법·경제 고난도 추론 지문 출제 및 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    let p1b = await draftAndRefinePart('독서 10~17번', '공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술(1,800자+, 4문항, [3점] 포함 — 과도한 이과 전공 지식·수식·전문 약어 배제, 지문 속 친절한 개념 정의와 직관적 비유·인과 설명만으로 문과 학생도 논리적으로 충분히 풀 수 있는 적정 난이도 유지), [14~17] 법·경제(1,800자+, 4문항, [3점] 포함).', '10~17번');
+    let p1b = await draftAndRefinePart('독서 10~17번', '공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술(4~5문단, 1,800~2,100자, 4문항, [3점] 포함 — 과도한 이과 전공 지식·수식·전문 약어 배제, 지문 속 친절한 개념 정의와 직관적 비유·인과 설명만으로 문과 학생도 논리적으로 충분히 풀 수 있는 적정 난이도 유지), [14~17] 법·경제(4~5문단, 1,800~2,100자, 4문항, [3점] 포함).', '10~17번');
     p1b = await ensureRangeComplete('독서 10~17번', p1b, 10, 17, '공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술, [14~17] 법·경제.');
 
     updateJob(45, '3단계: 현대소설 · 갈래 복합 작품 선정 및 문항 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    let p2a = await draftAndRefinePart('문학 18~27번', '공통과목 문학 18~27번(총 10문항): [18~21] 현대소설(1,800자+, 4문항), [22~27] 갈래 복합 (가) 고전시가+(나) 현대시/수필(1,600자+, 6문항).', '18~27번');
-    p2a = await ensureRangeComplete('문학 18~27번', p2a, 18, 27, '공통과목 문학 18~27번(총 10문항): [18~21] 현대소설, [22~27] 갈래 복합.');
+    let p2a = await draftAndRefinePart('문학 18~26번', '공통과목 문학 18~26번(총 9문항): [18~21] 현대소설(1,800자+, 4문항), [22~26] 갈래 복합 (가) 고전시가+(나) 현대시/수필(1,600자+, 5문항). 반드시 26번까지만 출제하세요.', '18~26번');
+    p2a = await ensureRangeComplete('문학 18~26번', p2a, 18, 26, '공통과목 문학 18~26번(총 9문항): [18~21] 현대소설, [22~26] 갈래 복합.');
 
     updateJob(64, '4단계: 고전소설 · 현대시(가/나) 출제 및 <보기> 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    let p2b = await draftAndRefinePart('문학 28~34번', '공통과목 문학 28~34번(총 7문항): [28~31] 고전소설(1,700자+, 4문항), [32~34] 현대시 (가)/(나) 2편 전문 및 3문항.', '28~34번');
-    p2b = await ensureRangeComplete('문학 28~34번', p2b, 28, 34, '공통과목 문학 28~34번(총 7문항): [28~31] 고전소설, [32~34] 현대시 (가)/(나).');
+    let p2b = await draftAndRefinePart('문학 27~34번', '공통과목 문학 27~34번(총 8문항): [27~30] 고전소설(1,700자+, 4문항), [31~34] 현대시 (가)/(나) 2편 전문(passage.header="[31~34] 다음 글을 읽고 물음에 답하시오.", passage.body에 (가), (나) 시 배치 — 절대 문항 <보 기> 안에 시를 넣지 말 것!) 및 4문항.', '27~34번');
+    p2b = await ensureRangeComplete('문학 27~34번', p2b, 27, 34, '공통과목 문학 27~34번(총 8문항): [27~30] 고전소설, [31~34] 현대시 (가)/(나).');
 
     updateJob(82, `5단계: 선택과목(${elective} 35~45번) 출제 및 최종 45문항 검수 중...`);
     await new Promise(r => setTimeout(r, 1000));
@@ -1507,7 +1628,7 @@ ${existingSummary}
     // Normalize 3-point count to exactly 10 questions (total 100 points) matching 10-year KICE CSAT standard
     const flatQs = passages.flatMap(p => p.questions || []);
     if (flatQs.length === 45) {
-      const targetThree = new Set([6, 8, 12, 16, 21, 26, 31, 34, 39, 44]);
+      const targetThree = new Set([6, 8, 12, 16, 21, 25, 30, 34, 39, 44]);
       let threeList = flatQs.filter(q => Number(q.points) === 3);
       if (threeList.length > 10) {
         let excess = threeList.length - 10;
