@@ -1050,13 +1050,18 @@
       </div>
       </div>
       <div id="koreanScorePanel" class="hidden space-y-6">
-        <!-- 최상단 좌측: 모의고사 / 개별 성적 기록 모드 전환 -->
-        <div class="flex flex-wrap items-center gap-2">
-          <button id="korFilterMockToggle" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 text-white shadow-xs transition">
-            <span>누적 모의고사 성적 기록</span>
-          </button>
-          <button id="korFilterIndToggle" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">
-            <span>누적 개별 성적 기록</span>
+        <!-- 최상단: 모의고사 / 개별 성적 기록 모드 전환 + 맞춤 성적표 제작 -->
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="korFilterMockToggle" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 text-white shadow-xs transition">
+              <span>누적 모의고사 성적 기록</span>
+            </button>
+            <button id="korFilterIndToggle" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">
+              <span>누적 개별 성적 기록</span>
+            </button>
+          </div>
+          <button type="button" onclick="openCustomReportModal()" class="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition">
+            <span>맞춤 성적표 제작 (PDF·인쇄)</span>
           </button>
         </div>
 
@@ -1071,7 +1076,6 @@
                 <i data-lucide="line-chart" class="w-4 h-4 text-emerald-600 shrink-0"></i>
                 <span>국어 성적 추이 그래프</span>
               </h3>
-              <button type="button" onclick="openCustomReportModal()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition shrink-0">맞춤 성적표 제작 (PDF·인쇄)</button>
             </div>
             <div class="flex items-center justify-between gap-2">
               <p class="text-[11px] sm:text-xs text-slate-500 leading-snug">입력된 항목(전체·공통·백분위·표준점수)만 점수 범위에 맞춰 자동 확대해 보여줍니다.</p>
@@ -2475,7 +2479,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v98';
+    const CLIENT_BUILD_VERSION = '20261128_v102';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -7597,7 +7601,11 @@
             stemTxt = `${no}. ${stemTxt}`;
           }
           if (/바꿔\s*쓰기/.test(stemTxt)) {
-            stemTxt = stemTxt.replace(/문맥상\s*([ⓐ-ⓔ])(?!\s*[~～-])\s*(?:을|를)?\s*바꿔\s*쓰기에/, '문맥상 ⓐ～ⓔ를 바꿔 쓰기에');
+            stemTxt = stemTxt
+              .replace(/문맥상\s*([ⓐ-ⓔ])(?!\s*[~～-])\s*(?:을|를)?\s*바꿔\s*쓰기에/, '문맥상 ⓐ～ⓔ를 바꿔 쓰기에')
+              .replace(/\s*\[학습\s*활동\][\s\S]*$/i, '')
+              .replace(/\s*\*\s*다음\s*단어의\s*의미를[\s\S]*$/i, '')
+              .trim();
           }
           const isVocabNear = (/문맥상\s*[ⓐ-ⓔ]/.test(stemTxt) || /문맥적\s*의미/.test(stemTxt)) && !/바꿔\s*쓰기/.test(stemTxt);
           if (isVocabNear) {
@@ -7613,7 +7621,12 @@
             else if (Array.isArray(rawBox)) { rawBox = rawBox.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join('\n'); }
             else { rawBox = Object.entries(rawBox).map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n'); }
           }
-          let cleanBox = String(rawBox || '').replace(/\[object Object\]/g, '').replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '').trim();
+          let cleanBox = String(rawBox || '')
+            .replace(/\[object Object\]/g, '')
+            .replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '')
+            .replace(/^\s*[-•*]?\s*(?:labels|series|values|chartType|headers|rows)\s*:\s*.*$/gim, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
           if (!cleanBox) {
             const inlineBogiM = stemTxt.match(/^([\s\S]*?[?？.])\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*([\s\S]+)$/);
             if (inlineBogiM && inlineBogiM[2].trim().length >= 8) {
@@ -7678,7 +7691,7 @@
             ).join('') + `</div>`;
           }
 
-          return `<div style="margin-top:44px;break-inside:avoid;">
+          return `<div style="margin-top:28px;break-inside:avoid;">
             <div style="font-family:${serifFont};font-weight:500;font-size:11.4px;line-height:1.52;text-align:justify;word-break:normal;overflow-wrap:break-word;">${fmtInline(stemTxt)}${pts}</div>
             ${standaloneVisHtml}
             ${boxHtml}
@@ -7731,7 +7744,7 @@
               }
             }
           }
-          const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:36px 0 8px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
+          const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:24px 0 4px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
           const rawParas = bodyStr.split(/\n+/).map(s => s.trim()).filter(Boolean);
           const paras = [];
           rawParas.forEach(pr => {
@@ -7773,7 +7786,7 @@
               const isFirstP = pi === 0;
               const isLastP = (pi === mergedParas.length - 1) && !hasPVis;
               const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:6px;' : 'padding-top:0;';
-              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:32px;' : 'padding-bottom:0;';
+              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:24px;' : 'padding-bottom:0;';
               const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.52;text-align:justify;`;
               const lblHtml = pObj.label ? fmtParagraph(pObj.label, true) : '';
               let innerHtml = fmtParagraph(pr, true);
@@ -7829,7 +7842,7 @@
           d.innerHTML = u.html;
           measurer.appendChild(d);
           u.h = Math.max(16, d.getBoundingClientRect().height);
-          u.topTrim = u.isGapTarget ? 42 : (u.isPassageStart ? 34 : 0);
+          u.topTrim = u.isGapTarget ? 26 : (u.isPassageStart ? 22 : 0);
         });
         document.body.removeChild(measurer);
 
@@ -7949,8 +7962,8 @@
               let h = u.html;
               if (ui === 0) {
                 h = h
-                  .replace(/margin-top:44px;/, 'margin-top:2px;')
-                  .replace(/margin:36px 0 8px 0;/, 'margin:2px 0 8px 0;');
+                  .replace(/margin-top:28px;/, 'margin-top:2px;')
+                  .replace(/margin:24px 0 4px 0;/, 'margin:2px 0 4px 0;');
               }
               if (!u.isGapTarget) {
                 if (pExtra > 0 && ui > 0) h = h.replace(/padding-top:0;/, `padding-top:${pExtra}px;`);
@@ -7961,7 +7974,7 @@
               }
             });
             flushP();
-            const shouldSpread = blocks.length >= 2 && colH >= maxH * 0.52;
+            const shouldSpread = blocks.length >= 2 && colH >= maxH * 0.72 && spare <= 140;
             const wrapStyle = shouldSpread
               ? 'height:100%;display:flex;flex-direction:column;justify-content:space-between;'
               : 'display:flex;flex-direction:column;justify-content:flex-start;';
