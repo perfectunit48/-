@@ -773,7 +773,7 @@
   </header>
 
   <!-- Main Content with Left Sidebar on PC/Tablet -->
-  <main id="appMain" class="hidden flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-6">
+  <main id="appMain" class="hidden flex-1 w-full px-3 sm:px-5 lg:px-6 py-4 sm:py-6 pb-24 md:pb-6">
     <div class="md:flex md:items-start md:gap-6">
       <aside class="hidden md:flex flex-col w-52 shrink-0 sticky top-20 bg-white rounded-2xl border border-slate-200 p-2.5 shadow-sm gap-1" aria-label="주요 메뉴">
         <button id="desktopEssayTabBtn" class="tab-btn active w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-purple-50 transition" data-tab="essay">
@@ -805,7 +805,7 @@
           <span>자료 제작</span>
         </button>
       </aside>
-      <div class="flex-1 min-w-0 space-y-6">
+      <div class="flex-1 min-w-0 max-w-6xl mx-auto space-y-6">
     <!-- TAB 1: Essay & Feedback Analyzer -->
     <section id="tab-essay" class="tab-panel space-y-6 animate-fade-in">
       <!-- Prompt & Guide Screenshot Summarizer -->
@@ -1037,15 +1037,15 @@
                 <i data-lucide="line-chart" class="w-4 h-4 text-emerald-600"></i>
                 국어 성적 추이 그래프
               </h3>
-              <p class="text-xs text-slate-500">입력한 순서대로 전체·공통·선택·백분위 변화 추이를 보여줍니다.</p>
+              <p class="text-xs text-slate-500">입력된 항목(전체·공통·백분위·표준점수)만 점수 범위에 맞춰 자동 확대해 보여줍니다.</p>
             </div>
             <div class="flex items-center gap-2"><button type="button" onclick="openCustomReportModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 제작 (PDF·인쇄)</button><button id="saveKorChartBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition">
               <i data-lucide="download" class="w-3.5 h-3.5"></i>
               <span>그래프 이미지로 저장</span>
             </button></div>
           </div>
-          <div class="relative w-full overflow-x-auto">
-            <canvas id="korScoreChartCanvas" width="760" height="260" class="w-full max-w-full rounded-xl border border-slate-100 bg-white cursor-crosshair"></canvas>
+          <div class="relative w-full max-w-[680px] mx-auto overflow-x-auto">
+            <canvas id="korScoreChartCanvas" width="680" height="260" class="block mx-auto max-w-full rounded-xl border border-slate-100 bg-white cursor-crosshair"></canvas>
             <div id="korChartTooltip" class="hidden pointer-events-none absolute z-20 bg-slate-900/95 text-white text-[11px] rounded-xl px-3 py-2 shadow-lg whitespace-nowrap leading-relaxed"></div>
             
           </div>
@@ -2166,41 +2166,41 @@
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
           <div class="font-bold text-slate-900 mb-1">2. 첨삭 &amp; 분석 · 사진 반영하기</div>
-          <p>논술 제시문·해설 스크린샷을 첨부하고 <strong>사진 반영하기</strong>를 누르면 핵심 개념어와 논제 조건이 요약됩니다. 이후 학생 글과 선생님 첨삭을 입력해 <strong>강점 · 약점 포인트 요약하기</strong>를 누르면, 반영된 논점까지 연결해 분석하고 약점 태그를 자유롭게 추가·삭제할 수 있습니다.</p>
+          <p>논술 제시문·해설 스크린샷을 첨부하고 <strong>사진 반영하기</strong>를 누르면 핵심 개념어와 논제 조건이 요약됩니다. 이후 학생 글과 선생님 첨삭을 입력해 <strong>강점 · 약점 포인트 요약하기</strong>를 누르면 반영된 논점까지 연결해 분석하고 약점 태그를 자유롭게 추가·삭제할 수 있습니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-          <div class="font-bold text-slate-900 mb-1">3. 누적 글 데이터 · 진도 · 출결 · 학부모 문자</div>
-          <p>저장된 글은 <strong>누적 글 데이터</strong>에서 회차별 성장 요약으로 확인하고, <strong>진도·출결 관리</strong>와 <strong>학부모 문자</strong>(저장된 양식 자동 채우기 지원)까지 한곳에서 관리할 수 있습니다.</p>
+          <div class="font-bold text-slate-900 mb-1">3. 누적 글 데이터 · 맞춤 성적표(PDF·인쇄)</div>
+          <p><strong>누적 글 데이터</strong> 탭에서 회차별 종합 성장 요약을 확인하고, <strong>맞춤 성적표 (PDF·인쇄)</strong> 버튼을 눌러 원하는 항목을 체크·드래그로 순서 배치한 뒤 화면 그대로 PDF 저장 및 인쇄할 수 있습니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-          <div class="font-bold text-slate-900 mb-1">4. 논술 기출 · 공지사항</div>
-          <p><strong>논술 기출</strong> 탭에서 주요 12개 대학의 2021~2026학년도 선행학습영향평가 보고서를 열람할 수 있으며, 상단 <strong>확성기 아이콘</strong>에서 새 공지사항을 확인할 수 있습니다.</p>
+          <div class="font-bold text-slate-900 mb-1">4. 진도(과제 체크) · 출결 · 학부모 문자</div>
+          <p>PC·태블릿 왼쪽 사이드바에서 <strong>진도 관리</strong>(과제 완료·부분완료·미완료 체크), <strong>출결 관리</strong>(결석 수정 시 보강 전환), <strong>학부모 문자</strong>(저장된 양식에 성적·과제 현황 자동 반영)를 한곳에서 관리할 수 있습니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-          <div class="font-bold text-slate-900 mb-1">5. 건의사항 · 문의하기</div>
-          <p>화면 <strong>왼쪽 아래 편지 아이콘</strong>을 누르면 서비스 오류 제보, 기출 자료 수정 요청, 제휴/광고 문의를 바로 보낼 수 있습니다.</p>
+          <div class="font-bold text-slate-900 mb-1">5. 논술 기출 · 공지사항 · 문의하기</div>
+          <p><strong>논술 기출</strong> 탭에서 주요 12개 대학의 2021~2026학년도 선행학습영향평가 보고서를 열람할 수 있으며, 상단 <strong>확성기 아이콘</strong>(공지사항)과 화면 <strong>왼쪽 아래 편지 아이콘</strong>(오류 제보·문의하기)을 바로 이용할 수 있습니다.</p>
         </div>
       </div>
       <div id="userGuideKoreanBody" class="hidden mt-4 flex-1 overflow-y-auto space-y-3.5 text-xs sm:text-sm text-slate-700 leading-relaxed custom-scrollbar pr-1">
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
           <div class="font-bold text-slate-900 mb-1">1. 학생 추가 · 삭제</div>
-          <p>상단의 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold align-middle"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 학생 추가</span> 아이콘에서 <strong>수능 국어</strong> 과목을 선택해 등록할 수 있고, 이름 옆 <strong>▾</strong> 목록을 눌러 학생을 전환하거나 삭제할 수 있습니다.</p>
+          <p>우측 상단의 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold align-middle"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 학생 추가</span> 아이콘에서 과목을 선택해 등록할 수 있고, <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 font-bold align-middle"><i data-lucide="user-minus" class="w-3.5 h-3.5"></i> 학생 삭제</span> 아이콘으로 학생을 제거할 수 있습니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-          <div class="font-bold text-slate-900 mb-1">2. 모의고사 입력 · 개별 입력 · 선택 과목(있음/없음)</div>
-          <p><strong>성적 데이터</strong> 탭 왼쪽 상단 <strong>?</strong> 버튼에서 입력 구분 안내를 볼 수 있습니다. <strong>모의고사 입력</strong>에서는 선택 과목 <strong>있음(공통 76/선택 24)</strong>·<strong>없음(공통 100/선택 0점)</strong>을 선택하고, <strong>개별 입력</strong>에서는 총 문제 개수·맞춘 개수·틀린 개수와 영역별(독서·문학·선택) 맞힌 문항을 기록합니다.</p>
+          <div class="font-bold text-slate-900 mb-1">2. 성적 추이 그래프 · 국어 성적 요약 · 맞춤 성적표(PDF·인쇄)</div>
+          <p><strong>성적 데이터</strong> 탭의 그래프는 입력된 항목(전체·공통·백분위·표준점수)만 점수 범위에 맞춰 Y축을 자동 확대해 보여주며, 점이 많아지면 점 위에 마우스나 손가락을 대 시험명과 점수를 확인할 수 있습니다. 바로 아래 <strong>국어 성적 요약</strong>에서 성장 흐름을 보고, <strong>맞춤 성적표 제작 (PDF·인쇄)</strong>에서 항목 체크 및 드래그 순서 배치 후 화면 그대로 PDF 저장·인쇄할 수 있습니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-          <div class="font-bold text-slate-900 mb-1">3. 성적 추이 그래프 · 누적 기록 선택</div>
-          <p>하단의 <strong>누적 모의고사 성적 기록</strong>과 <strong>누적 개별 성적 기록</strong> 중 하나를 선택해 모의고사 기록과 개별 문제풀이 기록을 각각 그래프와 목록으로 분리 조회할 수 있습니다. 그래프 점에 마우스나 손가락을 대면 전체·공통·선택·백분위 수치가 표시됩니다.</p>
+          <div class="font-bold text-slate-900 mb-1">3. 모의고사 입력 · 개별 입력 · 누적 기록 분리 조회</div>
+          <p>성적 입력 영역 왼쪽 상단 <strong>?</strong> 버튼에서 입력 안내를 확인할 수 있습니다. <strong>모의고사 입력</strong>(선택 과목 있음/없음)과 <strong>개별 입력</strong>(총 문제·맞춘·틀린 개수)을 구분해 저장한 뒤, 하단 <strong>누적 모의고사 성적 기록 / 누적 개별 성적 기록</strong> 버튼으로 분리 조회할 수 있습니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-          <div class="font-bold text-slate-900 mb-1">4. 국어 기출(2017~2027) · 기관별 원점수 등급컷 · AI 해설</div>
-          <p><strong>국어 기출</strong> 탭에서 문제지 PDF와 공통(1~34)·화법과 작문·언어와 매체 정답표를 즉시 확인하고, 2023~2027학년도 주요 5개 기관(EBSi·메가스터디·대성마이맥·종로학원·이투스) 원점수 1~3등급 컷을 비교할 수 있습니다. 아래 AI 질문 창에서 지문·선지 근거도 바로 질문하세요.</p>
+          <div class="font-bold text-slate-900 mb-1">4. 국어 기출(2017~2027) · 공식 원점수 등급컷 · AI 해설</div>
+          <p><strong>국어 기출</strong> 탭에서 2017~2027학년도 6월·9월·수능 문제지 PDF와 홀수형 공식 정답표, 원점수 1~3등급 컷을 즉시 확인할 수 있습니다. 아래 AI 질문 창에서 지문·선지 근거도 바로 질문하세요.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-          <div class="font-bold text-slate-900 mb-1">5. 진도 · 출결(보강 전환) · 학부모 문자 · 공지 · 문의</div>
-          <p><strong>출결</strong> 탭에서 결석 기록을 수정할 때 보강으로 전환할 수 있으며, <strong>카톡문자</strong> 탭에서 강약점·성적 요약을 반영한 학부모 안내 문자를 바로 생성할 수 있습니다. 상단 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold align-middle"><i data-lucide="megaphone" class="w-3.5 h-3.5"></i> 공지사항</span>과 <strong>문의 및 안내</strong>를 통해 업데이트 소식 확인 및 오류 제보·기능 건의를 보내실 수 있습니다.</p>
+          <div class="font-bold text-slate-900 mb-1">5. 진도(과제 체크) · 출결(보강 전환) · 학부모 문자 · 공지 · 문의</div>
+          <p>PC·태블릿 왼쪽 사이드바에서 <strong>진도 관리</strong>(과제 완료·부분완료·미완료 체크), <strong>출결 관리</strong>(보강 전환), <strong>학부모 문자</strong>(성적 요약·과제 현황 자동 반영)를 관리할 수 있습니다. 상단 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold align-middle"><i data-lucide="megaphone" class="w-3.5 h-3.5"></i> 공지사항</span>과 왼쪽 아래 <strong>편지 아이콘(문의하기)</strong>으로 소식 확인 및 기능 건의를 보내실 수 있습니다.</p>
         </div>
       </div></div>
     </div>
@@ -2411,7 +2411,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v85';
+    const CLIENT_BUILD_VERSION = '20261128_v89';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -3032,7 +3032,7 @@
       if (!canvas) return;
       const dpr = Math.max(2, window.devicePixelRatio || 2);
       const parentW = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
-      const cssW = Math.max(300, parentW || (window.innerWidth < 640 ? window.innerWidth - 56 : 760));
+      const cssW = Math.max(300, Math.min(680, parentW || (window.innerWidth < 640 ? window.innerWidth - 56 : 680)));
       const cssH = cssW < 480 ? 235 : 280;
       canvas.width = Math.round(cssW * dpr);
       canvas.height = Math.round(cssH * dpr);
@@ -3069,7 +3069,31 @@
       const plotW = W - padL - padR;
       const plotH = H - padT - padB;
       const isCount = scores.every(x => x.inputMode === 'count');
-      const maxVal = isCount ? Math.max(45, ...scores.map(x => Number(x.totalQuestions || x.total || 45))) : 100;
+      const hasTotal = scores.some(sc => sc.total !== '' && sc.total !== null && sc.total !== undefined && !isNaN(Number(sc.total)));
+      const hasCommon = scores.some(sc => sc.common !== '' && sc.common !== null && sc.common !== undefined && !isNaN(Number(sc.common)));
+      const hasPct = scores.some(sc => sc.pct !== '' && sc.pct !== null && sc.pct !== undefined && !isNaN(Number(sc.pct)));
+      const hasStd = scores.some(sc => sc.std !== '' && sc.std !== null && sc.std !== undefined && Number(sc.std) > 0);
+
+      // Dynamic Y-axis scaling based on actual entered values (excluding 선택 과목)
+      const plottedVals = [];
+      scores.forEach(sc => {
+        if (sc.total !== '' && sc.total !== null && sc.total !== undefined && !isNaN(Number(sc.total))) plottedVals.push(Number(sc.total));
+        if (sc.common !== '' && sc.common !== null && sc.common !== undefined && !isNaN(Number(sc.common))) plottedVals.push(Number(sc.common));
+        if (sc.pct !== '' && sc.pct !== null && sc.pct !== undefined && !isNaN(Number(sc.pct))) plottedVals.push(Number(sc.pct));
+        if (sc.std !== '' && sc.std !== null && sc.std !== undefined && Number(sc.std) > 0) plottedVals.push(Number(sc.std));
+      });
+      const rawMin = plottedVals.length ? Math.min(...plottedVals) : 0;
+      const rawMax = plottedVals.length ? Math.max(...plottedVals) : 100;
+      const span = rawMax - rawMin;
+      const stepUnit = span <= 16 ? 2 : 5;
+      const padMargin = span <= 12 ? 4 : Math.max(5, Math.round(span * 0.14));
+      let yMin = Math.max(0, Math.floor((rawMin - padMargin) / stepUnit) * stepUnit);
+      let yMax = Math.ceil((rawMax + padMargin) / stepUnit) * stepUnit;
+      if (yMax - yMin < 12) {
+        yMin = Math.max(0, yMin - 6);
+        yMax = yMax + 6;
+      }
+      const ySpan = Math.max(1, yMax - yMin);
 
       ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1;
@@ -3077,8 +3101,8 @@
       ctx.fillStyle = '#64748b';
       ctx.textAlign = 'right';
       for (let step = 0; step <= 4; step++) {
-        const val = Math.round((maxVal / 4) * step);
-        const y = padT + plotH - (val / maxVal) * plotH;
+        const val = Math.round(yMin + (ySpan / 4) * step);
+        const y = padT + plotH - ((val - yMin) / ySpan) * plotH;
         ctx.beginPath();
         ctx.moveTo(padL, y);
         ctx.lineTo(W - padR, y);
@@ -3086,14 +3110,11 @@
         ctx.fillText(String(val), padL - 10, y + 4);
       }
 
-      const hasCommon = scores.some(sc => sc.common !== '' && sc.common !== null && sc.common !== undefined);
-      const hasElective = scores.some(sc => sc.elective !== '' && sc.elective !== null && sc.elective !== undefined);
-      const hasPct = scores.some(sc => sc.pct !== '' && sc.pct !== null && sc.pct !== undefined);
       const legends = [
-        { label: isCount ? '맞춘 개수' : '전체(100)', color: '#059669' },
+        ...(hasTotal ? [{ label: isCount ? '맞춘 개수' : '전체(100)', color: '#059669' }] : []),
         ...(hasCommon ? [{ label: isCount ? '공통(34)' : '공통(76)', color: '#4f46e5' }] : []),
-        ...(hasElective ? [{ label: isCount ? '선택(11)' : '선택(24)', color: '#d97706' }] : []),
-        ...(hasPct ? [{ label: '백분위(%)', color: '#9333ea' }] : [])
+        ...(hasPct ? [{ label: '백분위(%)', color: '#9333ea' }] : []),
+        ...(hasStd ? [{ label: '표준점수', color: '#0284c7' }] : [])
       ];
       let lx = padL;
       ctx.textAlign = 'left';
@@ -3103,14 +3124,14 @@
         ctx.fillStyle = '#1e293b';
         ctx.font = 'bold 11px sans-serif';
         ctx.fillText(lg.label, lx + 17, 18);
-        lx += Math.max(72, ctx.measureText(lg.label).width + 26);
+        lx += Math.max(68, ctx.measureText(lg.label).width + 24);
       });
 
       const n = scores.length;
       const getX = (i) => n === 1 ? (padL + plotW / 2) : (padL + (i / (n - 1)) * plotW);
-      const getY = (v) => padT + plotH - (Math.min(maxVal, Math.max(0, Number(v || 0))) / maxVal) * plotH;
+      const getY = (v) => padT + plotH - ((Math.min(yMax, Math.max(yMin, Number(v || 0))) - yMin) / ySpan) * plotH;
 
-      const drawSeries = (getter, color, suffix = '') => {
+      const drawSeries = (getter, color) => {
         ctx.strokeStyle = color;
         ctx.lineWidth = 2.4;
         ctx.lineJoin = 'round';
@@ -3136,14 +3157,13 @@
           ctx.strokeStyle = color;
           ctx.lineWidth = 2;
           ctx.stroke();
-
         });
       };
 
-      if (hasElective) drawSeries(sc => sc.elective, '#d97706');
-      drawSeries(sc => sc.common, '#4f46e5');
-      drawSeries(sc => sc.total, '#059669');
-      if (hasPct) drawSeries(sc => sc.pct, '#9333ea', '%');
+      if (hasCommon) drawSeries(sc => sc.common, '#4f46e5');
+      if (hasTotal) drawSeries(sc => sc.total, '#059669');
+      if (hasPct) drawSeries(sc => sc.pct, '#9333ea');
+      if (hasStd) drawSeries(sc => (Number(sc.std) > 0 ? sc.std : ''), '#0284c7');
 
       korChartPoints = scores.map((sc, i) => ({
         i,
@@ -3151,19 +3171,26 @@
         title: String(sc.title || sc.date || `${i + 1}회`),
         total: sc.total,
         common: sc.common,
-        elective: sc.elective,
         pct: sc.pct,
+        std: sc.std,
         unit: sc.inputMode === 'count' ? '개' : '점'
       }));
 
-      ctx.fillStyle = '#334155';
-      ctx.font = '600 11px sans-serif';
-      ctx.textAlign = 'center';
-      scores.forEach((sc, i) => {
-        const x = getX(i);
-        const lbl = getChartLabel(sc);
-        ctx.fillText(lbl, x, H - 18);
-      });
+      if (scores.length <= 5) {
+        ctx.fillStyle = '#334155';
+        ctx.font = '600 11px sans-serif';
+        ctx.textAlign = 'center';
+        scores.forEach((sc, i) => {
+          const x = getX(i);
+          const lbl = getChartLabel(sc);
+          ctx.fillText(lbl, x, H - 18);
+        });
+      } else {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '500 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`총 ${scores.length}회 기록 · 점에 마우스를 올리면 시험명이 표시됩니다`, W / 2, H - 16);
+      }
 
       if (!canvas.dataset.tooltipBound) {
         canvas.dataset.tooltipBound = '1';
@@ -9064,14 +9091,40 @@
             </div>
           </div>
           <div class="space-y-1.5 pt-1 border-t border-slate-200">
-            <div class="text-xs font-extrabold text-slate-800 mb-1">성적표 포함 항목 선택</div>
-            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptProfile" type="checkbox" checked class="rounded text-indigo-600" /> 학생 기본 정보 (이름·학년·과목)</label>
-            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptKpi" type="checkbox" checked class="rounded text-indigo-600" /> 핵심 성과 요약 카드 (최근/최고/누적)</label>
-            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptChart" type="checkbox" checked class="rounded text-indigo-600" /> 성적 추이 그래프 (국어 과목 시)</label>
-            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptScores" type="checkbox" checked class="rounded text-indigo-600" /> 회차별 상세 성적·첨삭 기록표</label>
-            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptAttendance" type="checkbox" checked class="rounded text-indigo-600" /> 출결 현황 (출석·지각·결석)</label>
-            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptProgress" type="checkbox" checked class="rounded text-indigo-600" /> 진도 및 과제 수행 현황</label>
-            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptComment" type="checkbox" checked class="rounded text-indigo-600" /> 선생님 종합 총평 &amp; 학습 계획</label>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-extrabold text-slate-800">성적표 포함 항목 &amp; 순서 (드래그 이동)</span>
+              <span class="text-[10px] text-slate-400">위아래 드래그</span>
+            </div>
+            <div id="crSectionSortableList" class="space-y-1.5">
+              <div draggable="true" data-sec="profile" class="cr-drag-item flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 cursor-grab active:cursor-grabbing hover:border-indigo-300">
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer flex-1"><input id="crOptProfile" type="checkbox" checked class="rounded text-indigo-600" /> 학생 기본 정보 (이름·학년·과목)</label>
+                <span class="text-slate-400 text-xs select-none" title="드래그하여 순서 변경">⋮⋮</span>
+              </div>
+              <div draggable="true" data-sec="kpi" class="cr-drag-item flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 cursor-grab active:cursor-grabbing hover:border-indigo-300">
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer flex-1"><input id="crOptKpi" type="checkbox" checked class="rounded text-indigo-600" /> 핵심 성과 요약 (누적 응시/기록 · 성적)</label>
+                <span class="text-slate-400 text-xs select-none" title="드래그하여 순서 변경">⋮⋮</span>
+              </div>
+              <div draggable="true" data-sec="chart" class="cr-drag-item flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 cursor-grab active:cursor-grabbing hover:border-indigo-300">
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer flex-1"><input id="crOptChart" type="checkbox" checked class="rounded text-indigo-600" /> 성적 추이 그래프 (국어 과목 시)</label>
+                <span class="text-slate-400 text-xs select-none" title="드래그하여 순서 변경">⋮⋮</span>
+              </div>
+              <div draggable="true" data-sec="scores" class="cr-drag-item flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 cursor-grab active:cursor-grabbing hover:border-indigo-300">
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer flex-1"><input id="crOptScores" type="checkbox" checked class="rounded text-indigo-600" /> 회차별 상세 성적·첨삭 기록표</label>
+                <span class="text-slate-400 text-xs select-none" title="드래그하여 순서 변경">⋮⋮</span>
+              </div>
+              <div draggable="true" data-sec="attendance" class="cr-drag-item flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 cursor-grab active:cursor-grabbing hover:border-indigo-300">
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer flex-1"><input id="crOptAttendance" type="checkbox" checked class="rounded text-indigo-600" /> 출결 현황 (출석·지각·결석)</label>
+                <span class="text-slate-400 text-xs select-none" title="드래그하여 순서 변경">⋮⋮</span>
+              </div>
+              <div draggable="true" data-sec="progress" class="cr-drag-item flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 cursor-grab active:cursor-grabbing hover:border-indigo-300">
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer flex-1"><input id="crOptProgress" type="checkbox" checked class="rounded text-indigo-600" /> 진도 및 과제 수행 현황</label>
+                <span class="text-slate-400 text-xs select-none" title="드래그하여 순서 변경">⋮⋮</span>
+              </div>
+              <div draggable="true" data-sec="comment" class="cr-drag-item flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 cursor-grab active:cursor-grabbing hover:border-indigo-300">
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer flex-1"><input id="crOptComment" type="checkbox" checked class="rounded text-indigo-600" /> 선생님 종합 총평 &amp; 학습 계획</label>
+                <span class="text-slate-400 text-xs select-none" title="드래그하여 순서 변경">⋮⋮</span>
+              </div>
+            </div>
           </div>
           <div class="space-y-1.5 pt-1 border-t border-slate-200">
             <label class="block text-xs font-bold text-slate-700">선생님 총평 · 다음 학습 계획</label>
@@ -9123,8 +9176,12 @@
             </div>
           </div>`;
 
+        const korList = Array.isArray(stu.koreanScores) ? stu.koreanScores : (Array.isArray(stu.korScores) ? stu.korScores : []);
+        const essList = Array.isArray(stu.essays) ? stu.essays : [];
+        const sections = {};
+
         if (showProfile) {
-          html += `
+          sections.profile = `
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;font-size:12px;">
               <div><span style="color:#64748b;">학생 이름:</span> <strong>${escR(stu.name)}</strong></div>
               <div><span style="color:#64748b;">학년:</span> <strong>${escR(stu.grade || '-')}</strong></div>
@@ -9132,25 +9189,19 @@
             </div>`;
         }
 
-        const korList = Array.isArray(stu.koreanScores) ? stu.koreanScores : (Array.isArray(stu.korScores) ? stu.korScores : []);
-        const essList = Array.isArray(stu.essays) ? stu.essays : [];
-
         if (showKpi) {
           if (isKor) {
             const latest = korList[0];
-            const best = korList.reduce((mx, x) => Math.max(mx, Number(x.total ?? x.totalScore ?? 0)), 0);
-            html += `
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">누적 응시/기록</div><div style="font-size:17px;font-weight:800;color:#0f172a;margin-top:2px;">${korList.length}회</div></div>
-                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">최근 성적</div><div style="font-size:17px;font-weight:800;color:#059669;margin-top:2px;">${latest ? ((latest.total ?? latest.totalScore ?? '-') + '점 (' + (latest.grade || '-') + '등급)') : '-'}</div></div>
-                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">최고 점수</div><div style="font-size:17px;font-weight:800;color:#4f46e5;margin-top:2px;">${korList.length ? best + '점' : '-'}</div></div>
+            sections.kpi = `
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;"><div style="font-size:10.5px;color:#64748b;">누적 응시/기록</div><div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:2px;">${korList.length}회</div></div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;"><div style="font-size:10.5px;color:#64748b;">성적</div><div style="font-size:18px;font-weight:800;color:#059669;margin-top:2px;">${latest ? ((latest.total ?? latest.totalScore ?? '-') + '점' + (latest.grade ? ' (' + latest.grade + '등급)' : '')) : '-'}</div></div>
               </div>`;
           } else {
-            html += `
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">누적 논술 첨삭</div><div style="font-size:17px;font-weight:800;color:#0f172a;margin-top:2px;">${essList.length}편</div></div>
-                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">최근 작성일</div><div style="font-size:14px;font-weight:800;color:#4f46e5;margin-top:4px;">${essList[0] ? escR(essList[0].date) : '-'}</div></div>
-                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">최근 논제</div><div style="font-size:12px;font-weight:700;color:#0f172a;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${essList[0] ? escR(essList[0].title) : '-'}</div></div>
+            sections.kpi = `
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;"><div style="font-size:10.5px;color:#64748b;">누적 응시/기록</div><div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:2px;">${essList.length}편</div></div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;"><div style="font-size:10.5px;color:#64748b;">최근 작성 · 논제</div><div style="font-size:13px;font-weight:800;color:#4f46e5;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${essList[0] ? escR((essList[0].date || '') + ' · ' + (essList[0].title || '')) : '-'}</div></div>
               </div>`;
           }
         }
@@ -9160,10 +9211,10 @@
           if (cvs && korList.length > 0) {
             try {
               const imgUrl = cvs.toDataURL('image/png');
-              html += `
+              sections.chart = `
                 <div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;">
                   <div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px;">성적 변화 추이 그래프</div>
-                  <img src="${imgUrl}" style="width:100%;height:auto;display:block;border-radius:6px;" />
+                  <img src="${imgUrl}" style="width:100%;max-width:560px;height:auto;display:block;margin:0 auto;border-radius:6px;" />
                 </div>`;
             } catch (e) {}
           }
@@ -9177,9 +9228,9 @@
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;font-weight:600;">${escR(x.title || '-')}</td>
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;font-weight:700;">${escR(x.total ?? x.totalScore ?? '-')}점</td>
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;">${escR(x.grade ? x.grade + '등급' : '-')}</td>
-                <td style="border:1px solid #cbd5e1;padding:5px 7px;font-size:10.5px;color:#475569;">${escR(x.weaknessNote || x.memo || '-')}</td>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;font-size:10.5px;color:#475569;">${escR((x.weaknesses || []).join(', ') || x.weaknessNote || x.memo || '-')}</td>
               </tr>`).join('');
-            html += `
+            sections.scores = `
               <div>
                 <div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px;">회차별 성적 상세 기록</div>
                 <table style="width:100%;border-collapse:collapse;font-size:11px;">
@@ -9200,7 +9251,7 @@
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;font-weight:600;">${escR(x.title || '-')}</td>
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;font-size:10.5px;">${escR((x.weaknesses || []).join(', ') || '-')}</td>
               </tr>`).join('');
-            html += `
+            sections.scores = `
               <div>
                 <div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px;">회차별 논술 첨삭 기록</div>
                 <table style="width:100%;border-collapse:collapse;font-size:11px;">
@@ -9220,7 +9271,7 @@
           const pCnt = att.filter(a => a.status === '출석').length;
           const lCnt = att.filter(a => a.status === '지각').length;
           const aCnt = att.filter(a => a.status === '결석').length;
-          html += `
+          sections.attendance = `
             <div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;font-size:11.5px;display:flex;justify-content:space-between;align-items:center;">
               <strong style="color:#0f172a;">출결 현황 요약 (총 ${att.length}회)</strong>
               <div style="display:flex;gap:14px;">
@@ -9233,8 +9284,8 @@
 
         if (showProg) {
           const prog = Array.isArray(stu.progress) ? stu.progress : [];
-          const recentP = prog.slice(0, 5).map(p => `<li style="margin-bottom:3px;"><strong>${escR(p.date || '')}</strong> · ${escR(p.topic || p.title || '')} <span style="color:#4f46e5;">(${escR(p.status || '완료')})</span></li>`).join('');
-          html += `
+          const recentP = prog.slice(0, 5).map(p => `<li style="margin-bottom:3px;"><strong>${escR(p.targetDate || p.date || '')}</strong> · ${escR(p.title || p.topic || '')} <span style="color:#4f46e5;">(${p.done ? '완료' : '진행중'}${p.hwStatus ? ' / 과제 ' + escR(p.hwStatus) : ''})</span></li>`).join('');
+          sections.progress = `
             <div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;font-size:11.5px;">
               <div style="font-weight:800;color:#0f172a;margin-bottom:5px;">최근 진도 · 과제 현황</div>
               ${recentP ? `<ul style="margin:0;padding-left:16px;">${recentP}</ul>` : '<div style="color:#94a3b8;">기록된 진도가 없습니다.</div>'}
@@ -9242,14 +9293,46 @@
         }
 
         if (showCmt) {
-          html += `
+          sections.comment = `
             <div style="border:1.5px solid #4f46e5;background:#eef2ff;border-radius:10px;padding:12px 14px;">
               <div style="font-size:12px;font-weight:800;color:#312e81;margin-bottom:5px;">선생님 종합 총평 및 학습 계획</div>
               <div style="font-size:12px;line-height:1.6;color:#1e293b;white-space:pre-wrap;">${escR(cmtText || '성실한 태도로 수업에 참여하고 있으며, 다음 회차에서는 취약 영역 보완에 집중할 예정입니다.')}</div>
             </div>`;
         }
 
+        const sortList = document.getElementById('crSectionSortableList');
+        const orderKeys = sortList
+          ? Array.from(sortList.querySelectorAll('.cr-drag-item')).map(el => el.dataset.sec)
+          : ['profile','kpi','chart','scores','attendance','progress','comment'];
+        orderKeys.forEach(k => { if (sections[k]) html += sections[k]; });
+
         sheet.innerHTML = html;
+      }
+
+      // Drag-and-drop reordering for custom report sections
+      const sortWrap = document.getElementById('crSectionSortableList');
+      if (sortWrap) {
+        let draggedEl = null;
+        sortWrap.addEventListener('dragstart', (e) => {
+          const item = e.target.closest('.cr-drag-item');
+          if (!item) return;
+          draggedEl = item;
+          item.classList.add('opacity-50', 'border-indigo-500');
+          if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+        });
+        sortWrap.addEventListener('dragend', () => {
+          if (draggedEl) draggedEl.classList.remove('opacity-50', 'border-indigo-500');
+          draggedEl = null;
+          renderCustomReport();
+        });
+        sortWrap.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          const overItem = e.target.closest('.cr-drag-item');
+          if (!draggedEl || !overItem || draggedEl === overItem) return;
+          const rect = overItem.getBoundingClientRect();
+          const after = (e.clientY - rect.top) > (rect.height / 2);
+          sortWrap.insertBefore(draggedEl, after ? overItem.nextSibling : overItem);
+        });
       }
 
       window.openCustomReportModal = function() {

@@ -92,7 +92,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_v85';
+const CLIENT_BUILD_VERSION = '20261128_v89';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -2283,16 +2283,25 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
     : preferred;
 
   const errors = [];
-  let retryWaitMs = 2800;
+  const startedAt = Date.now();
+  let retryWaitMs = 1200;
+  const fastThink = Boolean(bodyObj && bodyObj._fastThinking);
+  const cleanBaseBody = { ...(bodyObj || {}) };
+  delete cleanBaseBody._fastThinking;
+
   const tryModel = async (model) => {
     const controller = new AbortController();
-    const reqTimeout = (bodyObj && bodyObj.generationConfig && bodyObj.generationConfig.maxOutputTokens >= 8192) ? 90000 : 45000;
+    const reqTimeout = fastThink ? 55000 : ((cleanBaseBody.generationConfig && cleanBaseBody.generationConfig.maxOutputTokens >= 8192) ? 75000 : 45000);
     const timer = setTimeout(() => controller.abort(), reqTimeout);
+    const reqBody = JSON.parse(JSON.stringify(cleanBaseBody));
+    if (fastThink && /2\.5|3\./.test(model)) {
+      reqBody.generationConfig = { ...(reqBody.generationConfig || {}), thinkingConfig: { thinkingBudget: 512 } };
+    }
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyObj),
+        body: JSON.stringify(reqBody),
         signal: controller.signal
       });
       clearTimeout(timer);
@@ -2326,18 +2335,21 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
     await new Promise(r => setTimeout(r, lastErr.includes('429') ? retryWaitMs : 400));
   }
 
-  const discovered = await discoverAvailableGeminiModels(apiKey);
-  const extraModels = discovered.filter(m => !order.includes(m) && !/image|tts|audio|embedding/i.test(m)).slice(0, 4);
-  for (const model of extraModels) {
-    const ok = await tryModel(model);
-    if (ok) return ok;
-    const lastErr = errors[errors.length - 1] || '';
-    await new Promise(r => setTimeout(r, lastErr.includes('429') ? 3000 : 400));
+  if (Date.now() - startedAt < 75000) {
+    const discovered = await discoverAvailableGeminiModels(apiKey);
+    const extraModels = discovered.filter(m => !order.includes(m) && !/image|tts|audio|embedding/i.test(m)).slice(0, 3);
+    for (const model of extraModels) {
+      if (Date.now() - startedAt > 90000) break;
+      const ok = await tryModel(model);
+      if (ok) return ok;
+      const lastErr = errors[errors.length - 1] || '';
+      await new Promise(r => setTimeout(r, lastErr.includes('429') ? 1500 : 300));
+    }
   }
 
-  // Final 429 cooldown retry on stable flash model
-  if (errors.some(e => e.includes('429'))) {
-    await new Promise(r => setTimeout(r, 5500));
+  // Final 429 cooldown retry on stable flash model if within budget
+  if (errors.some(e => e.includes('429')) && (Date.now() - startedAt < 92000)) {
+    await new Promise(r => setTimeout(r, 3500));
     const retryOk = await tryModel('gemini-2.5-flash');
     if (retryOk) return retryOk;
   }
@@ -2520,8 +2532,10 @@ app.post('/api/essay-studio-chat', async (req, res) => {
 
     const mode = (Array.isArray(attachments) && attachments.length > 0) ? 'vision' : 'chat';
     const result = await callGeminiWithFallback(apiKey, {
-      systemInstruction: { parts: [{ text: sysPrompt }] },
-      contents
+      _fastThinking: true,
+      systemInstruction: { parts: [{ text: sysPrompt + '\n[속도 원칙] 본문 해설은 핵심 출제 의도·채점 기준·예시 답안 요점만 간결히(600자 이내) 쓰고 바로 <EXAM_PAPER_JSON>을 출력해 전체 생성을 신속히 완료하세요.' }] },
+      contents,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
     }, mode);
 
     if (result.text) {
