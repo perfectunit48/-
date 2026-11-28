@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_v72';
+const CLIENT_BUILD_VERSION = '20261128_v73';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -800,7 +800,25 @@ const VERIFIED_GRADE_CUTS = {
   '2024_6월': { single: { g1: '화작97/언매93', g2: '화작90/언매86', g3: '화작82/언매77' } },
   '2023_수능': { single: { g1: '화작96/언매91', g2: '화작91/언매87', g3: '화작86/언매82' } },
   '2023_9월': { single: { g1: '화작92/언매87', g2: '화작85/언매81', g3: '화작78/언매75' } },
-  '2023_6월': { single: { g1: '화작85/언매82', g2: '화작78/언매75', g3: '화작70/언매67' } }
+  '2023_6월': { single: { g1: '화작85/언매82', g2: '화작78/언매75', g3: '화작70/언매67' } },
+  '2022_수능': { single: { g1: '화작84/언매83', g2: '화작78/언매77', g3: '화작71/언매70' } },
+  '2022_9월': { single: { g1: '화작100/언매96', g2: '화작96/언매93', g3: '화작90/언매86' } },
+  '2022_6월': { single: { g1: '화작90/언매85', g2: '화작81/언매78', g3: '화작73/언매69' } },
+  '2021_수능': { single: { g1: '88', g2: '82', g3: '74' } },
+  '2021_9월': { single: { g1: '90', g2: '84', g3: '77' } },
+  '2021_6월': { single: { g1: '92', g2: '85', g3: '75' } },
+  '2020_수능': { single: { g1: '91', g2: '85', g3: '77' } },
+  '2020_9월': { single: { g1: '90', g2: '83', g3: '76' } },
+  '2020_6월': { single: { g1: '87', g2: '80', g3: '72' } },
+  '2019_수능': { single: { g1: '84', g2: '78', g3: '70' } },
+  '2019_9월': { single: { g1: '97', g2: '92', g3: '85' } },
+  '2019_6월': { single: { g1: '91', g2: '84', g3: '75' } },
+  '2018_수능': { single: { g1: '94', g2: '89', g3: '82' } },
+  '2018_9월': { single: { g1: '93', g2: '88', g3: '81' } },
+  '2018_6월': { single: { g1: '89', g2: '80', g3: '72' } },
+  '2017_수능': { single: { g1: '92', g2: '86', g3: '79' } },
+  '2017_9월': { single: { g1: '90', g2: '83', g3: '75' } },
+  '2017_6월': { single: { g1: '90', g2: '83', g3: '75' } }
 };
 
 function stripHtmlText(html) {
@@ -1741,6 +1759,7 @@ ${existingSummary}
             .replace(/^(\d+\.\s*)다음은\s*위\s*글을\s*읽은\s*학생이\s*어휘\s*학습을\s*위해\s*정리한\s*내용이다\.\s*/i, '$1')
             .replace(/([ⓐ-ⓔ])\s*['"‘’“”][가-힣]+['"‘’“”]/g, '$1');
           if (/바꿔\s*쓰기/.test(stem)) {
+            stem = stem.replace(/문맥상\s*([ⓐ-ⓔ])(?!\s*[~～-])\s*(?:을|를)?\s*바꿔\s*쓰기에/, '문맥상 ⓐ～ⓔ를 바꿔 쓰기에');
             const symList = ['ⓐ', 'ⓑ', 'ⓒ', 'ⓓ', 'ⓔ'];
             const cNums = ['①', '②', '③', '④', '⑤'];
             choices = choices.map((cs, ci) => {
@@ -1751,6 +1770,10 @@ ${existingSummary}
               const noSymM = cs.match(/^\s*([①②③④⑤])\s*(?![ⓐ-ⓔ])[^:：]+[:：]\s*(.+)$/);
               if (noSymM && ci < 5) {
                 return `${cNums[ci]} ${symList[ci]}: ${noSymM[2].replace(/<\/?u>/gi, '').trim()}`;
+              }
+              const parenM = cs.match(/^\s*([①②③④⑤])\s*(?![ⓐ-ⓔ])[가-힣]+\s*\(([^)]+)\)\s*$/);
+              if (parenM && ci < 5) {
+                return `${cNums[ci]} ${symList[ci]}: ${parenM[2].replace(/<\/?u>/gi, '').trim()}`;
               }
               return cs;
             });

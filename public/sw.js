@@ -1,4 +1,4 @@
-const SW_VERSION = 'v72';
+const SW_VERSION = 'v73';
 const CACHE_NAME = 'student-mgr-' + SW_VERSION;
 
 self.addEventListener('install', () => {
