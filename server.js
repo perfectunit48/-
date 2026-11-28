@@ -1312,39 +1312,115 @@ ${JSON.stringify({ passages: draft }).slice(0, 26000)}
     return refined.length > 0 ? refined : draft;
   };
 
+  const ensureRangeComplete = async (partName, partPassages, startNo, endNo, partDesc) => {
+    let list = Array.isArray(partPassages) ? partPassages : [];
+    const getMissing = (arr) => {
+      const seen = new Set();
+      arr.forEach(p => (p.questions || []).forEach(q => {
+        const n = Number(q.no || 0);
+        if (n >= startNo && n <= endNo) seen.add(n);
+      }));
+      const miss = [];
+      for (let n = startNo; n <= endNo; n++) {
+        if (!seen.has(n)) miss.push(n);
+      }
+      return miss;
+    };
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const missing = getMissing(list);
+      if (missing.length === 0 && list.length > 0) break;
+
+      await new Promise(r => setTimeout(r, 900));
+      if (list.length === 0) {
+        const retryPrompt = `${commonPolicy}\n\n[필수 출제 파트: ${partName}]\n${partDesc}\n반드시 ${startNo}번부터 ${endNo}번까지 총 ${endNo - startNo + 1}문항을 1문항도 빠짐없이 출제하세요.`;
+        const retried = await callGeminiJson(retryPrompt);
+        if (retried.length > 0) list = retried;
+        continue;
+      }
+
+      const existingSummary = list.map((p, idx) => {
+        const qNos = (p.questions || []).map(q => Number(q.no || 0)).filter(Boolean).join(',');
+        return `[지문 ${idx + 1}] range=${p.range || ''} (기존 문항: ${qNos})\n${String(p.body || '').slice(0, 2200)}`;
+      }).join('\n\n');
+
+      const fillPrompt = `${commonPolicy}\n\n[누락 문항 긴급 보충: ${partName}]
+현재 ${startNo}~${endNo}번 중 다음 문항 번호가 누락되었습니다: [${missing.join(', ')}번]
+아래 기존 지문 내용을 그대로 유지하고, 누락된 [${missing.join(', ')}번] 문항만 기존 지문에 어울리게 새로 출제해 JSON으로 출력하세요.
+(반드시 questions 배열에 누락된 번호 ${missing.join(', ')}를 모두 포함하고, 기존 지문의 range와 맞춰 주세요.)
+
+[기존 지문 요약]
+${existingSummary}
+
+출력 JSON 형식: {"passages":[{"range":"[해당 범위]","header":"...","body":"","questions":[{"no":${missing[0]},"stem":"${missing[0]}. 발문","box":"","points":2,"choices":["① ...","② ...","③ ...","④ ...","⑤ ..."],"answer":"③","explain":"..."}]}]}`;
+      const filled = await callGeminiJson(fillPrompt);
+      if (filled.length > 0) {
+        filled.forEach(fp => {
+          const fqs = Array.isArray(fp.questions) ? fp.questions.filter(q => missing.includes(Number(q.no || 0))) : [];
+          if (!fqs.length) return;
+          // Attach to matching existing passage by range or closest question numbers
+          let target = list.find(ep => ep.range && fp.range && ep.range.replace(/\s+/g, '') === fp.range.replace(/\s+/g, ''));
+          if (!target) {
+            const fFirst = Number(fqs[0].no || 0);
+            target = list.reduce((best, ep) => {
+              const eFirst = Number((ep.questions && ep.questions[0] && ep.questions[0].no) || 0);
+              const bFirst = Number((best.questions && best.questions[0] && best.questions[0].no) || 0);
+              return Math.abs(eFirst - fFirst) < Math.abs(bFirst - fFirst) ? ep : best;
+            }, list[0]);
+          }
+          if (target) {
+            target.questions = [...(target.questions || []), ...fqs];
+          } else {
+            list.push(fp);
+          }
+        });
+      }
+    }
+    return list;
+  };
+
   try {
     updateJob(8, '1단계: 독서 이론 · 인문·사회(가/나) 지문 심층 출제 및 검토 중...');
-    const p1a = await draftAndRefinePart('독서 1~9번', '공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론(900자+, 3문항), [4~9] 인문·사회 주제 통합 (가)/(나)(합산 2,600자+, 6문항, [3점] 포함).', '1~9번');
+    let p1a = await draftAndRefinePart('독서 1~9번', '공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론(900자+, 3문항), [4~9] 인문·사회 주제 통합 (가)/(나)(합산 2,600자+, 6문항, [3점] 포함).', '1~9번');
+    p1a = await ensureRangeComplete('독서 1~9번', p1a, 1, 9, '공통과목 독서 1~9번(총 9문항): [1~3] 독서 이론, [4~9] 인문·사회 (가)/(나).');
 
     updateJob(26, '2단계: 과학·기술 · 법·경제 고난도 추론 지문 출제 및 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    const p1b = await draftAndRefinePart('독서 10~17번', '공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술(1,800자+, 4문항, [3점] 포함), [14~17] 법·경제(1,800자+, 4문항, [3점] 포함).', '10~17번');
+    let p1b = await draftAndRefinePart('독서 10~17번', '공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술(1,800자+, 4문항, [3점] 포함), [14~17] 법·경제(1,800자+, 4문항, [3점] 포함).', '10~17번');
+    p1b = await ensureRangeComplete('독서 10~17번', p1b, 10, 17, '공통과목 독서 10~17번(총 8문항): [10~13] 과학·기술, [14~17] 법·경제.');
 
     updateJob(45, '3단계: 현대소설 · 갈래 복합 작품 선정 및 문항 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    const p2a = await draftAndRefinePart('문학 18~27번', '공통과목 문학 18~27번(총 10문항): [18~21] 현대소설(1,800자+, 4문항), [22~27] 갈래 복합 (가) 고전시가+(나) 현대시/수필(1,600자+, 6문항).', '18~27번');
+    let p2a = await draftAndRefinePart('문학 18~27번', '공통과목 문학 18~27번(총 10문항): [18~21] 현대소설(1,800자+, 4문항), [22~27] 갈래 복합 (가) 고전시가+(나) 현대시/수필(1,600자+, 6문항).', '18~27번');
+    p2a = await ensureRangeComplete('문학 18~27번', p2a, 18, 27, '공통과목 문학 18~27번(총 10문항): [18~21] 현대소설, [22~27] 갈래 복합.');
 
     updateJob(64, '4단계: 고전소설 · 현대시(가/나) 출제 및 <보기> 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    const p2b = await draftAndRefinePart('문학 28~34번', '공통과목 문학 28~34번(총 7문항): [28~31] 고전소설(1,700자+, 4문항), [32~34] 현대시 (가)/(나) 2편 전문 및 3문항.', '28~34번');
+    let p2b = await draftAndRefinePart('문학 28~34번', '공통과목 문학 28~34번(총 7문항): [28~31] 고전소설(1,700자+, 4문항), [32~34] 현대시 (가)/(나) 2편 전문 및 3문항.', '28~34번');
+    p2b = await ensureRangeComplete('문학 28~34번', p2b, 28, 34, '공통과목 문학 28~34번(총 7문항): [28~31] 고전소설, [32~34] 현대시 (가)/(나).');
 
     updateJob(82, `5단계: 선택과목(${elective} 35~45번) 출제 및 최종 45문항 검수 중...`);
     await new Promise(r => setTimeout(r, 1000));
-    const p3 = await draftAndRefinePart(`선택과목 ${elective} 35~45번`, `선택과목 '${elective}' 35~45번(총 11문항): 실제 평가원 ${elective} 시험지 구성에 맞춰 지문·대화·자료·문법을 충실히 작성하고 35~45번을 모두 출제하세요.`, '35~45번');
+    let p3 = await draftAndRefinePart(`선택과목 ${elective} 35~45번`, `선택과목 '${elective}' 35~45번(총 11문항): 실제 평가원 ${elective} 시험지 구성에 맞춰 지문·대화·자료·문법을 충실히 작성하고 35~45번을 모두 출제하세요.`, '35~45번');
+    p3 = await ensureRangeComplete(`선택과목 ${elective} 35~45번`, p3, 35, 45, `선택과목 '${elective}' 35~45번(총 11문항)을 빠짐없이 출제하세요.`);
 
-    updateJob(96, '6단계: 1~45번 문항 번호 · 2027 수능 PDF 시험지 조판 최종 정리 중...');
+    updateJob(96, '6단계: 1~45번(공통 34문항 + 선택 11문항) 누락 검증 및 조판 정리 중...');
+    const seenGlobal = new Set();
     const passages = [...p1a, ...p1b, ...p2a, ...p2b, ...p3].map(p => {
       const qs = Array.isArray(p.questions) ? p.questions.map(q => {
         const no = Number(q.no || 0);
+        if (no < 1 || no > 45 || seenGlobal.has(no)) return null;
+        seenGlobal.add(no);
         let stem = String(q.stem || '').trim();
         if (no > 0 && !new RegExp('^' + no + '\\s*[\\.\\)]').test(stem)) {
           stem = `${no}. ${stem}`;
         }
         let box = String(q.box || '').replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '').trim();
         return Object.assign({}, q, { no, stem, box });
-      }).sort((a, b) => a.no - b.no) : [];
+      }).filter(Boolean).sort((a, b) => a.no - b.no) : [];
       return Object.assign({}, p, { questions: qs });
-    }).sort((a, b) => ((a.questions[0] && a.questions[0].no) || 99) - ((b.questions[0] && b.questions[0].no) || 99));
+    }).filter(p => p.questions.length > 0 || (p.body && p.body.length > 50))
+      .sort((a, b) => ((a.questions[0] && a.questions[0].no) || 99) - ((b.questions[0] && b.questions[0].no) || 99));
 
     if (passages.length === 0) {
       const detail = [...new Set(partErrors)].slice(0, 3).join(' / ');
