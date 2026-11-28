@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_0300';
+const CLIENT_BUILD_VERSION = '20261128_0320';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -265,6 +265,11 @@ app.get('/llms.txt', (req, res) => {
 - 과외 학생별 논술 글 첨삭·약점 분석(제시문·해설 스크린샷 요약 반영)
 - 회차별 누적 글 데이터, 진도·출결 관리, 학부모 문자 자동 작성
 `);
+});
+
+const INDEXNOW_KEY = 'a9c4e7b2d8f14039b6e2a1d4f8c3e790';
+app.get(`/${INDEXNOW_KEY}.txt`, (req, res) => {
+  res.type('text/plain').send(INDEXNOW_KEY);
 });
 
 app.get('/robots.txt', (req, res) => {
@@ -1201,22 +1206,33 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 - 현대시(가/나): ${wModPoem}`;
 
   const commonPolicy = `당신은 한국교육과정평가원(KICE) 수능 국어 영역 수석 출제위원입니다.
-2017~2027학년도 수능(특히 최신 2027학년도 수능 국어)의 출제 기조, 실제 수능 지문 분량과 논리 밀도, 선지 함정 패턴(인과 역전, 범위 확대/축소, 개념 뒤바꾸기, <보 기> 적용)을 극한으로 정밀하게 반영해 출제하세요.
-목표 난이도는 1등급 컷 원점수 80점대 중반~90점대 초반(변별력 있는 중상~상 난이도, [3점] 추론·적용 문항 포함)입니다.
+2017~2027학년도 수능(특히 최신 2027학년도 수능 국어)의 출제 기조, 실제 수능 지문 분량과 논리 밀도, 선지 함정 패턴(인과 역전, 조건 누락, 범위 확대/축소, 개념 뒤바꾸기, <보 기> 외적 준거 적용), 시각 자료(도표·그래프·매체 화면) 활용 방식을 극한으로 정밀하게 반영해 출제하세요.
+목표 난이도는 1등급 컷 원점수 84~91점(변별력 있는 중상~상 난이도, [3점] 고난도 추론·적용 문항 다수 포함)입니다.
+
 [분량 · 최신 2027 평가원 문항 틀 필수 조건]
-- 독서 지문은 실제 2027 수능 PDF와 동일한 분량과 밀도로 작성하세요([1~3] 900자+, [4~9] (가)/(나) 합산 2,600자+, [10~13]·[14~17] 각 1,800자+).
-- 문학 지문도 실제 수능처럼 대사·서술·시 연이 충분히 살아있는 완성도 높은 분량으로 작성하세요.
+- 독서 지문은 실제 2027 수능 PDF와 동일한 분량과 밀도로 작성하세요([1~3] 950자+, [4~9] (가)/(나) 합산 2,700자+, [10~13]·[14~17] 각 1,900자+). 문단 내에 [A], [B] 구간 표지나 ㉠~㉤, ⓐ~ⓔ 표지를 실제 수능처럼 적절히 배치하세요.
+- 문학 지문도 실제 수능처럼 인물 대사·서술·시 연·고전 어휘 현대어 풀이(예: 즈믄 해=천 년), [중략 줄거리]가 살아있는 완성도 높은 분량으로 작성하세요.
 - box 필드(<보 기> 내용) 안에는 절대 "<보 기>"나 "<보기>" 제목 글자를 쓰지 마세요.
 - 어휘 문항은 반드시 최신 평가원 형식("문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?" 또는 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?")으로 출제하고, 어휘 문항의 box는 반드시 빈 문자열("")로 두세요.
 - stem 안에 [학습 활동] 본문이나 비교표를 섞어 넣지 말고, 추가 자료는 box 필드에 넣으세요.
 - 모든 문항의 stem 앞에는 반드시 문항 번호("1. ", "2. " ... "45. ")를 붙이고, 지정된 범위의 모든 번호를 1문항도 빠짐없이 출제하세요.
+
+[시의적절한 시각 자료(visual) 출제 지침]
+- 과학·기술 또는 법·경제 독서 중 1개 지문(또는 3점 <보 기>), 화법과 작문([35~37] 발표 자료, [43~45] 설문/통계 자료), 언어와 매체([40~45] 누리 소통망 대화방·인터넷 기사/게시판·발표 슬라이드)에는 실제 수능처럼 반드시 visual 필드를 포함하세요.
+- visual 객체는 아래 5가지 타입 중 가장 적절한 것을 선택해 지문(passage.visual) 또는 문항(question.visual)에 넣을 수 있습니다:
+  1) {"type":"chart","chartType":"bar"|"line","title":"[자료 1] 제목","unit":"단위(%)","labels":["항목1","항목2","항목3"],"series":[{"name":"계열1","values":[30,50,20]}],"caption":"출처/설명"}
+  2) {"type":"diagram","title":"구조/과정 도식","nodes":[{"id":"A","label":"핵심 개념 A"},{"id":"B","label":"핵심 개념 B"},{"id":"C","label":"결과 C"}],"edges":[{"from":"A","to":"B","label":"조건/작용"},{"from":"B","to":"C","label":"산출"}]}
+  3) {"type":"table","title":"<표> 제목","headers":["구분","내용1","내용2"],"rows":[["항목A","값1","값2"],["항목B","값3","값4"]],"caption":"주석"}
+  4) {"type":"chat","title":"누리 소통망 대화방 (동아리 발표 준비)","messages":[{"sender":"윤호","time":"오후 4:10","text":"발표 자료 초안 공유할게."},{"sender":"서연","time":"오후 4:12","text":"여기에 그래프를 추가하면 좋겠어."}]}
+  5) {"type":"webpage","site":"○○일보 / ○○고등학교 누리집","title":"기사·게시글 제목","meta":"작성자 ○○○ | 2026.11.15. | 조회 412","body":"게시글/기사 본문 내용","comments":["댓글1: ...","댓글2: ..."]}
+
 [회차별 다양성 지침]
 ${uniquePromptSeed}
 [추가 요청사항]
 ${userPrompt || '2027학년도 수능 국어와 동등한 최고 난이도·완성도로 균형 있게 출제'}
 
 반드시 아래 순수 JSON 형식만 출력하세요:
-{"passages":[{"range":"[1~3]","header":"[1~3] 다음 글을 읽고 물음에 답하시오.","body":"지문 본문(문단 구분은 \n\n, ㉠~㉤, ⓐ~ⓔ 포함)","questions":[{"no":1,"stem":"1. 발문","box":"<보 기> 내용 없으면 빈 문자열","points":2,"choices":["① 선지1","② 선지2","③ 선지3","④ 선지4","⑤ 선지5"],"answer":"③","explain":"정답 및 오답 핵심 근거 2~3줄"}]}]}`;
+{"passages":[{"range":"[1~3]","header":"[1~3] 다음 글을 읽고 물음에 답하시오.","body":"지문 본문(문단 구분은 \n\n, ㉠~㉤, ⓐ~ⓔ 포함)","visual":null,"questions":[{"no":1,"stem":"1. 발문","box":"<보 기> 내용 없으면 빈 문자열","visual":null,"points":2,"choices":["① 선지1","② 선지2","③ 선지3","④ 선지4","⑤ 선지5"],"answer":"③","explain":"정답 및 오답 핵심 근거 2~3줄"}]}]}`;
 
   const safeParsePassages = (txt) => {
     if (!txt) return [];
@@ -1272,7 +1288,7 @@ ${userPrompt || '2027학년도 수능 국어와 동등한 최고 난이도·완�
     return [];
   };
 
-  // Pass 1: Draft + Pass 2: KICE Review Committee Refinement (self-critique, expand short texts, fix dual-answers & modern formatting)
+  // Pass 1: Draft + Pass 2: KICE Review Committee Refinement (self-critique, expand short texts, fix dual-answers, verify visuals & modern formatting)
   const draftAndRefinePart = async (partName, partDesc, expectedRange) => {
     const draftPrompt = `${commonPolicy}\n\n[이번에 출제할 파트: ${partName}]\n${partDesc}`;
     const draft = await callGeminiJson(draftPrompt);
@@ -1284,8 +1300,9 @@ ${userPrompt || '2027학년도 수능 국어와 동등한 최고 난이도·완�
 [검토 및 수정 체크리스트]
 1. 지문 분량이 실제 2027 수능 PDF처럼 충분히 길고 논리적으로 치밀한가? 짧거나 피상적인 지문은 개념 설명과 추론 단서를 추가해 30% 이상 더 깊고 길게 보강하세요.
 2. ${expectedRange} 범위의 모든 문항 번호가 1문항도 빠짐없이 들어있는가? 빠진 번호가 있으면 보충하세요.
-3. 각 문항의 정답 선지가 지문·<보 기> 근거와 100% 일치하고, 나머지 4개 오답 선지가 복수 정답 여지 없이 명확히 배제되는가? 모호한 선지는 즉시 정교하게 고치세요.
+3. 각 문항의 정답 선지가 지문·<보 기>·visual 자료 근거와 100% 일치하고, 나머지 4개 오답 선지가 복수 정답 여지 없이 명확히 배제되는가? 매력적 오답(인과 역전, 조건 누락, 범위 확대)을 정교하게 다듬으세요.
 4. 어휘 문항에는 <보 기>를 넣지 말고("box":""), box 문자열 앞의 중복 "<보 기>" 문구는 제거하세요. stem 안의 [학습 활동] 본문은 box로 분리하세요.
+5. 과학·기술/법·경제 독서나 화법과 작문/언어와 매체 파트에서 지문/문항에 언급된 그래프·표·도식·메신저·웹페이지가 visual 필드에 정확히 구조화되어 있는지 확인하고, 누락되었거나 수치가 선지와 어긋나면 수정하세요.
 
 [검수 대상 초안 JSON]
 ${JSON.stringify({ passages: draft }).slice(0, 26000)}
@@ -1376,6 +1393,10 @@ app.post('/api/korean-mock-generate/start', (req, res) => {
 
 app.get('/api/korean-mock-generate/status/:jobId', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
+  const reqUid = String(req.query.userId || '').trim().toLowerCase();
+  if (reqUid !== 'jace48') {
+    return res.status(403).json({ ok: false, status: 'error', error: '접근 권한이 없습니다.' });
+  }
   const job = KOREAN_MOCK_JOBS[req.params.jobId];
   if (!job) {
     return res.status(404).json({ ok: false, error: '출제 작업을 찾을 수 없습니다.' });
@@ -1706,14 +1727,50 @@ app.post('/api/essay-studio-chat', async (req, res) => {
 현재 선택된 대학 채팅방: ${targetUniv}
 대학별 출제 특성: ${univMeta || '해당 대학 인문논술 기출 스타일'}
 
+[2025학년도 연세대학교 인문논술 공식 시험지 틀 (완전 학습 반영)]
+- 상단: 우측 상단 자료집 표기 + 중앙 굵은 고딕 제목("${targetUniv} 수시모집 모의논술시험 문제 인문계열") + 우측 수험생 기입란(모집단위 | 수험번호 | 성명) + "※ 아래 제시문을 읽고 문제에 답하시오. (총 100점)"
+- 제시문 영역: 외곽 실선 사각형(1단 전체 폭) 안에 제시문 (가), (나), (다), (라) 배치.
+  · 제시문 (가)/(나): 철학·윤리·사회·자연과학 등 대립·보완 관점의 고밀도 학술 지문(각 800~1,100자).
+  · 제시문 (다): 연세대 특유의 영어 제시문(3~4단락, 하단 * 각주 어휘 풀이 포함) 또는 비평 제시문.
+  · 제시문 (라): 사회조사/실험 상황 + <표 1>, <표 2> (나란히 배치) + <그림 1> (막대/선 그래프) 포함 자료형 제시문.
+- 문항 영역(하단):
+  · [문제 1-1] 다면 비교·설명형 (600자 안팎, 25점)
+  · [문제 1-2] [지문 A] 박스 제시문 포함 비교·평가형 (600자 안팎, 25점)
+  · [문제 2-1] [가]/[나] 바탕으로 [라] 도표·그래프 분석형 (600자 안팎, 25점)
+  · [문제 2-2] 확률·함수·기댓값 등 수리논술 조건 + 제시문 연결 해석형 (글자 수 제한 없음, 25점)
+
 [대화 및 작업 원칙]
 1. 유연한 대화와 학습:
-   - 사용자가 가벼운 질문, 수업 고민, 출제 방향 상의 등 일반 대화를 건네면 딱딱한 템플릿을 강요하지 말고 자연스럽고 명쾌한 한국어로 대화하세요.
-   - 사용자가 이미지나 PDF 자료를 첨부해 학습·분석을 요청하면, 첨부 파일의 문체, 논지, 출제 구조, 핵심 개념을 정밀하게 파악하고 요약해 이후 대화·제작에 계속 반영하세요.
-2. 제시문·문제·읽기자료 제작 요청 시:
-   - 시중 칼럼·책·기사 원문을 단순 복붙하지 말고, ${targetUniv} 실제 기출 특유의 압축적이고 개념적인 학술·비평 문체로 재가공하세요.
-   - 필요에 따라 [제시문 (가)/(나)/(다)...], [논제], [출제 의도 및 채점기준], [예시 답안] 또는 [논술 대비 읽기 자료]를 완성도 높게 작성하세요.
-   - 후속 수정 요청에는 앞선 대화 맥락과 학습한 자료를 바탕으로 해당 부분만 정밀하게 다듬어 주세요.` + (sourceRef ? `\n\n[사용자가 첨부한 참고 출처/원문]\n${sourceRef}` : '');
+   - 일반 대화·수업 상의에는 자연스럽고 명쾌한 한국어로 대화하세요.
+   - 이미지나 PDF 첨부 시 문체, 논지, 출제 구조, 폰트·배치 특징을 정밀 분석해 이후 제작에 반영하세요.
+2. 인문논술 문제지/모의논술 제작 요청 시:
+   - 본문 답변에 [출제 의도·채점 기준·예시 답안] 요약을 작성하고, 답변 맨 마지막에 실제 시험지 틀로 렌더링할 수 있도록 반드시 아래 형식의 <EXAM_PAPER_JSON> 블록을 함께 출력하세요(일반 대화나 단순 질문일 때는 출력하지 마세요):
+<EXAM_PAPER_JSON>
+{
+  "collectionLabel": "2027학년도 ${targetUniv} 대학별고사 자료집",
+  "title": "2027학년도 ${targetUniv} 수시모집 모의논술시험 문제 인문계열",
+  "totalScore": "총 100점",
+  "passages": [
+    { "label": "제시문 (가)", "lang": "ko", "body": "본문...", "footnote": "" },
+    { "label": "제시문 (나)", "lang": "ko", "body": "본문...", "footnote": "" },
+    { "label": "제시문 (다)", "lang": "en", "body": "English passage...", "footnote": "* term1: 뜻1  ** term2: 뜻2" },
+    {
+      "label": "제시문 (라)", "lang": "ko", "body": "조사 설명...",
+      "tables": [
+        { "title": "<표 1> 제목", "headers": ["구분","항목1","항목2"], "rows": [["A 그룹","20","10"],["B 그룹","10","20"]] },
+        { "title": "<표 2> 제목", "headers": ["구분","변경 전","변경 후"], "rows": [["A-1","20","18"],["A-2","20","14"]] }
+      ],
+      "chart": { "title": "<그림 1> 제목", "yMax": 100, "labels": ["A","A-1 전","A-1 후","A-2 전","A-2 후","B"], "values": [72,72,78,72,56,50] }
+    }
+  ],
+  "questions": [
+    { "label": "[문제 1-1]", "stem": "제시문 (다)를 제시문 (가)와 제시문 (나)의 관점에서 각각 설명하시오. (600자 안팎, 25점)", "extraBoxTitle": "", "extraBoxBody": "" },
+    { "label": "[문제 1-2]", "stem": "아래 [지문 A]를 읽고 제시문 (가)의 관점과 비교 설명하시오. (600자 안팎, 25점)", "extraBoxTitle": "[지문 A]", "extraBoxBody": "지문 A 본문..." },
+    { "label": "[문제 2-1]", "stem": "제시문 (가)와 제시문 (나)를 바탕으로 제시문 (라)를 분석하고 설명하시오. (600자 안팎, 25점)", "extraBoxTitle": "", "extraBoxBody": "" },
+    { "label": "[문제 2-2]", "stem": "수리 조건 및 제시문 연결 해석 문항... (글자 수 제한 없음, 25점)", "extraBoxTitle": "", "extraBoxBody": "" }
+  ]
+}
+</EXAM_PAPER_JSON>` + (sourceRef ? `\n\n[사용자가 첨부한 참고 출처/원문]\n${sourceRef}` : '');
 
     const rawMsgs = Array.isArray(messages) ? messages.slice(-16) : [];
     const contents = [];
@@ -1750,7 +1807,20 @@ app.post('/api/essay-studio-chat', async (req, res) => {
     }, mode);
 
     if (result.text) {
-      return res.json({ ok: true, reply: result.text, model: result.model });
+      let cleanReply = result.text;
+      let examPaper = null;
+      const jp = result.text.match(/<EXAM_PAPER_JSON>([\s\S]*?)<\/EXAM_PAPER_JSON>/i);
+      if (jp && jp[1]) {
+        cleanReply = result.text.replace(/<EXAM_PAPER_JSON>[\s\S]*?<\/EXAM_PAPER_JSON>/gi, '').trim();
+        try {
+          examPaper = JSON.parse(jp[1].trim().replace(/```json\s*/gi, '').replace(/```/g, ''));
+        } catch (pe) {
+          try {
+            examPaper = JSON.parse(jp[1].trim().replace(/,\s*([}\]])/g, '$1'));
+          } catch (pe2) {}
+        }
+      }
+      return res.json({ ok: true, reply: cleanReply || '모의논술 시험지가 생성되었습니다.', examPaper, model: result.model });
     }
     res.json({ ok: false, reason: result.error || 'AI 응답 생성 실패' });
   } catch (e) {
