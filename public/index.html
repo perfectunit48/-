@@ -137,6 +137,7 @@
       body { background: #f8fafc; }
       #appHeader { box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
       #appMain { padding: 12px 12px 84px 12px !important; }
+      #korGrowthSummary { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
       .tab-panel > div, .tab-panel form { border-radius: 16px !important; }
       .tab-panel input, .tab-panel select, .tab-panel textarea, .tab-panel button[type="submit"] {
         min-height: 42px;
@@ -747,12 +748,7 @@
           </div>
           <select id="studentSelect" class="hidden" aria-label="학생 선택"></select>
         </div>
-        <button id="openAddStudentBtn" class="inline-flex items-center justify-center p-1.5 sm:p-2 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition shrink-0" title="학생 추가" aria-label="학생 추가">
-          <i data-lucide="user-plus" class="w-4 h-4"></i>
-        </button>
-        <button id="deleteStudentBtn" class="inline-flex items-center justify-center p-1.5 sm:p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition shrink-0" title="현재 학생 삭제" aria-label="현재 학생 삭제">
-          <i data-lucide="user-minus" class="w-4 h-4"></i>
-        </button>
+
         <button id="openNoticesBtn" type="button" class="relative inline-flex items-center justify-center p-1.5 sm:p-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition shrink-0" title="공지사항" aria-label="공지사항">
           <i data-lucide="megaphone" class="w-4 h-4"></i>
           <span id="noticeUnreadDot" class="hidden absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
@@ -1037,7 +1033,7 @@
       <!-- Essay List -->
       <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div class="flex items-center gap-2"><h3 class="text-base font-bold text-slate-900">여태껏 누적된 학생 글 데이터</h3><button type="button" onclick="openCustomReportModal()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 (PDF·인쇄)</button></div>
+          <div class="flex items-center gap-2"><h3 class="text-base font-bold text-slate-900">여태껏 누적된 학생 글 데이터</h3><button type="button" onclick="openCustomReportModal()" class="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 (PDF·인쇄)</button></div>
           <input id="historySearchInput" type="text" placeholder="제목 또는 강점/약점 키워드 검색..." class="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
         <div id="essayHistoryList" class="space-y-3"></div>
@@ -1067,7 +1063,7 @@
               </h3>
               <p class="text-xs text-slate-500">입력된 항목(전체·공통·백분위·표준점수)만 점수 범위에 맞춰 자동 확대해 보여줍니다.</p>
             </div>
-            <div class="flex items-center gap-2"><button type="button" onclick="openCustomReportModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 제작 (PDF·인쇄)</button><button id="saveKorChartBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition">
+            <div class="flex items-center gap-2"><button type="button" onclick="openCustomReportModal()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 제작 (PDF·인쇄)</button><button id="saveKorChartBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition">
               <i data-lucide="download" class="w-3.5 h-3.5"></i>
               <span>그래프 이미지로 저장</span>
             </button></div>
@@ -2217,7 +2213,7 @@
       <div id="userGuideEssayBody" class="mt-4 flex-1 overflow-y-auto space-y-3.5 text-xs sm:text-sm text-slate-700 leading-relaxed custom-scrollbar pr-1">
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
           <div class="font-bold text-slate-900 mb-1">1. 학생 추가 · 삭제</div>
-          <p>우측 상단의 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold align-middle"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 학생 추가</span> 아이콘에서 과목을 선택해 등록할 수 있고, <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 font-bold align-middle"><i data-lucide="user-minus" class="w-3.5 h-3.5"></i> 학생 삭제</span> 아이콘으로 학생을 제거할 수 있습니다.</p>
+          <p>상단의 학생 이름(<strong>▾</strong>) 목록을 눌러 <strong>+ 새 학생 등록하기</strong>에서 과목을 선택해 학생을 추가할 수 있고, 목록 내 각 학생 이름 옆 <strong>✕</strong> 버튼을 눌러 삭제할 수 있습니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
           <div class="font-bold text-slate-900 mb-1">2. 첨삭 &amp; 분석 · 사진 반영하기</div>
@@ -2239,7 +2235,7 @@
       <div id="userGuideKoreanBody" class="hidden mt-4 flex-1 overflow-y-auto space-y-3.5 text-xs sm:text-sm text-slate-700 leading-relaxed custom-scrollbar pr-1">
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
           <div class="font-bold text-slate-900 mb-1">1. 학생 추가 · 삭제</div>
-          <p>우측 상단의 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold align-middle"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 학생 추가</span> 아이콘에서 과목을 선택해 등록할 수 있고, <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 font-bold align-middle"><i data-lucide="user-minus" class="w-3.5 h-3.5"></i> 학생 삭제</span> 아이콘으로 학생을 제거할 수 있습니다.</p>
+          <p>상단의 학생 이름(<strong>▾</strong>) 목록을 눌러 <strong>+ 새 학생 등록하기</strong>에서 과목을 선택해 학생을 추가할 수 있고, 목록 내 각 학생 이름 옆 <strong>✕</strong> 버튼을 눌러 삭제할 수 있습니다.</p>
         </div>
         <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
           <div class="font-bold text-slate-900 mb-1">2. 성적 추이 그래프 · 국어 성적 요약 · 맞춤 성적표(PDF·인쇄)</div>
@@ -2466,7 +2462,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v91';
+    const CLIENT_BUILD_VERSION = '20261128_v94';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -2527,6 +2523,7 @@
       'user': '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
       'user-minus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/>',
       'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>',
+      'clipboard-check': '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
       'wand-2': '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/>',
       'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'
     };
@@ -2846,16 +2843,19 @@
           ddList.innerHTML = state.students.map(s => {
             const active = s.id === state.activeStudentId;
             const ini = (s.name || '?').trim().charAt(0);
-            return `<button type="button" data-stu-id="${escapeHtml(s.id)}" class="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-left transition ${active ? 'bg-indigo-50/90 border border-indigo-200 text-indigo-900' : 'hover:bg-slate-50 border border-transparent text-slate-700'}">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <span class="w-7 h-7 rounded-full ${active ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white' : 'bg-slate-100 text-slate-600'} text-xs font-extrabold flex items-center justify-center shrink-0">${escapeHtml(ini)}</span>
-                <div class="min-w-0">
-                  <div class="text-xs font-bold truncate">${escapeHtml(s.name)}</div>
-                  <div class="text-[10px] text-slate-500 truncate">${escapeHtml(s.grade || '학년 미정')} · ${escapeHtml(s.subject || '인문논술')}</div>
+            return `<div class="flex items-center gap-1 rounded-xl px-1.5 py-1 transition ${active ? 'bg-indigo-50/90 border border-indigo-200 text-indigo-900' : 'hover:bg-slate-50 border border-transparent text-slate-700'}">
+              <button type="button" data-stu-id="${escapeHtml(s.id)}" class="flex-1 min-w-0 flex items-center justify-between gap-2 px-1 py-1 text-left">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <span class="w-7 h-7 rounded-full ${active ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white' : 'bg-slate-100 text-slate-600'} text-xs font-extrabold flex items-center justify-center shrink-0">${escapeHtml(ini)}</span>
+                  <div class="min-w-0">
+                    <div class="text-xs font-bold truncate">${escapeHtml(s.name)}</div>
+                    <div class="text-[10px] text-slate-500 truncate">${escapeHtml(s.grade || '학년 미정')} · ${escapeHtml(s.subject || '인문논술')}</div>
+                  </div>
                 </div>
-              </div>
-              ${active ? '<span class="shrink-0 px-1.5 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold">선택됨</span>' : ''}
-            </button>`;
+                ${active ? '<span class="shrink-0 px-1.5 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold">선택됨</span>' : ''}
+              </button>
+              <button type="button" data-del-stu-id="${escapeHtml(s.id)}" class="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition" title="${escapeHtml(s.name)} 학생 삭제" aria-label="${escapeHtml(s.name)} 학생 삭제">✕</button>
+            </div>`;
           }).join('');
           ddList.querySelectorAll('button[data-stu-id]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2864,6 +2864,21 @@
               renderAll();
               const menu = document.getElementById('studentDropdownMenu');
               if (menu) menu.classList.add('hidden');
+            });
+          });
+          ddList.querySelectorAll('button[data-del-stu-id]').forEach(dbtn => {
+            dbtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const targetId = dbtn.dataset.delStuId;
+              const targetStu = (state.students || []).find(x => x.id === targetId);
+              if (!targetStu) return;
+              window._pendingDeleteStudentId = targetId;
+              const menu = document.getElementById('studentDropdownMenu');
+              if (menu) menu.classList.add('hidden');
+              const nmEl = document.getElementById('deleteStudentTargetName');
+              if (nmEl) nmEl.textContent = targetStu.name;
+              const dm = document.getElementById('deleteStudentModal');
+              if (dm) { dm.classList.remove('hidden'); dm.classList.add('flex'); }
             });
           });
         }
@@ -2879,7 +2894,7 @@
       if (!stu) {
         metaBar.innerHTML = `
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-medium border border-amber-200">
-            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 상단 학생 추가 아이콘을 눌러 학생을 등록해 주세요.
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 상단 학생 목록(▾)을 눌러 새 학생을 등록해 주세요.
           </span>`;
       } else {
         const doneProgress = (stu.progress || []).filter(p => p.done).length;
@@ -3033,7 +3048,7 @@
       if (!currentAnalysisDraft) return;
       const stu = getActiveStudent();
       if (!stu) {
-        showToast('먼저 상단 학생 추가 아이콘을 눌러 학생을 등록해 주세요.', 'warning');
+        showToast('먼저 상단 학생 목록(▾)을 눌러 새 학생을 등록해 주세요.', 'warning');
         return;
       }
       const today = new Date().toISOString().slice(0, 10);
@@ -3568,7 +3583,7 @@
         document.getElementById('progressPercentLabel').textContent = '0%';
         document.getElementById('progressCountLabel').textContent = '0 / 0 완료';
         document.getElementById('progressBarFill').style.width = '0%';
-        document.getElementById('progressList').innerHTML = '<div class="text-center py-8 text-sm text-slate-400">먼저 상단 학생 추가 아이콘을 눌러 학생을 등록해 주세요.</div>';
+        document.getElementById('progressList').innerHTML = '<div class="text-center py-8 text-sm text-slate-400">먼저 상단 학생 목록(▾)을 눌러 새 학생을 등록해 주세요.</div>';
         return;
       }
       const items = stu.progress || [];
@@ -3684,7 +3699,7 @@
           <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">지각</p><p class="text-2xl font-bold text-slate-400 mt-1">0회</p></div>
           <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">결석</p><p class="text-2xl font-bold text-slate-400 mt-1">0회</p></div>
           <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">보강 완료</p><p class="text-2xl font-bold text-slate-400 mt-1">0회</p></div>`;
-        document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">먼저 상단 학생 추가 아이콘을 눌러 학생을 등록해 주세요.</td></tr>';
+        document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">먼저 상단 학생 목록(▾)을 눌러 새 학생을 등록해 주세요.</td></tr>';
         return;
       }
       const records = stu.attendance || [];
@@ -3936,7 +3951,7 @@
         document.getElementById('smsPhoneInput').value = '';
         document.getElementById('smsBodyInput').value = applyCustomSmsFormat(fmt);
         updateSmsLinkAndCount();
-        document.getElementById('smsHistoryList').innerHTML = '<div class="text-center py-8 text-xs text-slate-400">먼저 상단 학생 추가 아이콘을 눌러 학생을 등록해 주세요.</div>';
+        document.getElementById('smsHistoryList').innerHTML = '<div class="text-center py-8 text-xs text-slate-400">먼저 상단 학생 목록(▾)을 눌러 새 학생을 등록해 주세요.</div>';
         return;
       }
       document.getElementById('smsPhoneInput').value = stu.parentPhone || '';
@@ -4744,7 +4759,7 @@
       // Add Student Modal
       const addStuModal = document.getElementById('addStudentModal');
       const closeAddModal = () => { addStuModal.classList.add('hidden'); addStuModal.classList.remove('flex'); };
-      document.getElementById('openAddStudentBtn').addEventListener('click', () => {
+      document.getElementById('openAddStudentBtn')?.addEventListener('click', () => {
         addStuModal.classList.remove('hidden');
         addStuModal.classList.add('flex');
       });
@@ -4779,7 +4794,7 @@
       // Delete Student Modal
       const deleteStuModal = document.getElementById('deleteStudentModal');
       const closeDeleteModal = () => { deleteStuModal.classList.add('hidden'); deleteStuModal.classList.remove('flex'); };
-      document.getElementById('deleteStudentBtn').addEventListener('click', () => {
+      document.getElementById('deleteStudentBtn')?.addEventListener('click', () => {
         const stu = getActiveStudent();
         if (!stu) {
           showToast('삭제할 학생이 없습니다.', 'warning');
@@ -4792,14 +4807,18 @@
       document.getElementById('closeDeleteStudentBtn').addEventListener('click', closeDeleteModal);
       document.getElementById('cancelDeleteStudentBtn').addEventListener('click', closeDeleteModal);
       document.getElementById('confirmDeleteStudentBtn').addEventListener('click', () => {
-        const stu = getActiveStudent();
+        const targetId = window._pendingDeleteStudentId || (getActiveStudent() && getActiveStudent().id);
+        window._pendingDeleteStudentId = null;
+        const stu = (state.students || []).find(s => s.id === targetId);
         if (!stu) {
           closeDeleteModal();
           return;
         }
         const deletedName = stu.name;
         state.students = state.students.filter(s => s.id !== stu.id);
-        state.activeStudentId = state.students.length ? state.students[0].id : null;
+        if (state.activeStudentId === stu.id) {
+          state.activeStudentId = state.students.length ? state.students[0].id : null;
+        }
         saveState();
         closeDeleteModal();
         renderAll();
@@ -5464,6 +5483,23 @@
         }
       });
 
+
+      window._korMockSessionSeq = (window._korMockSessionSeq || 0) + 1;
+      window.resetStudioWorkspace = function() {
+        window._korMockSessionSeq = (window._korMockSessionSeq || 0) + 1;
+        try {
+          if (typeof lastGeneratedKorMock !== 'undefined') lastGeneratedKorMock = null;
+          const rw = document.getElementById('korGenResultWrap'); if (rw) rw.classList.add('hidden');
+          const pw = document.getElementById('korMockProgressWrap'); if (pw) pw.classList.add('hidden');
+          const pb = document.getElementById('korMockProgressBar'); if (pb) pb.style.width = '0%';
+          const st = document.getElementById('korGenStatusText'); if (st) st.textContent = '';
+          const pp = document.getElementById('korMockPaperPreview'); if (pp) pp.innerHTML = '';
+          const ap = document.getElementById('korMockAnswerPreview'); if (ap) ap.innerHTML = '';
+          const ti = document.getElementById('korGenTitleInput'); if (ti) ti.value = '';
+          const pi = document.getElementById('korGenPromptInput'); if (pi) pi.value = '';
+          const sb = document.getElementById('korGenSubmitBtn'); if (sb) sb.disabled = false;
+        } catch (e) {}
+      };
       function performGlobalLogoutClient(isRemote, fromSameDeviceTab) {
         const hadUser = Boolean(currentUserId);
         try {
@@ -5473,6 +5509,7 @@
           sessionStorage.removeItem(SESSION_USER_KEY);
         } catch (e) {}
         currentUserId = null;
+        if (typeof window.resetStudioWorkspace === 'function') window.resetStudioWorkspace();
         const lp = document.getElementById('loginPwInput');
         if (lp) lp.value = '';
         switchAuthTab('login');
@@ -7881,6 +7918,7 @@
             showToast('모의고사 생성은 서버 배포 환경에서 동작합니다.', 'warning');
             return;
           }
+          const mySeq = window._korMockSessionSeq || 0;
           korGenBtn.disabled = true;
           const pWrap = document.getElementById('korMockProgressWrap');
           const pBar = document.getElementById('korMockProgressBar');
@@ -7929,6 +7967,7 @@
               const jobId = startData.jobId;
               while (true) {
                 await new Promise(res => setTimeout(res, 2200));
+                if (mySeq !== window._korMockSessionSeq) { clearInterval(progTicker); return; }
                 const stRes = await fetch(`/api/korean-mock-generate/status/${encodeURIComponent(jobId)}?userId=${encodeURIComponent(typeof currentUserId !== 'undefined' ? currentUserId : '')}`);
                 const stData = await stRes.json().catch(() => ({}));
                 if (stData.status === 'done' && stData.data) {
@@ -9379,7 +9418,9 @@
             </div>
           </div>`;
 
-        const korList = Array.isArray(stu.koreanScores) ? stu.koreanScores : (Array.isArray(stu.korScores) ? stu.korScores : []);
+        const rawKorList = Array.isArray(stu.koreanScores) ? stu.koreanScores : (Array.isArray(stu.korScores) ? stu.korScores : []);
+        const isIndReportMode = (typeof korShowIndRecords !== 'undefined' && typeof korShowMockRecords !== 'undefined') ? (korShowIndRecords && !korShowMockRecords) : false;
+        const korList = rawKorList.filter(x => isIndReportMode ? (x && x.inputMode === 'count') : (!x || x.inputMode !== 'count'));
         const essList = Array.isArray(stu.essays) ? stu.essays : [];
         const sections = {};
 
@@ -9397,8 +9438,8 @@
             const latest = korList[0];
             sections.kpi = `
               <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
-                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;"><div style="font-size:10.5px;color:#64748b;">누적 응시/기록</div><div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:2px;">${korList.length}회</div></div>
-                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;"><div style="font-size:10.5px;color:#64748b;">성적</div><div style="font-size:18px;font-weight:800;color:#059669;margin-top:2px;">${latest ? ((latest.total ?? latest.totalScore ?? '-') + '점' + (latest.grade ? ' (' + latest.grade + '등급)' : '')) : '-'}</div></div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;"><div style="font-size:10.5px;color:#64748b;">누적 응시/기록 (${isIndReportMode ? '개별' : '모의고사'})</div><div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:2px;">${korList.length}회</div></div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;"><div style="font-size:10.5px;color:#64748b;">성적</div><div style="font-size:18px;font-weight:800;color:#059669;margin-top:2px;">${latest ? ((latest.total ?? latest.totalScore ?? '-') + (isIndReportMode ? '개' : '점') + (latest.grade ? ' (' + latest.grade + '등급)' : '')) : '-'}</div></div>
               </div>`;
           } else {
             sections.kpi = `
@@ -9429,7 +9470,7 @@
               <tr>
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;">${escR(x.date || '-')}</td>
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;font-weight:600;">${escR(x.title || '-')}</td>
-                <td style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;font-weight:700;">${escR(x.total ?? x.totalScore ?? '-')}점</td>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;font-weight:700;">${escR(x.total ?? x.totalScore ?? '-')}${isIndReportMode ? '개' : '점'}</td>
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;">${escR(x.grade ? x.grade + '등급' : '-')}</td>
                 <td style="border:1px solid #cbd5e1;padding:5px 7px;font-size:10.5px;color:#475569;">${escR((x.weaknesses || []).join(', ') || x.weaknessNote || x.memo || '-')}</td>
               </tr>`).join('');
@@ -9543,6 +9584,7 @@
       }
 
       window.openCustomReportModal = function() {
+        if (window.innerWidth < 768) { if (typeof showToast === 'function') showToast('맞춤 성적표 제작은 PC 또는 태블릿에서 이용해 주세요.', 'warning'); return; }
         const dEl = document.getElementById('crDateInput');
         if (dEl && !dEl.value) dEl.value = new Date().toLocaleDateString('ko-KR');
         renderCustomReport();
