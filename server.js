@@ -92,7 +92,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_v102';
+const CLIENT_BUILD_VERSION = '20261128_v103';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -1642,6 +1642,7 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 - **독서 지문 문단 수 · 문단당 문장 수 · 전체 분량 (실제 평가원 기출 기준 — 절대 축소 금지)**:
   · [1~3] 독서 이론: **반드시 1,250~1,450자(1단 전체를 꽉 채우는 3~4문단: 1문단 5문장 ~270자 + 2문단 7~8문장 ~530자 + 3문단 7문장 ~480자)**로 작성하고, 실제 기출처럼 2문단에 반드시 밑줄 구절 **㉠ <u>...</u>, ㉡ <u>...</u>, ㉢ <u>...</u>**(각 10~20자 구절 밑줄)을 넣어 2번 또는 3번 문항으로 출제하세요!
   · [4~9] 인문·사회 (가)/(나): **(가) 3문단(도입 3문장 ~170자 + 전개 6~7문장 ~500자 + [A] 심화 6~7문장 ~520자, 총 1,300~1,450자) + (나) 4문단(도입 2문장 ~130자 + 전개·대립·보완 각 4~6문장 380~460자, 총 1,350~1,550자) = 총 7문단 내외, 2,700~3,000자**
+  · **[4~9] (나) 작성 절대 규칙**: (가)와 (나)는 서로 다른 필자가 쓴 독립된 글이므로, **(나)의 첫 문장을 절대 '그러나', '하지만', '반면', '한편', '그런데' 같은 접속부사로 시작하지 마세요.** 반드시 새로운 시대적·이론적 배경을 독립적으로 도입하고, 4문단(1,350~1,550자) 분량을 꽉 채우세요.
   · [10~13] 과학·기술: **5문단(1문단 도입 2~3문장 120~160자, 2~5문단 각 6~9문장 380~620자), 총 1,950~2,150자**
   · [14~17] 사회·법·경제: **4~5문단(문단당 5~7문장 390~560자로 밀도 있게 서술), 총 1,950~2,150자**
   · **[14~17] 사회 지문의 <보 기> 문항(17번 [3점] 등)**: 실제 기출처럼 '갑'과 '을' 또는 'A사/B국' 등의 구체적 사례·발언·조건을 **6~7문장, 320~420자 이상**으로 길고 치밀하게 작성해 지문 속 대립 입장(㉮/㉯ 등)을 입체적으로 적용해 풀도록 출제하세요.
@@ -1879,7 +1880,22 @@ ${existingSummary}
         rawBody = rawHdr;
         rawHdr = String(p.range || '').trim() + ' 다음 글을 읽고 물음에 답하시오.';
       }
-      rawBody = rawBody.replace(/\(([a-z][a-z\s,\-\/]{2,40})\)/g, '');
+      rawBody = rawBody
+        .replace(/\(([a-z][a-z\s,\-\/]{2,40})\)/g, '')
+        .replace(/(\(나\)\s*)(?:그러나|하지만|반면|한편|그런데)[,\s]+/g, '$1');
+      // Ensure ⓐ is present in p.body if a question asks about 문맥상 ⓐ
+      const qsRaw = Array.isArray(p.questions) ? p.questions : [];
+      const qA = qsRaw.find(qq => /문맥상\s*ⓐ/.test(String(qq && qq.stem || '')) && !/바꿔\s*쓰기/.test(String(qq && qq.stem || '')));
+      if (qA && !rawBody.includes('ⓐ')) {
+        const exp = String(qA.explain || '');
+        const wm = exp.match(/['‘]([가-힣]{2,6})['’]/) || String(qA.stem || '').match(/['‘]([가-힣]{2,6})['’]/);
+        if (wm && rawBody.includes(wm[1])) {
+          rawBody = rawBody.replace(wm[1], `ⓐ${wm[1]}`);
+        } else {
+          const fallbackWordM = rawBody.match(/([가-힣]{2,4}(?:하다|되다|이다|지다|는다|었다|았다))/);
+          if (fallbackWordM) rawBody = rawBody.replace(fallbackWordM[1], `ⓐ${fallbackWordM[1]}`);
+        }
+      }
       p = Object.assign({}, p, { header: rawHdr, body: rawBody });
       const qs = Array.isArray(p.questions) ? p.questions.map(q => {
         const no = Number(q.no || 0);

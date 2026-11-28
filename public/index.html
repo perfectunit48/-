@@ -2479,7 +2479,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v102';
+    const CLIENT_BUILD_VERSION = '20261128_v103';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -7454,7 +7454,7 @@
           return `<p style="text-indent:0;margin:0;padding:0 0 2px 0;text-align:left;word-break:normal;overflow-wrap:break-word;">${inl}</p>`;
           }
           const inl2 = isPassageBody ? autoUnderlineMarkers(fmtInline(t)) : fmtInline(t);
-          return `<p style="text-indent:1em;margin:0;padding:0 0 3px 0;text-align:justify;word-break:normal;overflow-wrap:break-word;">${inl2}</p>`;
+          return `<p style="text-indent:1em;margin:0;padding:0 0 5px 0;text-align:justify;word-break:normal;overflow-wrap:break-word;">${inl2}</p>`;
         };
 
         const fmtBody = (raw) => String(raw || '')
@@ -7673,6 +7673,7 @@
             if (ci < 5 && !/^[①②③④⑤]/.test(cs.trim())) {
               cs = cNums[ci] + ' ' + cs.replace(/^[1-5][\.\)]\s*/, '').trim();
             }
+            cs = cs.trim().replace(/^([①②③④⑤])\s*/, '$1 ');
             return cs;
           });
           const maxChoiceLen = Math.max(0, ...choicesArr.map(c => String(c || '').trim().length));
@@ -7787,7 +7788,7 @@
               const isLastP = (pi === mergedParas.length - 1) && !hasPVis;
               const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:6px;' : 'padding-top:0;';
               const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:24px;' : 'padding-bottom:0;';
-              const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.52;text-align:justify;`;
+              const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.78;text-align:justify;`;
               const lblHtml = pObj.label ? fmtParagraph(pObj.label, true) : '';
               let innerHtml = fmtParagraph(pr, true);
               if (pObj.cont) innerHtml = innerHtml.replace('text-indent:1em;', 'text-indent:0;');
@@ -8327,7 +8328,8 @@
       };
       const syncKorTot = () => {
         if (!korComIn || !korEleIn || !korTotIn) return;
-        const maxCom = korInputMode === 'count' ? 34 : 76;
+        const noEle = Boolean(document.getElementById('korNoElectiveChk')?.checked);
+        const maxCom = korInputMode === 'count' ? (noEle ? 45 : 34) : (noEle ? 100 : 76);
         const maxEle = korInputMode === 'count' ? 11 : 24;
         const maxTot = korInputMode === 'count' ? 45 : 100;
         clampKorField(korComIn, maxCom, korInputMode === 'count' ? '공통 개수' : '공통 점수');
