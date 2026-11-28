@@ -2401,7 +2401,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v79';
+    const CLIENT_BUILD_VERSION = '20261128_v81';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -7134,7 +7134,7 @@
               .replace(/^(\d+\.\s*)다음은\s*위\s*글을\s*읽은\s*학생이\s*어휘\s*학습을\s*위해\s*정리한\s*내용이다\.\s*/i, '$1')
               .replace(/([ⓐ-ⓔ])\s*['"‘’“”][가-힣]+['"‘’“”]/g, '$1');
           }
-          const pts = Number(q.points) === 3 ? ' <span style="font-weight:700;">[3점]</span>' : '';
+          const pts = Number(q.points) === 3 ? '&nbsp;<span style="font-weight:400;white-space:nowrap;">[3점]</span>' : '';
           let qVisObj = q.visual || null;
           let rawBox = q.box;
           if (rawBox && typeof rawBox === 'object') {
@@ -7200,7 +7200,7 @@
             ).join('') + `</div>`;
           }
 
-          return `<div style="margin-top:26px;break-inside:avoid;">
+          return `<div style="margin-top:44px;break-inside:avoid;">
             <div style="font-family:${serifFont};font-weight:500;font-size:11.4px;line-height:1.52;text-align:justify;word-break:normal;overflow-wrap:break-word;">${fmtInline(stemTxt)}${pts}</div>
             ${standaloneVisHtml}
             ${boxHtml}
@@ -7253,7 +7253,7 @@
               }
             }
           }
-          const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:22px 0 6px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
+          const hdrHtml = `<div style="font-family:${sansFont};font-weight:700;font-size:12px;margin:36px 0 8px 0;line-height:1.42;break-after:avoid;">${esc(hdrStr.replace(/~/g, '～'))}</div>`;
           const rawParas = bodyStr.split(/\n+/).map(s => s.trim()).filter(Boolean);
           const paras = [];
           rawParas.forEach(pr => {
@@ -7278,19 +7278,32 @@
             paras.push({ text: pr, cont: false });
           });
           const hasPVis = Boolean(p.visual && typeof p.visual === 'object' && p.visual.type);
-          if (paras.length > 0) {
-            paras.forEach((pObj, pi) => {
+          // Merge standalone (가)/(나)/(다) label with its immediately following paragraph so it never strands alone at column bottom
+          const mergedParas = [];
+          for (let mi = 0; mi < paras.length; mi++) {
+            const cur = paras[mi];
+            if (/^\([가나다라]\)$/.test(cur.text) && mi + 1 < paras.length) {
+              mergedParas.push({ label: cur.text, text: paras[mi + 1].text, cont: paras[mi + 1].cont });
+              mi++;
+            } else {
+              mergedParas.push(cur);
+            }
+          }
+          if (mergedParas.length > 0) {
+            mergedParas.forEach((pObj, pi) => {
               const pr = pObj.text;
               const isFirstP = pi === 0;
-              const isLastP = (pi === paras.length - 1) && !hasPVis;
+              const isLastP = (pi === mergedParas.length - 1) && !hasPVis;
               const bTop = isFirstP ? 'border-top:1px solid #111;padding-top:6px;' : 'padding-top:0;';
-              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:20px;' : 'padding-bottom:0;';
+              const bBot = isLastP ? 'border-bottom:1px solid #111;padding-bottom:6px;margin-bottom:32px;' : 'padding-bottom:0;';
               const boxStyle = `border-left:1px solid #111;border-right:1px solid #111;padding-left:8px;padding-right:8px;background:#fff;${bTop}${bBot}font-family:${serifFont};font-size:11.2px;line-height:1.52;text-align:justify;`;
+              const lblHtml = pObj.label ? fmtParagraph(pObj.label, true) : '';
               let innerHtml = fmtParagraph(pr, true);
               if (pObj.cont) innerHtml = innerHtml.replace('text-indent:1em;', 'text-indent:0;');
               units.push({
                 isElective,
-                html: (isFirstP ? hdrHtml : '') + `<div style="${boxStyle}">${innerHtml}</div>`
+                isPassageStart: isFirstP,
+                html: (isFirstP ? hdrHtml : '') + `<div style="${boxStyle}">${lblHtml}${innerHtml}</div>`
               });
             });
           } else {
@@ -7365,8 +7378,9 @@
           const isFirstLike = (pages.length === 0) || (curIsElec && !pages.some(pg => pg.isElective));
           const maxColH = getColLimit(isFirstLike);
 
+          const minStartNeed = u.isPassageStart ? Math.max(u.h, 130) : u.h;
           if (col === 1) {
-            if (col1H > 0 && col1H + u.h > maxColH) {
+            if (col1H > 0 && col1H + minStartNeed > maxColH) {
               col = 2;
               col2H = u.h;
               col2Units.push(u);
@@ -7375,7 +7389,7 @@
               col1Units.push(u);
             }
           } else {
-            if (col2H > 0 && col2H + u.h > maxColH) {
+            if (col2H > 0 && col2H + minStartNeed > maxColH) {
               pages.push({ col1: col1Units, col2: col2Units, isElective: curIsElec, isElectiveStart: isFirstLike && curIsElec });
               col1Units = [u];
               col2Units = [];
@@ -7446,8 +7460,8 @@
             return arr.map((u, ui) => {
               if (ui === 0) {
                 return u.html
-                  .replace(/margin-top:26px;/, 'margin-top:2px;')
-                  .replace(/margin:22px 0 6px 0;/, 'margin:2px 0 6px 0;');
+                  .replace(/margin-top:44px;/, 'margin-top:2px;')
+                  .replace(/margin:36px 0 8px 0;/, 'margin:2px 0 8px 0;');
               }
               if (extra > 0 && u.isGapTarget) {
                 return `<div style="margin-top:${extra}px;">${u.html}</div>`;
@@ -8146,7 +8160,28 @@
             }
             return resObj;
           } else {
-            const commonMap = parseAnswerBlock(fullText.slice(0, 2500), 1, 45);
+            // Find the exact page containing the (홀수형) answer table — never read question pages or 짝수형 pages!
+            let targetTxt = '';
+            const loadedPages = Object.keys(pageTexts).map(Number).filter(n => !isNaN(n) && pageTexts[n]).sort((a, b) => a - b);
+            for (const pNum of loadedPages) {
+              const pt = String(pageTexts[pNum] || '');
+              const hasOdd = /홀\s*수/.test(pt);
+              const hasEven = /짝\s*수/.test(pt);
+              const hasAnsTbl = /정\s*답\s*표|문항\s*번호/.test(pt);
+              if (hasAnsTbl && hasOdd && !hasEven) { targetTxt = pt; break; }
+            }
+            if (!targetTxt) {
+              for (const pNum of loadedPages) {
+                const pt = String(pageTexts[pNum] || '');
+                if (/짝\s*수\s*형/.test(pt) && !/홀\s*수\s*형/.test(pt)) continue;
+                if (/정\s*답\s*표|정답\s*및\s*해설/.test(pt)) { targetTxt += ' ' + pt; }
+              }
+            }
+            if (!targetTxt) {
+              // Fall back to tail pages only (never page 1~3 question pages)
+              targetTxt = loadedPages.filter(n => pdf.numPages <= 2 || n > 3).map(n => pageTexts[n]).join(' ');
+            }
+            const commonMap = parseAnswerBlock(targetTxt.slice(0, 4500), 1, 45);
             const resObj = Object.keys(commonMap).length >= 25 ? { commonMap, hwajakMap: {}, eonmaeMap: {} } : null;
             if (resObj && Object.keys(commonMap).length >= 45) window._korAnsCache[cKey] = resObj;
             return resObj;

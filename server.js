@@ -92,7 +92,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_v79';
+const CLIENT_BUILD_VERSION = '20261128_v81';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -1254,7 +1254,7 @@ async function extractKoreanAnswersFromPdfOnServer(yNum, type, pdfUrl) {
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
   const key = `${yNum}_${type}`;
   if (!apiKey || !pdfUrl) return null;
-  if (KOREAN_PARSED_ANSWERS_CACHE[key]) {
+  if (KOREAN_PARSED_ANSWERS_CACHE[key] && KOREAN_PARSED_ANSWERS_CACHE[key].schema === 'v2_odd_verified') {
     const c = KOREAN_PARSED_ANSWERS_CACHE[key];
     const ok = yNum >= 2022
       ? (Object.keys(c.commonMap || {}).length >= 34 && Object.keys(c.hwajakMap || {}).length >= 11 && Object.keys(c.eonmaeMap || {}).length >= 11)
@@ -1268,9 +1268,15 @@ async function extractKoreanAnswersFromPdfOnServer(yNum, type, pdfUrl) {
     const isElective = yNum >= 2022;
     const typeLabel = type === '수능' ? '대학수학능력시험(수능)' : `${type || ''} 모의평가`;
     const prompt = isElective
-      ? `첨부된 ${yNum}학년도 ${typeLabel} 국어 영역 PDF에서 **홀수형 기준**으로 1~34번 공통과목, 35~45번 화법과 작문, 35~45번 언어와 매체 정답을 모두 추출해 원문자(①,②,③,④,⑤) JSON만 출력하세요. 없는 과목은 {}로 두세요.
+      ? `첨부된 ${yNum}학년도 ${typeLabel} 국어 영역 PDF에서 반드시 **'( 홀수 )형' 정답표**만 찾아 1~34번 공통과목, 35~45번 화법과 작문, 35~45번 언어와 매체 정답을 모두 추출해 원문자(①,②,③,④,⑤) JSON만 출력하세요. 없는 과목은 {}로 두세요.
+[필수 주의사항]
+1. PDF에 '홀수형'과 '짝수형'이 함께 있는 경우 반드시 **홀수형 정답표**만 읽고 짝수형은 절대 읽지 마세요.
+2. 만약 PDF에 공식 '정답표'나 '정답 및 해설'이 전혀 없고 문제지만 있다면, 절대 문제를 직접 풀거나 추측하지 말고 {}만 출력하세요.
 {"common":{"1":"①"},"hwajak":{"35":"④"},"eonmae":{"35":"②"}}`
-      : `첨부된 ${yNum}학년도 ${typeLabel} 국어 영역 PDF에서 **홀수형 기준** 1~45번 공식 정답을 모두 추출해 원문자(①,②,③,④,⑤) JSON만 출력하세요.
+      : `첨부된 ${yNum}학년도 ${typeLabel} 국어 영역 PDF에서 반드시 **'( 홀수 )형' 정답표 페이지**만 찾아 1~45번 공식 정답을 추출해 원문자(①,②,③,④,⑤) JSON만 출력하세요.
+[필수 주의사항]
+1. PDF에 '홀수형' 정답표와 '짝수형' 정답표가 함께 들어있는 경우(예: 마지막 전 페이지가 홀수형, 마지막 페이지가 짝수형) 반드시 **홀수형 정답표**만 읽고 짝수형은 절대 읽지 마세요.
+2. 만약 PDF에 공식 '정답표'나 '정답 및 해설'이 전혀 없고 문제지만 있다면, 절대 문제를 직접 풀거나 추측하지 말고 빈 JSON {}만 출력하세요.
 {"common":{"1":"①"}}`;
     const r = await callGeminiWithFallback(apiKey, {
       contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: 'application/pdf', data: pdfB64 } }] }],
@@ -1287,7 +1293,7 @@ async function extractKoreanAnswersFromPdfOnServer(yNum, type, pdfUrl) {
           ? (Object.keys(cMap).length >= 34 && Object.keys(hMap).length >= 11 && Object.keys(eMap).length >= 11)
           : (Object.keys(cMap).length >= 45);
         if (ok) {
-          const out = { ok: true, commonMap: cMap, hwajakMap: hMap, eonmaeMap: eMap };
+          const out = { ok: true, schema: 'v2_odd_verified', commonMap: cMap, hwajakMap: hMap, eonmaeMap: eMap };
           KOREAN_PARSED_ANSWERS_CACHE[key] = out;
           saveParsedAnswersCache();
           return out;
@@ -1309,6 +1315,7 @@ app.post('/api/korean-cache-answers', (req, res) => {
   if (key && isComplete) {
     KOREAN_PARSED_ANSWERS_CACHE[key] = {
       ok: true,
+      schema: 'v2_odd_verified',
       commonMap,
       hwajakMap: hwajakMap || {},
       eonmaeMap: eonmaeMap || {}
@@ -1318,13 +1325,31 @@ app.post('/api/korean-cache-answers', (req, res) => {
   res.json({ ok: true });
 });
 
+const BUILTIN_OFFICIAL_ANSWERS = {
+  '2020_수능': {
+    ok: true,
+    schema: 'v2_odd_verified',
+    commonMap: {
+      1:'④',2:'③',3:'①',4:'⑤',5:'②',6:'②',7:'④',8:'③',9:'④',10:'①',11:'⑤',12:'②',
+      13:'④',14:'③',15:'①',16:'②',17:'②',18:'④',19:'⑤',20:'②',21:'②',22:'⑤',23:'①',24:'③',
+      25:'①',26:'⑤',27:'①',28:'③',29:'①',30:'①',31:'⑤',32:'⑤',33:'③',34:'④',35:'③',36:'③',
+      37:'①',38:'③',39:'④',40:'⑤',41:'⑤',42:'③',43:'④',44:'②',45:'④'
+    },
+    hwajakMap: {},
+    eonmaeMap: {}
+  }
+};
+
 app.get('/api/korean-cached-answers', async (req, res) => {
   const year = String(req.query.year || '').trim();
   const type = String(req.query.type || '').trim();
   const key = year && type ? `${year}_${type}` : '';
   const yN = Number(year || 2026);
+  if (key && BUILTIN_OFFICIAL_ANSWERS[key]) {
+    return res.json(BUILTIN_OFFICIAL_ANSWERS[key]);
+  }
   const isOk = (ca) => {
-    if (!ca) return false;
+    if (!ca || ca.schema !== 'v2_odd_verified') return false;
     const cLen = Object.keys(ca.commonMap || {}).length;
     const hLen = Object.keys(ca.hwajakMap || {}).length;
     const eLen = Object.keys(ca.eonmaeMap || {}).length;
@@ -1334,7 +1359,7 @@ app.get('/api/korean-cached-answers', async (req, res) => {
     return res.json(KOREAN_PARSED_ANSWERS_CACHE[key]);
   }
   const preset = KOREAN_EXAM_PRESETS[key] || KOREAN_EXAM_URL_CACHE[key] || {};
-  const pdfUrl = preset.answerPdfUrl || preset.questionPdfUrl || '';
+  const pdfUrl = preset.answerPdfUrl || '';
   if (pdfUrl && typeof extractKoreanAnswersFromPdfOnServer === 'function') {
     const ext = await extractKoreanAnswersFromPdfOnServer(yN, type, pdfUrl);
     if (isOk(ext)) return res.json(ext);
@@ -1621,6 +1646,7 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
   각 문단은 2줄짜리 짧은 문단으로 자꾸 쪼개지 말고 **한 문단당 350~500자(8~11줄)**의 호흡이 긴 완성형 문단으로 작성하세요. 문단 내에 [A], [B] 구간 표지나 ㉠~㉤, ⓐ~ⓔ 표지를 실제 수능처럼 적절히 배치하세요.
 - 문학 지문도 실제 수능처럼 인물 대사·서술·시 연·고전 어휘 현대어 풀이(예: 즈믄 해=천 년), [중략 줄거리]가 살아있는 완성도 높은 분량으로 작성하세요.
 - box 필드(<보 기> 내용) 안에는 절대 "<보 기>"나 "<보기>" 제목 글자를 쓰지 마세요.
+- **독서 지문([1~3], [4~9], [10~13], [14~17])에서는 지문당 <보 기> 문항(box 또는 visual이 있는 문항)을 반드시 최대 1문항(1개만) 출제하세요.** 한 독서 지문 안에 <보 기> 박스가 2개 이상 들어가면 안 됩니다.
 - 독서 어휘 문항은 실제 2026·2027 수능 PDF처럼 **[1~3] 독서 이론에는 절대 출제하지 말고**, [4~9] (가)/(나) 지문 마지막 문항(9번)에 1문항 + [10~13] 또는 [14~17] 지문 마지막 문항(13번 또는 17번)에 1문항, 총 2문항만 출제하세요(box는 반드시 빈 문자열 ""):
   · 유형 1(다의어 문맥 의미): 지문 내 1개 단어에만 ⓐ를 표기하고, 발문은 반드시 **"문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?"**으로만 쓰세요(절대 "다음은 위 글을 읽은 학생이 어휘 학습을 위해 정리한 내용이다." 같은 불필요한 서두나 '매몰되어' 같은 단어 병기를 넣지 말 것!). 선지 ①~⑤에는 **절대 ⓐ 기호를 넣지 말고** 5개 선지 모두에서 의미를 비교할 핵심 서술어/단어에 반드시 <u>...</u> 밑줄을 쳐서 제시하세요(예: ① 우리 대표팀은 경기 초반의 열세를 딛고 역전승을 <u>거머쥐었다</u>.).
   · 유형 2(어휘 바꿔 쓰기, 13번 또는 17번에 반드시 1문항 출제): 지문 내 5개 어휘에 반드시 ⓐ 단어~ⓔ 단어를 표기하고, 발문은 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?"으로 하며, 선지 ①~⑤는 실제 2027 수능 13번처럼 반드시 **"① ⓐ: 소요(所要)된다"**, **"② ⓑ: 부과(賦課)된다"** 형식으로 ⓐ~ⓔ 기호와 한자어(또는 대체어)만 제시하세요(절대 "① 수반된다: 동반된다"처럼 기호를 빼거나 '->' 화살표를 쓰지 마세요!).
@@ -1717,6 +1743,7 @@ ${userPrompt || '2027학년도 수능 국어와 동등한 최고 난이도·완�
 3. 각 문항의 정답 선지가 지문·<보 기>·visual 자료 근거와 100% 일치하고, 나머지 4개 오답 선지가 복수 정답 여지 없이 명확히 배제되는가? 매력적 오답(인과 역전, 조건 누락, 범위 확대)을 정교하게 다듬으세요.
 4. 어휘 문항에는 <보 기>를 넣지 말고("box":""), box 문자열 앞의 중복 "<보 기>" 문구는 제거하세요. stem 안의 [학습 활동] 본문은 box로 분리하세요.
 5. 과학·기술/법·경제 독서나 화법과 작문/언어와 매체 파트에서 지문/문항에 언급된 그래프·표·도식·메신저·웹페이지가 visual 필드에 정확히 구조화되어 있는지 확인하고, 누락되었거나 수치가 선지와 어긋나면 수정하세요.
+6. 독서 지문([1~3], [4~9], [10~13], [14~17]) 1개 안에 <보 기>(box/visual) 문항이 2개 이상 있으면, 가장 핵심적인 [3점] 1문항만 <보 기>로 남기고 나머지 <보 기> 문항은 지문 내용만 묻는 일반 추론·비판 문항(box:"", visual:null)으로 재작성하세요.
 
 [검수 대상 초안 JSON]
 ${JSON.stringify({ passages: draft }).slice(0, 26000)}
