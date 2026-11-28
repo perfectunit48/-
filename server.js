@@ -49,7 +49,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_v69';
+const CLIENT_BUILD_VERSION = '20261128_v72';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -669,25 +669,59 @@ const HORAENG_POST_MAP = {
   '2023_9월': '252'
 };
 
+const LEGENDSTUDY_POST_MAP = {
+  '2027_9월': '1710',
+  '2025_9월': '1634',
+  '2024_수능': '1574',
+  '2024_9월': '1525',
+  '2024_6월': '1516',
+  '2023_9월': '1507'
+};
+
 async function searchHoraengKoreanPdf(year, type) {
   const key = `${year}_${type}`;
   let postUrl = HORAENG_POST_MAP[key] ? `https://horaeng.com/${HORAENG_POST_MAP[key]}` : '';
   if (!postUrl) {
     const q = `${year}학년도 ${type === '수능' ? '수능' : type + ' 모의평가'}`;
-    const searchHtml = await fetchTextWithTimeout(`https://horaeng.com/?s=${encodeURIComponent(q)}`, 4500);
+    const searchHtml = await fetchTextWithTimeout(`https://horaeng.com/?s=${encodeURIComponent(q)}`, 7000);
     if (searchHtml) {
-      const m = searchHtml.match(/href="(https:\/\/horaeng\.com\/\d+)"/i);
+      const m = searchHtml.match(/href=["'](https:\/\/horaeng\.com\/\d+)["']/i);
       if (m) postUrl = m[1];
     }
   }
   if (!postUrl) return { mun: '', hsj: '' };
-  const html = await fetchTextWithTimeout(postUrl, 5000);
+  const html = await fetchTextWithTimeout(postUrl, 8000);
   if (!html) return { mun: '', hsj: '' };
-  const korIdx = html.search(/<h[234][^>]*>\s*국어\s*<\/h[234]>|id="국어"/i);
-  const slice = korIdx >= 0 ? html.slice(korIdx, korIdx + 3500) : html.slice(0, 6000);
-  const pdfs = [...slice.matchAll(/href="(https?:\/\/[^"]+\.pdf)"/gi)].map(m => m[1].replace(/&amp;/g, '&'));
-  let mun = pdfs.find(u => /문제|mun|paper/i.test(decodeURIComponent(u))) || pdfs[0] || '';
-  let hsj = pdfs.find(u => /해설|정답|hsj|answer/i.test(decodeURIComponent(u))) || pdfs[1] || '';
+  const allLinks = [...html.matchAll(/<a[^>]+href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => ({
+    url: m[1].replace(/&amp;/g, '&'),
+    text: stripHtmlText(m[2])
+  }));
+  const korPdfs = allLinks.filter(l => /\.pdf(?:$|\?)/i.test(l.url) && (/국어/.test(l.text) || /국어|kor/i.test(decodeURIComponent(l.url))));
+  let mun = (korPdfs.find(l => /문제|mun|paper/i.test(l.text + ' ' + decodeURIComponent(l.url))) || {}).url || '';
+  let hsj = (korPdfs.find(l => /해설|정답|hsj|answer/i.test(l.text + ' ' + decodeURIComponent(l.url))) || {}).url || '';
+  if (!mun || !hsj) {
+    const korIdx = html.search(/국어\s*<\/(?:h[234]|span|strong)>/i);
+    const slice = korIdx >= 0 ? html.slice(korIdx, korIdx + 4500) : html.slice(0, 8000);
+    const pdfs = [...slice.matchAll(/href=["'](https?:\/\/[^"']+\.pdf[^"']*)["']/gi)].map(m => m[1].replace(/&amp;/g, '&'));
+    if (!mun) mun = pdfs.find(u => /문제|mun|paper/i.test(decodeURIComponent(u))) || pdfs[0] || '';
+    if (!hsj) hsj = pdfs.find(u => /해설|정답|hsj|answer/i.test(decodeURIComponent(u))) || pdfs[1] || '';
+  }
+  return { mun, hsj };
+}
+
+async function searchLegendstudyKoreanPdf(year, type) {
+  const key = `${year}_${type}`;
+  const pid = LEGENDSTUDY_POST_MAP[key];
+  if (!pid) return { mun: '', hsj: '' };
+  const html = await fetchTextWithTimeout(`https://legendstudy.com/${pid}`, 8000);
+  if (!html) return { mun: '', hsj: '' };
+  const links = [...html.matchAll(/<a[^>]+href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => ({
+    url: m[1].replace(/&amp;/g, '&'),
+    text: stripHtmlText(m[2])
+  }));
+  const korLinks = links.filter(l => /국어/.test(l.text) && (/\.pdf/i.test(l.url) || /daumcdn|kakaocdn|tistory\.com\/attachment/i.test(l.url)));
+  const mun = (korLinks.find(l => /문제/.test(l.text)) || {}).url || '';
+  const hsj = (korLinks.find(l => /정답|해설/.test(l.text)) || {}).url || '';
   return { mun, hsj };
 }
 
@@ -1056,16 +1090,17 @@ app.get('/api/korean-exam', async (req, res) => {
   if (!answerPdfUrl) answerPdfUrl = aChk0 ? ttAnsCands[0] : (aChk1 ? ttAnsCands[1] : '');
 
   if (!questionPdfUrl || !answerPdfUrl) {
-    const [hr, ebsiMun, ebsiHsj, dongaOk] = await Promise.all([
+    const [hr, ls, ebsiMun, ebsiHsj, dongaOk] = await Promise.all([
       searchHoraengKoreanPdf(year, type),
+      searchLegendstudyKoreanPdf(year, type),
       !questionPdfUrl ? searchEbsiKoreanPdf(year, type, 'mun') : Promise.resolve(''),
       !answerPdfUrl ? searchEbsiKoreanPdf(year, type, 'hsj') : Promise.resolve(''),
       (!questionPdfUrl && type === '수능' && yNum <= 2020)
         ? checkUrlExists(`https://image.donga.com/education/exam/${year}_su/1_1.pdf`)
         : Promise.resolve(false)
     ]);
-    if (!questionPdfUrl) questionPdfUrl = hr.mun || ebsiMun || (dongaOk ? `https://image.donga.com/education/exam/${year}_su/1_1.pdf` : '');
-    if (!answerPdfUrl) answerPdfUrl = hr.hsj || ebsiHsj || (dongaOk ? `https://image.donga.com/education/exam/${year}_su/1_1.pdf` : '');
+    if (!questionPdfUrl) questionPdfUrl = hr.mun || ls.mun || ebsiMun || (dongaOk ? `https://image.donga.com/education/exam/${year}_su/1_1.pdf` : '');
+    if (!answerPdfUrl) answerPdfUrl = hr.hsj || ls.hsj || ebsiHsj || (dongaOk ? `https://image.donga.com/education/exam/${year}_su/1_1.pdf` : '');
   }
 
   let cachedAns = (typeof KOREAN_PARSED_ANSWERS_CACHE !== 'undefined' && KOREAN_PARSED_ANSWERS_CACHE[cacheKey]) || null;
@@ -1460,7 +1495,7 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 - box 필드(<보 기> 내용) 안에는 절대 "<보 기>"나 "<보기>" 제목 글자를 쓰지 마세요.
 - 독서 어휘 문항은 실제 2026·2027 수능 PDF처럼 **[1~3] 독서 이론에는 절대 출제하지 말고**, [4~9] (가)/(나) 지문 마지막 문항(9번)에 1문항 + [10~13] 또는 [14~17] 지문 마지막 문항(13번 또는 17번)에 1문항, 총 2문항만 출제하세요(box는 반드시 빈 문자열 ""):
   · 유형 1(다의어 문맥 의미): 지문 내 1개 단어에만 ⓐ를 표기하고, 발문은 반드시 **"문맥상 ⓐ와 가장 가까운 의미로 쓰인 것은?"**으로만 쓰세요(절대 "다음은 위 글을 읽은 학생이 어휘 학습을 위해 정리한 내용이다." 같은 불필요한 서두나 '매몰되어' 같은 단어 병기를 넣지 말 것!). 선지 ①~⑤에는 **절대 ⓐ 기호를 넣지 말고** 5개 선지 모두에서 의미를 비교할 핵심 서술어/단어에 반드시 <u>...</u> 밑줄을 쳐서 제시하세요(예: ① 우리 대표팀은 경기 초반의 열세를 딛고 역전승을 <u>거머쥐었다</u>.).
-  · 유형 2(어휘 바꿔 쓰기, 13번 또는 17번에 반드시 1문항 출제): 지문 내 5개 어휘에 ⓐ~ⓔ를 표기하고, 발문은 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?"으로 하며, 선지 ①~⑤는 반드시 **"① ⓐ: 대체어"**처럼 기호와 바꿀 어휘만 짧게 제시하세요(절대 선지 안에 지문 문장이나 '->' 화살표를 넣지 마세요!).
+  · 유형 2(어휘 바꿔 쓰기, 13번 또는 17번에 반드시 1문항 출제): 지문 내 5개 어휘에 반드시 ⓐ 단어~ⓔ 단어를 표기하고, 발문은 "문맥상 ⓐ～ⓔ를 바꿔 쓰기에 가장 적절한 것은?"으로 하며, 선지 ①~⑤는 실제 2027 수능 13번처럼 반드시 **"① ⓐ: 소요(所要)된다"**, **"② ⓑ: 부과(賦課)된다"** 형식으로 ⓐ~ⓔ 기호와 한자어(또는 대체어)만 제시하세요(절대 "① 수반된다: 동반된다"처럼 기호를 빼거나 '->' 화살표를 쓰지 마세요!).
 - <보 기> 안에 빈칸 추론(예: '특히 ㉠ ________.')을 넣을 때는 반드시 긴 밑줄 빈칸을 포함하고, 선지 ①~⑤는 빈칸 문맥에 자연스럽게 이어지는 완성된 문장형(또는 서술절)으로 끝맺으세요.
 - stem 안에 [학습 활동] 본문이나 비교표를 섞어 넣지 말고, 추가 자료는 box 필드에 넣으세요.
 - 모든 문항의 stem 앞에는 반드시 문항 번호("1. ", "2. " ... "45. ")를 붙이고, 지정된 범위의 모든 번호를 1문항도 빠짐없이 출제하세요.
@@ -1642,12 +1677,12 @@ ${existingSummary}
 
     updateJob(45, '3단계: 현대소설 · 갈래 복합 작품 선정 및 문항 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    let p2a = await draftAndRefinePart('문학 18~26번', '공통과목 문학 18~26번(총 9문항): [18~21] 현대소설(1,800자+, 4문항), [22~26] 갈래 복합 (가) 고전시가+(나) 현대시/수필(1,600자+, 5문항). 반드시 26번까지만 출제하세요.', '18~26번');
+    let p2a = await draftAndRefinePart('문학 18~26번', '공통과목 문학 18~26번(총 9문항): [18~21] 현대소설(2,400~2,800자, 7~10문단, 인물 대화·심리 서술·[A]/[B] 구간 포함, 4문항), [22~26] 갈래 복합 (가) 고전시가+(나) 현대시/수필(1,600자+, 5문항). 반드시 26번까지만 출제하세요.', '18~26번');
     p2a = await ensureRangeComplete('문학 18~26번', p2a, 18, 26, '공통과목 문학 18~26번(총 9문항): [18~21] 현대소설, [22~26] 갈래 복합.');
 
     updateJob(64, '4단계: 고전소설 · 현대시(가/나) 출제 및 <보기> 검토 중...');
     await new Promise(r => setTimeout(r, 1000));
-    let p2b = await draftAndRefinePart('문학 27~34번', '공통과목 문학 27~34번(총 8문항): [27~30] 고전소설(2,200~2,600자, 인물 대화·사건 전개·[중략 줄거리]·어휘 각주 포함, 4문항), [31~34] 현대시 (가)/(나) 2편 전문(passage.header="[31~34] 다음 글을 읽고 물음에 답하시오.", passage.body에 (가), (나) 시 배치 — 절대 문항 <보 기> 안에 시를 넣지 말 것!) 및 4문항.', '27~34번');
+    let p2b = await draftAndRefinePart('문학 27~34번', '공통과목 문학 27~34번(총 8문항): [27~30] 고전소설(2,400~2,800자, 7~10문단, 인물 대화·고전 문체·사건 전개·[중략 줄거리]·어휘 각주 포함, 4문항), [31~34] 현대시 (가)/(나) 2편 전문(passage.header="[31~34] 다음 글을 읽고 물음에 답하시오.", passage.body에 (가), (나) 시 배치 — 절대 문항 <보 기> 안에 시를 넣지 말 것!) 및 4문항.', '27~34번');
     p2b = await ensureRangeComplete('문학 27~34번', p2b, 27, 34, '공통과목 문학 27~34번(총 8문항): [27~30] 고전소설, [31~34] 현대시 (가)/(나).');
 
     updateJob(82, `5단계: 선택과목(${elective} 35~45번) 출제 및 최종 45문항 검수 중...`);
@@ -1687,18 +1722,35 @@ ${existingSummary}
         if (no > 0 && !new RegExp('^' + no + '\\s*[\\.\\)]').test(stem)) {
           stem = `${no}. ${stem}`;
         }
-        let box = String(q.box || '').replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '').trim();
+        let qVisual = q.visual || null;
+        let rawBoxVal = q.box;
+        if (rawBoxVal && typeof rawBoxVal === 'object') {
+          if (rawBoxVal.type && !qVisual) {
+            qVisual = rawBoxVal;
+            rawBoxVal = '';
+          } else if (Array.isArray(rawBoxVal)) {
+            rawBoxVal = rawBoxVal.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join('\n');
+          } else {
+            rawBoxVal = Object.entries(rawBoxVal).map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n');
+          }
+        }
+        let box = String(rawBoxVal || '').replace(/\[object Object\]/g, '').replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '').trim();
         let choices = Array.isArray(q.choices) ? q.choices.map(c => String(c || '')) : [];
         if (/문맥상\s*[ⓐ-ⓔ]|문맥적\s*의미/.test(stem)) {
           stem = stem
             .replace(/^(\d+\.\s*)다음은\s*위\s*글을\s*읽은\s*학생이\s*어휘\s*학습을\s*위해\s*정리한\s*내용이다\.\s*/i, '$1')
             .replace(/([ⓐ-ⓔ])\s*['"‘’“”][가-힣]+['"‘’“”]/g, '$1');
           if (/바꿔\s*쓰기/.test(stem)) {
-            choices = choices.map(cs => {
+            const symList = ['ⓐ', 'ⓑ', 'ⓒ', 'ⓓ', 'ⓔ'];
+            const cNums = ['①', '②', '③', '④', '⑤'];
+            choices = choices.map((cs, ci) => {
               const arrM = cs.match(/^\s*([①②③④⑤])\s*([ⓐ-ⓔ])\s*[:：]?[\s\S]*?(?:->|→)\s*(.+)$/);
               if (arrM) {
-                const cleanRep = arrM[3].replace(/<\/?u>/gi, '').trim();
-                return `${arrM[1]} ${arrM[2]}: ${cleanRep}`;
+                return `${arrM[1]} ${arrM[2]}: ${arrM[3].replace(/<\/?u>/gi, '').trim()}`;
+              }
+              const noSymM = cs.match(/^\s*([①②③④⑤])\s*(?![ⓐ-ⓔ])[^:：]+[:：]\s*(.+)$/);
+              if (noSymM && ci < 5) {
+                return `${cNums[ci]} ${symList[ci]}: ${noSymM[2].replace(/<\/?u>/gi, '').trim()}`;
               }
               return cs;
             });
@@ -1710,7 +1762,7 @@ ${existingSummary}
             });
           }
         }
-        return Object.assign({}, q, { no, stem, box, choices });
+        return Object.assign({}, q, { no, stem, box, visual: qVisual, choices });
       }).filter(Boolean).sort((a, b) => a.no - b.no) : [];
       return Object.assign({}, p, { questions: qs });
     }).filter(p => p.questions.length > 0 || (p.body && p.body.length > 50))
