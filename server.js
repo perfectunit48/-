@@ -92,7 +92,7 @@ app.use((req, res, next) => {
   };
   next();
 });
-const CLIENT_BUILD_VERSION = '20261128_v81';
+const CLIENT_BUILD_VERSION = '20261128_v83';
 app.get('/sw.js', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -1633,7 +1633,7 @@ async function runHighQualityKoreanMockJob(jobId, { title, elective, userPrompt,
 
 [분량 · 배점(10개년 기출 기준) · 문학 출처 필수 조건]
 - 배점은 실제 수능 국어 10개년 기준과 동일하게 **총 100점 = 2점 35문항 + 3점 10문항**으로 엄격히 맞추세요(독서 4문항, 문학 4문항, 선택과목 2문항에 points:3 배정, 나머지 35문항은 points:2).
-- 문학 지문([18~21] 현대소설, [22~26] 갈래복합, [27~30] 고전소설, [31~34] 현대시 (가)/(나))의 각 작품 끝에는 실제 수능처럼 반드시 "- 작가명, 「작품명」 -" 형식의 출처 표기 줄(예: "- 김승옥, 「무진기행」 -" 또는 "- 작자 미상, 「유충렬전」 -")을 넣으세요.
+- 문학 지문([18~21] 현대소설, [22~26] 갈래복합 (가) 시·(나) 시·(다) 수필 3작품, [27~30] 고전소설, [31~34] 현대시 (가)/(나))의 **모든 개별 작품 끝마다** 실제 수능처럼 반드시 "- 작가명, 「작품명」 -" 형식의 출처 표기 줄(예: "- 김승옥, 「무진기행」 -" 또는 "- 작자 미상, 「유충렬전」 -")을 넣으세요. 특히 [22~26]은 반드시 (가) 시, (나) 시, (다) 수필 3편으로 구성하세요.
 - 문학 지문 본문에서 <보기> 감상 문제 등의 선지에 직접 인용('...')되는 핵심 시어·구절 4~8개는 독자가 지문에서 바로 찾을 수 있도록 반드시 <b>...</b>로 진하게 표시하세요(예: 빈 <b>버스</b>가 <b>곤두박질치듯</b> 달려 나가고).
 - [출제 금지 유형] 문학([18~34])에서 <보기>의 학생 감상 노트에 ⓐ~ⓔ를 달아 놓고 "ⓐ~ⓔ 중 맥락/적절성에 어긋나는 것은? ① ⓐ ② ⓑ ③ ⓒ ④ ⓓ ⑤ ⓔ" 형태로 고르게 하는 문제는 절대 출제하지 마세요. 문학 <보기> 문항은 반드시 실제 수능처럼 비평적 관점(외적 준거)을 <보기> 박스로 제시하고, ①~⑤가 모두 완전한 감상 문장으로 된 5지선다형으로 출제하세요.
 - 문항 발문·<보기>·선지에서 시어나 구절을 인용할 때 『발치』와 같은 겹낫표(『...』)는 절대 사용하지 말고, 반드시 작은따옴표('발치')만 사용하세요. 특히 [31~34] 현대시는 절대 32번 문항의 <보 기> 안에 시를 넣지 말고, 반드시 [31~34] 지문(passage.header/body)에 (가), (나) 두 편을 배치하세요.
@@ -1834,7 +1834,7 @@ ${existingSummary}
     await new Promise(r => setTimeout(r, 800));
     let [p2a_1, p2a_2] = await Promise.all([
       draftAndRefinePart('현대소설 18~21번', '공통과목 문학 [18~21] 현대소설(총 4문항, 18~21번): 2,400~2,800자, 7~10문단, 인물 대화·심리 서술·[A]/[B] 구간 포함. 반드시 18~21번만 출제하세요.', '18~21번'),
-      draftAndRefinePart('갈래 복합 22~26번', '공통과목 문학 [22~26] 갈래 복합 (가) 고전시가+(나) 현대시/수필(총 5문항, 22~26번): 1,700자+, 반드시 22~26번만 출제하세요.', '22~26번')
+      draftAndRefinePart('갈래 복합 22~26번', '공통과목 문학 [22~26] 갈래 복합 (가) 시(고전시가 또는 현대시) + (나) 시(현대시 또는 고전시가) + (다) 수필(고전수필 또는 현대수필) 3작품 구성(총 5문항, 22~26번): 총 2,100자+, 반드시 (가)·(나)는 시, (다)는 수필로 출제하고 각 작품 끝에 "- 작가명, 「작품명」 -"을 표기하세요. 반드시 22~26번만 출제하세요.', '22~26번')
     ]);
     p2a_1 = await ensureRangeComplete('현대소설 18~21번', p2a_1, 18, 21, '공통과목 문학 [18~21] 현대소설(2,400자+, 4문항: 18, 19, 20, 21번).');
     p2a_2 = await ensureRangeComplete('갈래 복합 22~26번', p2a_2, 22, 26, '공통과목 문학 [22~26] 갈래 복합(5문항: 22, 23, 24, 25, 26번).');
@@ -2275,14 +2275,15 @@ const CACHED_MODELS = { vision: '', chat: '' };
 
 async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
   const preferred = mode === 'chat'
-    ? ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-4-hydrogen', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-4-argon']
-    : ['gemini-3.8-flash', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-4-hydrogen', 'gemini-3.5-flash'];
+    ? ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-3.8-flash']
+    : ['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite', 'gemini-3.8-flash'];
 
   const order = CACHED_MODELS[mode]
     ? [CACHED_MODELS[mode], ...preferred.filter(m => m !== CACHED_MODELS[mode])]
     : preferred;
 
   const errors = [];
+  let retryWaitMs = 2800;
   const tryModel = async (model) => {
     const controller = new AbortController();
     const reqTimeout = (bodyObj && bodyObj.generationConfig && bodyObj.generationConfig.maxOutputTokens >= 8192) ? 90000 : 45000;
@@ -2304,6 +2305,8 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
         }
         errors.push(`${model}: 빈 응답`);
       } else {
+        const ra = Number(r.headers.get('retry-after') || 0);
+        if (ra > 0) retryWaitMs = Math.min(10000, ra * 1000);
         const errBody = await r.text().catch(() => '');
         console.error(`[Gemini ${model}] HTTP ${r.status}`, errBody.slice(0, 200));
         errors.push(`${model}: HTTP ${r.status}`);
@@ -2320,13 +2323,23 @@ async function callGeminiWithFallback(apiKey, bodyObj, mode = 'vision') {
     const ok = await tryModel(model);
     if (ok) return ok;
     const lastErr = errors[errors.length - 1] || '';
-    await new Promise(r => setTimeout(r, lastErr.includes('429') ? 2200 : 500));
+    await new Promise(r => setTimeout(r, lastErr.includes('429') ? retryWaitMs : 400));
   }
 
   const discovered = await discoverAvailableGeminiModels(apiKey);
-  for (const model of discovered.filter(m => !order.includes(m)).slice(0, 5)) {
+  const extraModels = discovered.filter(m => !order.includes(m) && !/image|tts|audio|embedding/i.test(m)).slice(0, 4);
+  for (const model of extraModels) {
     const ok = await tryModel(model);
     if (ok) return ok;
+    const lastErr = errors[errors.length - 1] || '';
+    await new Promise(r => setTimeout(r, lastErr.includes('429') ? 3000 : 400));
+  }
+
+  // Final 429 cooldown retry on stable flash model
+  if (errors.some(e => e.includes('429'))) {
+    await new Promise(r => setTimeout(r, 5500));
+    const retryOk = await tryModel('gemini-2.5-flash');
+    if (retryOk) return retryOk;
   }
 
   return { text: '', model: '', error: errors.join(' / ') };

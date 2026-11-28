@@ -261,10 +261,10 @@
         </nav>
 
         <div class="flex items-center gap-2">
-          <button id="pubShareSiteBtn" type="button" onclick="(function(){var url='https://student-manager-0rsy.onrender.com/';var title='과외 학생 관리 · 무료 기출 아카이브';var text='2017~2027 수능 국어 기출·등급컷과 12개 대학 인문논술 기출을 무료로 볼 수 있는 사이트입니다.';if(navigator.share){navigator.share({title:title,text:text,url:url}).catch(function(){});}else if(navigator.clipboard){navigator.clipboard.writeText(text+' '+url).then(function(){if(typeof showToast==='function')showToast('소개 문구와 링크가 복사되었습니다.','success');});}})()" class="hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer" title="친구·학생·학부모에게 무료 자료 링크 공유">
+          <button id="pubShareSiteBtn" type="button" onclick="(function(){var url='https://student-manager-0rsy.onrender.com/';var title='과외 학생 관리 · 무료 기출 아카이브';var text='2017~2027 수능 국어 기출·등급컷과 12개 대학 인문논술 기출을 무료로 볼 수 있는 사이트입니다.';if(navigator.share){navigator.share({title:title,text:text,url:url}).catch(function(){});}else if(navigator.clipboard){navigator.clipboard.writeText(text+' '+url).then(function(){if(typeof showToast==='function')showToast('소개 문구와 링크가 복사되었습니다.','success');});}})()" class="hidden sm:inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer whitespace-nowrap" title="친구·학생·학부모에게 무료 자료 링크 공유">
             공유하기
           </button>
-          <button id="openTeacherLoginBtn" type="button" onclick="var ls=document.getElementById('loginScreen');if(ls){ls.classList.remove('hidden');ls.classList.add('flex');ls.style.display='flex';}" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer">
+          <button id="openTeacherLoginBtn" type="button" onclick="var ls=document.getElementById('loginScreen');if(ls){ls.classList.remove('hidden');ls.classList.add('flex');ls.style.display='flex';}" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer whitespace-nowrap">
             선생님 로그인
           </button>
         </div>
@@ -519,7 +519,9 @@
           </div>
         </section>
       </div>
-    </main>
+        </div>
+    </div>
+  </main>
 
     <footer class="bg-slate-900 text-slate-400 text-xs py-8">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-4">
@@ -770,43 +772,42 @@
       </div>
     </div>
 
-    <!-- Centered Navigation Tabs -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3">
-      <nav class="hidden md:flex w-full flex-wrap items-center justify-center gap-1.5 pb-1 custom-scrollbar" aria-label="주요 메뉴">
-        <button id="desktopEssayTabBtn" class="tab-btn active whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-purple-50 transition" data-tab="essay">
-          <i data-lucide="file-edit" class="w-4 h-4"></i>
-          <span>첨삭 &amp; 분석</span>
-        </button>
-        <button class="tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="history">
-          <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
-          <span id="desktopHistoryTabLabel">누적 글 데이터</span>
-        </button>
-        <button class="tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="progress">
-          <i data-lucide="list-checks" class="w-4 h-4"></i>
-          <span>진도 관리</span>
-        </button>
-        <button class="tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="attendance">
-          <i data-lucide="calendar-check" class="w-4 h-4"></i>
-          <span>출결 관리</span>
-        </button>
-        <button class="tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="sms">
-          <i data-lucide="message-square" class="w-4 h-4"></i>
-          <span>학부모 문자</span>
-        </button>
-        <button class="tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="exams">
-          <i data-lucide="book-marked" class="w-4 h-4"></i>
-          <span id="desktopExamsTabLabel">논술 기출</span>
-        </button>
-        <button id="studioDesktopTabBtn" class="hidden tab-btn whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 transition" data-tab="studio">
-          <i data-lucide="sparkles" class="w-4 h-4"></i>
-          <span>자료 제작</span>
-        </button>
-      </nav>
-    </div>
   </header>
 
-  <!-- Main Content -->
+  <!-- Main Content with Left Sidebar on PC/Tablet -->
   <main id="appMain" class="hidden flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-6">
+    <div class="md:flex md:items-start md:gap-6">
+      <aside class="hidden md:flex flex-col w-52 shrink-0 sticky top-20 bg-white rounded-2xl border border-slate-200 p-2.5 shadow-sm gap-1" aria-label="주요 메뉴">
+        <button id="desktopEssayTabBtn" class="tab-btn active w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-purple-50 transition" data-tab="essay">
+          <i data-lucide="file-edit" class="w-4 h-4 shrink-0"></i>
+          <span>첨삭 &amp; 분석</span>
+        </button>
+        <button class="tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="history">
+          <i data-lucide="bar-chart-3" class="w-4 h-4 shrink-0"></i>
+          <span id="desktopHistoryTabLabel">누적 글 데이터</span>
+        </button>
+        <button class="tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="progress">
+          <i data-lucide="list-checks" class="w-4 h-4 shrink-0"></i>
+          <span>진도 관리</span>
+        </button>
+        <button class="tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="attendance">
+          <i data-lucide="calendar-check" class="w-4 h-4 shrink-0"></i>
+          <span>출결 관리</span>
+        </button>
+        <button class="tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="sms">
+          <i data-lucide="message-square" class="w-4 h-4 shrink-0"></i>
+          <span>학부모 문자</span>
+        </button>
+        <button class="tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" data-tab="exams">
+          <i data-lucide="book-marked" class="w-4 h-4 shrink-0"></i>
+          <span id="desktopExamsTabLabel">논술 기출</span>
+        </button>
+        <button id="studioDesktopTabBtn" class="hidden tab-btn w-full justify-start whitespace-nowrap inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 transition" data-tab="studio">
+          <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i>
+          <span>자료 제작</span>
+        </button>
+      </aside>
+      <div class="flex-1 min-w-0 space-y-6">
     <!-- TAB 1: Essay & Feedback Analyzer -->
     <section id="tab-essay" class="tab-panel space-y-6 animate-fade-in">
       <!-- Prompt & Guide Screenshot Summarizer -->
@@ -1015,11 +1016,23 @@
         <div id="narrativeGrowthSummary" class="text-sm text-slate-700 leading-relaxed space-y-2.5"></div>
       </div>
 
+      <!-- (#2) Weakness Accumulation & Auto-Prescription Dashboard -->
+      <div id="essayWeaknessRxCard" class="bg-white rounded-2xl border border-rose-200 bg-gradient-to-br from-white to-rose-50/40 p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="stethoscope" class="w-4 h-4 text-rose-600"></i>
+            누적 약점 랭킹 &amp; 자동 처방 대시보드
+          </h3>
+          <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700">자동 처방</span>
+        </div>
+        <div id="essayWeaknessRxBody" class="text-xs sm:text-sm text-slate-700"></div>
+      </div>
+
 
       <!-- Essay List -->
       <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <h3 class="text-base font-bold text-slate-900">여태껏 누적된 학생 글 데이터</h3>
+          <div class="flex items-center gap-2"><h3 class="text-base font-bold text-slate-900">여태껏 누적된 학생 글 데이터</h3><button type="button" onclick="openCustomReportModal()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 (PDF·인쇄)</button></div>
           <input id="historySearchInput" type="text" placeholder="제목 또는 강점/약점 키워드 검색..." class="w-full sm:w-64 rounded-xl border border-slate-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
         <div id="essayHistoryList" class="space-y-3"></div>
@@ -1039,16 +1052,28 @@
               </h3>
               <p class="text-xs text-slate-500">입력한 순서대로 전체·공통·선택·백분위 변화 추이를 보여줍니다.</p>
             </div>
-            <button id="saveKorChartBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition">
+            <div class="flex items-center gap-2"><button type="button" onclick="openCustomReportModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition">맞춤 성적표 제작 (PDF·인쇄)</button><button id="saveKorChartBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition">
               <i data-lucide="download" class="w-3.5 h-3.5"></i>
               <span>그래프 이미지로 저장</span>
-            </button>
+            </button></div>
           </div>
           <div class="relative w-full overflow-x-auto">
             <canvas id="korScoreChartCanvas" width="760" height="260" class="w-full max-w-full rounded-xl border border-slate-100 bg-white cursor-crosshair"></canvas>
             <div id="korChartTooltip" class="hidden pointer-events-none absolute z-20 bg-slate-900/95 text-white text-[11px] rounded-xl px-3 py-2 shadow-lg whitespace-nowrap leading-relaxed"></div>
             
           </div>
+        </div>
+
+        <!-- (#2) 국어 오답·취약 영역 누적 대시보드 & 자동 처방 -->
+        <div id="korWeaknessRxCard" class="bg-white rounded-2xl border border-rose-200 bg-gradient-to-br from-white to-rose-50/30 p-4 sm:p-5 shadow-sm space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="stethoscope" class="w-4 h-4 text-rose-600"></i>
+              오답 · 취약 영역 누적 대시보드 &amp; 자동 처방
+            </h3>
+            <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700">Top 3 집중 처방</span>
+          </div>
+          <div id="korWeaknessRxBody" class="text-xs sm:text-sm text-slate-700"></div>
         </div>
 
         <!-- 모의고사 성적 및 영역별 맞힌 문제·강약점 입력 -->
@@ -1239,8 +1264,14 @@
 
         <!-- Add Progress Form -->
         <form id="addProgressForm" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 mb-5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-          <input id="progressTitleInput" type="text" required placeholder="진도 주제 (예: 4단원 - 비교·대조 논술문 구조화)" class="sm:col-span-5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-          <input id="progressDateInput" type="date" class="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input id="progressTitleInput" type="text" required placeholder="진도 주제 (예: 4단원 - 비교·대조 논술문 구조화)" class="sm:col-span-4 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input id="progressDateInput" type="date" class="sm:col-span-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+          <select id="progressHwStatusInput" class="sm:col-span-2 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" title="과제 제출 상태">
+            <option value="">과제: 없음</option>
+            <option value="완료">과제: 완료</option>
+            <option value="부분완료">과제: 부분완료</option>
+            <option value="미완료">과제: 미완료</option>
+          </select>
           <input id="progressNoteInput" type="text" placeholder="준비물/과제 메모" class="sm:col-span-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
           <button type="submit" class="sm:col-span-1 inline-flex items-center justify-center px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
             추가
@@ -2401,7 +2432,7 @@
     const SESSION_USER_KEY = 'tutor_workspace_session_user_v1';
     const LOGIN_AT_KEY = 'tutor_workspace_login_at_v1';
     const EXPLICIT_LOGOUT_KEY = 'tutor_explicit_logout_v1';
-    const CLIENT_BUILD_VERSION = '20261128_v81';
+    const CLIENT_BUILD_VERSION = '20261128_v83';
     try { const u = new URL(location.href); if (u.searchParams.has('_v')) { u.searchParams.delete('_v'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(e) {}
     // Android 인앱 브라우저(카카오톡·네이버·인스타 등) 접속 시 자동으로 Chrome으로 전환해 앱 설치 지원
     (function redirectInAppToChrome() {
@@ -3383,6 +3414,7 @@
       `;
 
       renderNarrativeGrowthSummary(stu);
+      if (typeof renderWeaknessPrescription === 'function') renderWeaknessPrescription(stu);
       renderEssayList();
     }
 
@@ -3492,6 +3524,15 @@
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-sm font-semibold ${item.done ? 'line-through text-slate-400' : 'text-slate-900'}">${escapeHtml(item.title)}</span>
                 ${item.id === firstPendingId ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-600 text-white">다음 진도</span>' : ''}
+                ${(() => {
+                  const hs = item.hwStatus || '';
+                  const cls = hs === '완료' ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                    : hs === '부분완료' ? 'bg-amber-100 text-amber-800 border-amber-200'
+                    : hs === '미완료' ? 'bg-rose-100 text-rose-700 border-rose-200'
+                    : 'bg-slate-100 text-slate-500 border-slate-200';
+                  const lbl = hs ? ('과제 ' + hs) : '과제 체크';
+                  return `<button type="button" class="hw-cycle-btn px-2 py-0.5 rounded-full text-[11px] font-bold border ${cls} hover:opacity-80 transition" data-id="${item.id}" title="클릭하여 과제 상태 전환">${lbl}</button>`;
+                })()}
               </div>
               <div class="text-xs text-slate-500 mt-0.5 flex flex-wrap gap-3">
                 ${item.targetDate ? `<span>목표일: ${escapeHtml(item.targetDate)}</span>` : ''}
@@ -3609,6 +3650,74 @@
       return `${stu.name} 학생은 총 ${essays.length}회차에 걸쳐 꾸준히 글쓰기 훈련을 이어오며 눈에 띄는 변화를 보여주고 있습니다. 초기('${first.title}')에는 '${firstWeak}' 등의 과제가 주로 지적되었으나, 회차가 거듭되면서 최근('${latest.title}')에는 ${latestStr} 면에서 한층 성숙한 역량이 자리 잡았습니다. 앞으로는 최근 글에서 확인된 '${latestWeak}' 부분을 집중적으로 다듬어 글의 완성도를 더욱 끌어올릴 계획입니다.`;
     }
 
+
+    function renderWeaknessPrescription(stu) {
+      const rxGuide = (tag) => {
+        const t = String(tag || '');
+        if (/근거|인용|제시문/.test(t)) return '제시문 핵심 논거 2개 이상 직접 찾아 밑줄 후 문단 첫머리에 배치하는 훈련';
+        if (/논지|이탈|발문|요구/.test(t)) return '발문 요구 조건(대상·기준·분량) 3단계 체크리스트 작성 후 개요 짜기';
+        if (/비교|대조|연결/.test(t)) return '공통 기준축(쟁점) 표를 먼저 그린 뒤 양측 입장 대립쌍 문장화';
+        if (/어휘|문장|비문|분량/.test(t)) return '단문 끊어 쓰기(한 문장 45자 이내) 및 접속어 점검 루틴';
+        if (/독서|비문학|추론|시간/.test(t)) return '지문 문단별 중심 화제 5자 요약 + 1지문 12분 타임어택 훈련';
+        if (/문학|시|소설|보기/.test(t)) return '<보기> 외적 준거 핵심어와 지문 인용구 1:1 대응 선지 소거 훈련';
+        if (/화법|작문|언어|매체|문법/.test(t)) return '개념 암기 카드 주 2회 회독 및 고난도 2세트 연속 풀이';
+        return '최근 오답/첨삭 노트를 주말마다 재점검하고 유사 기출 2문항 반복 풀이';
+      };
+
+      // Essay weakness aggregation
+      const eBody = document.getElementById('essayWeaknessRxBody');
+      if (eBody) {
+        const counts = {};
+        (stu.essays || []).forEach(e => {
+          (e.weaknesses || []).forEach(w => {
+            const k = String(w || '').trim();
+            if (k) counts[k] = (counts[k] || 0) + 1;
+          });
+        });
+        const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        if (!ranked.length) {
+          eBody.innerHTML = '<div class="text-slate-400 py-2">누적된 논술 약점 데이터가 쌓이면 Top 3 약점과 맞춤 처방이 자동 표시됩니다.</div>';
+        } else {
+          eBody.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">${ranked.map(([k, cnt], idx) => `
+            <div class="rounded-xl border border-rose-200 bg-white p-3 space-y-1">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-xs font-extrabold text-rose-700">${idx + 1}순위 · ${escapeHtml(k)}</span>
+                <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold">${cnt}회 누적</span>
+              </div>
+              <p class="text-[11px] text-slate-600 leading-relaxed">${escapeHtml(rxGuide(k))}</p>
+            </div>`).join('')}</div>`;
+        }
+      }
+
+      // Korean weakness & domain aggregation
+      const kBody = document.getElementById('korWeaknessRxBody');
+      if (kBody) {
+        const kScores = Array.isArray(stu.koreanScores) ? stu.koreanScores : [];
+        const kCounts = {};
+        kScores.forEach(s => {
+          (s.weaknesses || []).forEach(w => {
+            const k = String(w || '').trim();
+            if (k) kCounts[k] = (kCounts[k] || 0) + 1;
+          });
+        });
+        const rankedK = Object.entries(kCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        if (!kScores.length) {
+          kBody.innerHTML = '<div class="text-slate-400 py-2">모의고사/개별 성적 데이터를 입력하면 취약 유형 Top 3와 자동 처방이 표시됩니다.</div>';
+        } else if (!rankedK.length) {
+          kBody.innerHTML = '<div class="text-slate-500 py-2">기록된 성적에 취약점 태그를 함께 입력하시면 맞춤형 집중 처방을 생성합니다.</div>';
+        } else {
+          kBody.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">${rankedK.map(([k, cnt], idx) => `
+            <div class="rounded-xl border border-rose-200 bg-white p-3 space-y-1">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-xs font-extrabold text-rose-700">${idx + 1}순위 · ${escapeHtml(k)}</span>
+                <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold">${cnt}회 누적</span>
+              </div>
+              <p class="text-[11px] text-slate-600 leading-relaxed">${escapeHtml(rxGuide(k))}</p>
+            </div>`).join('')}</div>`;
+        }
+      }
+    }
+
     function renderNarrativeGrowthSummary(stu) {
       const el = document.getElementById('narrativeGrowthSummary');
       if (!el) return;
@@ -3663,14 +3772,25 @@
       const attStr = latestAtt ? `${latestAtt.date} ${latestAtt.status}` : '출석';
       const growthStr = stu ? (isKorStu ? buildKoreanGrowthText(stu) : buildNarrativeGrowthText(stu)) : '꾸준한 학습을 통해 실력을 높여가고 있습니다.';
 
-      return (formatStr || DEFAULT_CUSTOM_SMS_FORMAT)
+      const hwItems = progress.filter(p => p.hwStatus);
+      const latestHw = hwItems.length ? hwItems[hwItems.length - 1] : null;
+      const hwStr = latestHw
+        ? `최근 과제 '${latestHw.title}' → ${latestHw.hwStatus}${latestHw.note ? ' (' + latestHw.note + ')' : ''}`
+        : '과제 특이사항 없음';
+
+      let outMsg = (formatStr || DEFAULT_CUSTOM_SMS_FORMAT)
         .replace(/\{학생이름\}/g, stuName)
         .replace(/\{최근글제목\}/g, recentTitle)
         .replace(/\{강점\}/g, sText)
         .replace(/\{약점\}/g, wText)
         .replace(/\{다음진도\}/g, nextTitle)
         .replace(/\{출결상태\}/g, attStr)
+        .replace(/\{과제현황\}/g, hwStr)
         .replace(/\{성장요약\}/g, growthStr);
+      if (latestHw && !/\{과제현황\}/.test(formatStr || '') && !outMsg.includes(hwStr)) {
+        outMsg += `\n[과제 확인] ${hwStr}`;
+      }
+      return outMsg;
     }
 
     function updateSmsLinkAndCount() {
@@ -4205,6 +4325,7 @@
           id: 'p-' + Date.now(),
           title,
           targetDate: document.getElementById('progressDateInput').value,
+          hwStatus: (document.getElementById('progressHwStatusInput')?.value || ''),
           note: document.getElementById('progressNoteInput').value.trim(),
           done: false
         });
@@ -4231,6 +4352,22 @@
       });
 
       document.getElementById('progressList').addEventListener('click', (e) => {
+        const hwBtn = e.target.closest('.hw-cycle-btn');
+        if (hwBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const stu = getActiveStudent();
+          if (!stu) return;
+          const item = stu.progress.find(p => p.id === hwBtn.dataset.id);
+          if (item) {
+            const order = ['', '완료', '부분완료', '미완료'];
+            const idx = order.indexOf(item.hwStatus || '');
+            item.hwStatus = order[(idx + 1) % order.length];
+            saveState();
+            renderProgressTab();
+          }
+          return;
+        }
         const delBtn = e.target.closest('.delete-progress-btn');
         if (delBtn) {
           const stu = getActiveStudent();
@@ -6146,7 +6283,7 @@
           if (!body || !body.innerHTML) return;
           const w = window.open('', '_blank');
           if (!w) return;
-          w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escapeHtml(currentEssayPaperObj ? currentEssayPaperObj.title : '인문논술 시험지')}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800&family=Noto+Serif+KR:wght@400;600;700&display=swap" /><style>*{box-sizing:border-box;} html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;} .yonsei-page{border:none !important;box-shadow:none !important;margin:0 auto !important;} @media print { @page { size: A4 portrait; margin: 0; } }</style></head><body>${body.innerHTML}<script>(function(){var printed=false;function go(){if(printed)return;printed=true;window.print();}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(go,250);});}setTimeout(go,2200);})();<\/script></body></html>`);
+          w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escapeHtml(currentEssayPaperObj ? currentEssayPaperObj.title : '인문논술 시험지')}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800&family=Noto+Serif+KR:wght@400;600;700&display=swap" /><style>*{box-sizing:border-box;} html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;} .yonsei-page{border:none !important;box-shadow:none !important;margin:0 auto !important;} @media print { @page { size: A4 portrait; margin: 0; } }</style></head><body>${body.innerHTML}<script>(function(){var printed=false;function fitPages(){try{document.querySelectorAll('.kice-page').forEach(function(pg){var ch=pg.clientHeight;var sh=pg.scrollHeight;if(ch>0&&sh>ch+1){var ratio=Math.max(0.86,(ch-2)/sh);pg.style.zoom=ratio.toFixed(4);}});}catch(e){}}function go(){if(printed)return;printed=true;fitPages();setTimeout(function(){window.print();},120);}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(go,300);});}setTimeout(go,2200);})();<\/script></body></html>`);
           w.document.close();
         });
       }
@@ -7143,6 +7280,13 @@
             else { rawBox = Object.entries(rawBox).map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n'); }
           }
           let cleanBox = String(rawBox || '').replace(/\[object Object\]/g, '').replace(/^\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*/i, '').trim();
+          if (!cleanBox) {
+            const inlineBogiM = stemTxt.match(/^([\s\S]*?[?？.])\s*(?:<\s*보\s*기\s*>|\[\s*보\s*기\s*\])\s*([\s\S]+)$/);
+            if (inlineBogiM && inlineBogiM[2].trim().length >= 8) {
+              stemTxt = inlineBogiM[1].trim();
+              cleanBox = inlineBogiM[2].trim();
+            }
+          }
           const visHtml = qVisObj ? renderKiceVisual(qVisObj) : '';
           const isStandaloneMedia = Boolean(qVisObj && (qVisObj.type === 'chat' || qVisObj.type === 'webpage'));
           const innerVisInBox = isStandaloneMedia ? '' : visHtml;
@@ -7347,9 +7491,11 @@
         document.body.appendChild(measurer);
         units.forEach(u => {
           const d = document.createElement('div');
+          d.style.display = 'flow-root';
           d.innerHTML = u.html;
           measurer.appendChild(d);
           u.h = Math.max(16, d.getBoundingClientRect().height);
+          u.topTrim = u.isGapTarget ? 42 : (u.isPassageStart ? 34 : 0);
         });
         document.body.removeChild(measurer);
 
@@ -7378,27 +7524,30 @@
           const isFirstLike = (pages.length === 0) || (curIsElec && !pages.some(pg => pg.isElective));
           const maxColH = getColLimit(isFirstLike);
 
-          const minStartNeed = u.isPassageStart ? Math.max(u.h, 130) : u.h;
+          const effH1 = col1Units.length === 0 ? Math.max(16, u.h - (u.topTrim || 0)) : u.h;
+          const effH2 = col2Units.length === 0 ? Math.max(16, u.h - (u.topTrim || 0)) : u.h;
+          const minStartNeed1 = u.isPassageStart ? Math.max(effH1, 135) : effH1;
+          const minStartNeed2 = u.isPassageStart ? Math.max(effH2, 135) : effH2;
           if (col === 1) {
-            if (col1H > 0 && col1H + minStartNeed > maxColH) {
+            if (col1H > 0 && col1H + minStartNeed1 > maxColH) {
               col = 2;
-              col2H = u.h;
+              col2H = Math.max(16, u.h - (u.topTrim || 0));
               col2Units.push(u);
             } else {
-              col1H += u.h;
+              col1H += effH1;
               col1Units.push(u);
             }
           } else {
-            if (col2H > 0 && col2H + minStartNeed > maxColH) {
+            if (col2H > 0 && col2H + minStartNeed2 > maxColH) {
               pages.push({ col1: col1Units, col2: col2Units, isElective: curIsElec, isElectiveStart: isFirstLike && curIsElec });
               col1Units = [u];
               col2Units = [];
               col = 1;
-              col1H = u.h;
+              col1H = Math.max(16, u.h - (u.topTrim || 0));
               col2H = 0;
               curIsElec = u.isElective;
             } else {
-              col2H += u.h;
+              col2H += effH2;
               col2Units.push(u);
             }
           }
@@ -7447,30 +7596,42 @@
 
           const justifyColHtml = (colUnits, isTopHdr) => {
             const arr = colUnits || [];
-            const colH = arr.reduce((s, u) => s + (u.h || 0), 0);
+            if (!arr.length) return '';
+            const colH = arr.reduce((s, u, ui) => s + Math.max(16, (u.h || 0) - (ui === 0 ? (u.topTrim || 0) : 0)), 0);
             const maxH = isTopHdr ? 956 : 992;
-            const spare = maxH - colH;
-            const targets = arr.filter((u, ui) => ui > 0 && u.isGapTarget);
-            const extra = (colH >= maxH * 0.58 && spare > 8 && targets.length > 0)
-              ? Math.min(50, Math.floor(spare / targets.length))
+            const spare = Math.max(0, maxH - colH);
+            const blocks = [];
+            let pBuf = [];
+            const flushP = () => {
+              if (pBuf.length) {
+                blocks.push({ isPassage: true, html: pBuf.join('') });
+                pBuf = [];
+              }
+            };
+            const pExtra = (arr.every(u => !u.isGapTarget) && arr.length >= 3 && colH >= maxH * 0.65 && spare > 10)
+              ? Math.min(10, Math.floor(spare / (arr.length - 1)))
               : 0;
-            const pExtra = (targets.length === 0 && arr.length >= 3 && colH >= maxH * 0.72 && spare > 12)
-              ? Math.min(6, Math.floor(spare / (arr.length - 1)))
-              : 0;
-            return arr.map((u, ui) => {
+            arr.forEach((u, ui) => {
+              let h = u.html;
               if (ui === 0) {
-                return u.html
+                h = h
                   .replace(/margin-top:44px;/, 'margin-top:2px;')
                   .replace(/margin:36px 0 8px 0;/, 'margin:2px 0 8px 0;');
               }
-              if (extra > 0 && u.isGapTarget) {
-                return `<div style="margin-top:${extra}px;">${u.html}</div>`;
+              if (!u.isGapTarget) {
+                if (pExtra > 0 && ui > 0) h = h.replace(/padding-top:0;/, `padding-top:${pExtra}px;`);
+                pBuf.push(h);
+              } else {
+                flushP();
+                blocks.push({ isPassage: false, html: h });
               }
-              if (pExtra > 0 && !u.isGapTarget) {
-                return u.html.replace(/padding-top:0;/, `padding-top:${pExtra}px;`);
-              }
-              return u.html;
-            }).join('');
+            });
+            flushP();
+            const shouldSpread = blocks.length >= 2 && colH >= maxH * 0.52;
+            const wrapStyle = shouldSpread
+              ? 'height:100%;display:flex;flex-direction:column;justify-content:space-between;'
+              : 'display:flex;flex-direction:column;justify-content:flex-start;';
+            return `<div style="${wrapStyle}">${blocks.map(b => `<div>${b.html}</div>`).join('')}</div>`;
           };
           const col1Html = justifyColHtml(pgObj.col1, isFirst || pgObj.isElectiveStart);
           const col2Html = justifyColHtml(pgObj.col2, isFirst || pgObj.isElectiveStart);
@@ -8889,6 +9050,252 @@
         renderAll();
       }
     });
+  </script>
+
+  <!-- Custom Student Report Builder Modal -->
+  <div id="customReportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-5">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden">
+      <div class="px-4 sm:px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50">
+        <div>
+          <h3 class="text-sm sm:text-base font-extrabold text-slate-900">학생 맞춤 성적표 커스터마이징 · PDF 저장</h3>
+          <p class="text-[11px] text-slate-500">성적표에 넣을 항목을 자유롭게 선택하고, 화면에 보이는 그대로 PDF 저장 및 인쇄할 수 있습니다.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="printCustomReportBtn" type="button" class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition">화면 그대로 PDF 저장 · 인쇄</button>
+          <button id="closeCustomReportBtn" type="button" class="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-600">닫기</button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12">
+        <div class="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-slate-200 p-4 space-y-4 bg-slate-50/70">
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-slate-700">성적표 제목</label>
+            <input id="crTitleInput" type="text" value="학생 학습·성적 종합 리포트" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs bg-white outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">담당 선생님/기관명</label>
+              <input id="crTeacherInput" type="text" value="담당 과외 선생님" class="w-full rounded-xl border border-slate-300 px-2.5 py-1.5 text-xs bg-white outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">발행일</label>
+              <input id="crDateInput" type="text" class="w-full rounded-xl border border-slate-300 px-2.5 py-1.5 text-xs bg-white outline-none" />
+            </div>
+          </div>
+          <div class="space-y-1.5 pt-1 border-t border-slate-200">
+            <div class="text-xs font-extrabold text-slate-800 mb-1">성적표 포함 항목 선택</div>
+            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptProfile" type="checkbox" checked class="rounded text-indigo-600" /> 학생 기본 정보 (이름·학년·과목)</label>
+            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptKpi" type="checkbox" checked class="rounded text-indigo-600" /> 핵심 성과 요약 카드 (최근/최고/누적)</label>
+            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptChart" type="checkbox" checked class="rounded text-indigo-600" /> 성적 추이 그래프 (국어 과목 시)</label>
+            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptScores" type="checkbox" checked class="rounded text-indigo-600" /> 회차별 상세 성적·첨삭 기록표</label>
+            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptAttendance" type="checkbox" checked class="rounded text-indigo-600" /> 출결 현황 (출석·지각·결석)</label>
+            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptProgress" type="checkbox" checked class="rounded text-indigo-600" /> 진도 및 과제 수행 현황</label>
+            <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"><input id="crOptComment" type="checkbox" checked class="rounded text-indigo-600" /> 선생님 종합 총평 &amp; 학습 계획</label>
+          </div>
+          <div class="space-y-1.5 pt-1 border-t border-slate-200">
+            <label class="block text-xs font-bold text-slate-700">선생님 총평 · 다음 학습 계획</label>
+            <textarea id="crCommentInput" rows="4" placeholder="학부모·학생에게 전달할 총평과 향후 학습 방향을 입력하세요..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          </div>
+        </div>
+        <div class="lg:col-span-8 p-4 sm:p-6 bg-slate-200/70 overflow-y-auto flex justify-center">
+          <div id="customReportPreviewSheet" class="w-full max-w-[210mm] min-h-[296mm] bg-white border border-slate-300 shadow-lg p-7 sm:p-9 text-slate-900 space-y-5" style="box-sizing:border-box;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      const modal = document.getElementById('customReportModal');
+      const sheet = document.getElementById('customReportPreviewSheet');
+      if (!modal || !sheet) return;
+      const escR = (v) => String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+      function renderCustomReport() {
+        const stu = (typeof getActiveStudent === 'function') ? getActiveStudent() : null;
+        if (!stu) {
+          sheet.innerHTML = '<div class="py-16 text-center text-sm text-slate-400">학생을 먼저 선택해 주세요.</div>';
+          return;
+        }
+        const title = document.getElementById('crTitleInput').value.trim() || '학생 학습·성적 종합 리포트';
+        const teacher = document.getElementById('crTeacherInput').value.trim() || '담당 선생님';
+        const dateStr = document.getElementById('crDateInput').value.trim() || new Date().toLocaleDateString('ko-KR');
+        const isKor = stu.subject === '국어';
+
+        const showProfile = document.getElementById('crOptProfile').checked;
+        const showKpi = document.getElementById('crOptKpi').checked;
+        const showChart = document.getElementById('crOptChart').checked;
+        const showScores = document.getElementById('crOptScores').checked;
+        const showAtt = document.getElementById('crOptAttendance').checked;
+        const showProg = document.getElementById('crOptProgress').checked;
+        const showCmt = document.getElementById('crOptComment').checked;
+        const cmtText = document.getElementById('crCommentInput').value.trim();
+
+        let html = `
+          <div style="border-bottom:2px solid #1e293b;padding-bottom:12px;display:flex;justify-content:space-between;align-items:flex-end;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#4f46e5;letter-spacing:0.06em;">STUDENT REPORT</div>
+              <h1 style="font-size:21px;font-weight:900;color:#0f172a;margin:2px 0 0 0;">${escR(title)}</h1>
+            </div>
+            <div style="text-align:right;font-size:11px;color:#475569;line-height:1.5;">
+              <div>발행일: <strong>${escR(dateStr)}</strong></div>
+              <div>작성: <strong>${escR(teacher)}</strong></div>
+            </div>
+          </div>`;
+
+        if (showProfile) {
+          html += `
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;font-size:12px;">
+              <div><span style="color:#64748b;">학생 이름:</span> <strong>${escR(stu.name)}</strong></div>
+              <div><span style="color:#64748b;">학년:</span> <strong>${escR(stu.grade || '-')}</strong></div>
+              <div><span style="color:#64748b;">수강 과목:</span> <strong>${escR(stu.subject || '인문논술')}</strong></div>
+            </div>`;
+        }
+
+        const korList = Array.isArray(stu.koreanScores) ? stu.koreanScores : (Array.isArray(stu.korScores) ? stu.korScores : []);
+        const essList = Array.isArray(stu.essays) ? stu.essays : [];
+
+        if (showKpi) {
+          if (isKor) {
+            const latest = korList[0];
+            const best = korList.reduce((mx, x) => Math.max(mx, Number(x.total ?? x.totalScore ?? 0)), 0);
+            html += `
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">누적 응시/기록</div><div style="font-size:17px;font-weight:800;color:#0f172a;margin-top:2px;">${korList.length}회</div></div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">최근 성적</div><div style="font-size:17px;font-weight:800;color:#059669;margin-top:2px;">${latest ? ((latest.total ?? latest.totalScore ?? '-') + '점 (' + (latest.grade || '-') + '등급)') : '-'}</div></div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">최고 점수</div><div style="font-size:17px;font-weight:800;color:#4f46e5;margin-top:2px;">${korList.length ? best + '점' : '-'}</div></div>
+              </div>`;
+          } else {
+            html += `
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">누적 논술 첨삭</div><div style="font-size:17px;font-weight:800;color:#0f172a;margin-top:2px;">${essList.length}편</div></div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">최근 작성일</div><div style="font-size:14px;font-weight:800;color:#4f46e5;margin-top:4px;">${essList[0] ? escR(essList[0].date) : '-'}</div></div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#64748b;">최근 논제</div><div style="font-size:12px;font-weight:700;color:#0f172a;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${essList[0] ? escR(essList[0].title) : '-'}</div></div>
+              </div>`;
+          }
+        }
+
+        if (showChart && isKor) {
+          const cvs = document.getElementById('korScoreChartCanvas');
+          if (cvs && korList.length > 0) {
+            try {
+              const imgUrl = cvs.toDataURL('image/png');
+              html += `
+                <div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;">
+                  <div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px;">성적 변화 추이 그래프</div>
+                  <img src="${imgUrl}" style="width:100%;height:auto;display:block;border-radius:6px;" />
+                </div>`;
+            } catch (e) {}
+          }
+        }
+
+        if (showScores) {
+          if (isKor) {
+            const rows = korList.slice(0, 10).map(x => `
+              <tr>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;">${escR(x.date || '-')}</td>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;font-weight:600;">${escR(x.title || '-')}</td>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;font-weight:700;">${escR(x.total ?? x.totalScore ?? '-')}점</td>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;">${escR(x.grade ? x.grade + '등급' : '-')}</td>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;font-size:10.5px;color:#475569;">${escR(x.weaknessNote || x.memo || '-')}</td>
+              </tr>`).join('');
+            html += `
+              <div>
+                <div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px;">회차별 성적 상세 기록</div>
+                <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                  <thead><tr style="background:#f1f5f9;">
+                    <th style="border:1px solid #cbd5e1;padding:5px 7px;text-align:left;">날짜</th>
+                    <th style="border:1px solid #cbd5e1;padding:5px 7px;text-align:left;">시험/모의고사명</th>
+                    <th style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;">점수</th>
+                    <th style="border:1px solid #cbd5e1;padding:5px 7px;text-align:center;">등급</th>
+                    <th style="border:1px solid #cbd5e1;padding:5px 7px;text-align:left;">약점·비고</th>
+                  </tr></thead>
+                  <tbody>${rows || '<tr><td colspan="5" style="border:1px solid #cbd5e1;padding:10px;text-align:center;color:#94a3b8;">기록된 성적이 없습니다.</td></tr>'}</tbody>
+                </table>
+              </div>`;
+          } else {
+            const rows = essList.slice(0, 8).map(x => `
+              <tr>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;">${escR(x.date || '-')}</td>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;font-weight:600;">${escR(x.title || '-')}</td>
+                <td style="border:1px solid #cbd5e1;padding:5px 7px;font-size:10.5px;">${escR((x.weaknesses || []).join(', ') || '-')}</td>
+              </tr>`).join('');
+            html += `
+              <div>
+                <div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px;">회차별 논술 첨삭 기록</div>
+                <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                  <thead><tr style="background:#f1f5f9;">
+                    <th style="border:1px solid #cbd5e1;padding:5px 7px;text-align:left;">날짜</th>
+                    <th style="border:1px solid #cbd5e1;padding:5px 7px;text-align:left;">논제</th>
+                    <th style="border:1px solid #cbd5e1;padding:5px 7px;text-align:left;">보완 포인트</th>
+                  </tr></thead>
+                  <tbody>${rows || '<tr><td colspan="3" style="border:1px solid #cbd5e1;padding:10px;text-align:center;color:#94a3b8;">기록된 글이 없습니다.</td></tr>'}</tbody>
+                </table>
+              </div>`;
+          }
+        }
+
+        if (showAtt) {
+          const att = Array.isArray(stu.attendance) ? stu.attendance : [];
+          const pCnt = att.filter(a => a.status === '출석').length;
+          const lCnt = att.filter(a => a.status === '지각').length;
+          const aCnt = att.filter(a => a.status === '결석').length;
+          html += `
+            <div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;font-size:11.5px;display:flex;justify-content:space-between;align-items:center;">
+              <strong style="color:#0f172a;">출결 현황 요약 (총 ${att.length}회)</strong>
+              <div style="display:flex;gap:14px;">
+                <span>출석 <strong style="color:#059669;">${pCnt}회</strong></span>
+                <span>지각 <strong style="color:#d97706;">${lCnt}회</strong></span>
+                <span>결석 <strong style="color:#dc2626;">${aCnt}회</strong></span>
+              </div>
+            </div>`;
+        }
+
+        if (showProg) {
+          const prog = Array.isArray(stu.progress) ? stu.progress : [];
+          const recentP = prog.slice(0, 5).map(p => `<li style="margin-bottom:3px;"><strong>${escR(p.date || '')}</strong> · ${escR(p.topic || p.title || '')} <span style="color:#4f46e5;">(${escR(p.status || '완료')})</span></li>`).join('');
+          html += `
+            <div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;font-size:11.5px;">
+              <div style="font-weight:800;color:#0f172a;margin-bottom:5px;">최근 진도 · 과제 현황</div>
+              ${recentP ? `<ul style="margin:0;padding-left:16px;">${recentP}</ul>` : '<div style="color:#94a3b8;">기록된 진도가 없습니다.</div>'}
+            </div>`;
+        }
+
+        if (showCmt) {
+          html += `
+            <div style="border:1.5px solid #4f46e5;background:#eef2ff;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:12px;font-weight:800;color:#312e81;margin-bottom:5px;">선생님 종합 총평 및 학습 계획</div>
+              <div style="font-size:12px;line-height:1.6;color:#1e293b;white-space:pre-wrap;">${escR(cmtText || '성실한 태도로 수업에 참여하고 있으며, 다음 회차에서는 취약 영역 보완에 집중할 예정입니다.')}</div>
+            </div>`;
+        }
+
+        sheet.innerHTML = html;
+      }
+
+      window.openCustomReportModal = function() {
+        const dEl = document.getElementById('crDateInput');
+        if (dEl && !dEl.value) dEl.value = new Date().toLocaleDateString('ko-KR');
+        renderCustomReport();
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      };
+
+      document.getElementById('closeCustomReportBtn')?.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      });
+
+      ['crTitleInput','crTeacherInput','crDateInput','crCommentInput','crOptProfile','crOptKpi','crOptChart','crOptScores','crOptAttendance','crOptProgress','crOptComment'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', renderCustomReport);
+        document.getElementById(id)?.addEventListener('change', renderCustomReport);
+      });
+
+      document.getElementById('printCustomReportBtn')?.addEventListener('click', () => {
+        renderCustomReport();
+        const w = window.open('', '_blank');
+        if (!w) return;
+        w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>학생 맞춤 성적표</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800;900&display=swap" /><style>*{box-sizing:border-box;}@page{size:A4 portrait;margin:10mm;}html,body{margin:0;padding:0;background:#fff;font-family:'Noto Sans KR',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.sheet{width:190mm;margin:0 auto;}</style></head><body><div class="sheet">${sheet.innerHTML}</div><script>(function(){var done=false;function go(){if(done)return;done=true;var s=document.querySelector('.sheet');if(s&&s.scrollHeight>1045){s.style.zoom=(1040/s.scrollHeight).toFixed(4);}setTimeout(function(){window.print();},120);}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(go,250);});}setTimeout(go,1800);})();<\/script></body></html>`);
+        w.document.close();
+      });
+    })();
   </script>
 </body>
 </html>
